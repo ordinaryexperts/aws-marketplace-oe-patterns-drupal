@@ -11,5 +11,4 @@
 
     $ cd cdk
     $ source .env/bin/activate
-    $ pip
     $ aws-vault exec oe-prod-us-west-1 cdk deploy
