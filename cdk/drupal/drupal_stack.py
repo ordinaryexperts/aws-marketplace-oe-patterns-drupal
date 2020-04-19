@@ -1,5 +1,6 @@
 import json
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_sns as sns
@@ -67,6 +68,11 @@ class DrupalStack(core.Stack):
         notification_topic = sns.Topic(
             self,
             "NotificationTopic"
+        )
+        app_instance_role = iam.Role(
+            self,
+            "AppInstanceRole",
+            assumed_by=iam.ServicePrincipal('ec2.amazonaws.com')
         )
         # alb = alb(
         #     self,
