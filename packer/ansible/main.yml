@@ -1,0 +1,14 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Install helpful system utilities.
+      apt:
+        name:
+          - git
+          - wget
+          - curl
+          - vim
+        state: present
