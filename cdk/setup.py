@@ -24,7 +24,7 @@ setuptools.setup(
         f"aws-cdk.core=={CDK_VERSION}",
         f"aws-cdk.aws-autoscaling=={CDK_VERSION}",
         f"aws-cdk.aws-ec2=={CDK_VERSION}",
-        f"aws-cdk.aws-elasticloadbalancing=={CDK_VERSION}",
+        f"aws-cdk.aws-elasticloadbalancingv2=={CDK_VERSION}",
         f"aws-cdk.aws-iam=={CDK_VERSION}",
         f"aws-cdk.aws-rds=={CDK_VERSION}",
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",

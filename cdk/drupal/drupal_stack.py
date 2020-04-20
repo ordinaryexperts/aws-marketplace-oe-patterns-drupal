@@ -1,7 +1,7 @@
 import json
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_elasticloadbalancing as elasticloadbalancing
+from aws_cdk import aws_elasticloadbalancingv2 as elasticloadbalancingv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
@@ -102,13 +102,18 @@ class DrupalStack(core.Stack):
             role=app_instance_role,
             vpc=vpc
         )
-        lb = elasticloadbalancing.LoadBalancer(
+        alb = elasticloadbalancingv2.ApplicationLoadBalancer(
             self,
             "AppAlb",
             vpc=vpc
         )
-        lb.add_target(asg)
-        listener = lb.add_listener(
-            external_port=80
+        listener = alb.add_listener(
+            "HttpListener",
+            port=80,
+            open=True
         )
-        listener.connections.allow_default_port_from_any_ipv4("Open to the world")
+        listener.add_targets(
+            "AppAsg",
+            port=80,
+            targets=[asg]
+        )
