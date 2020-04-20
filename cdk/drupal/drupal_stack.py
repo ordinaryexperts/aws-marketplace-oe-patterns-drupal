@@ -1,5 +1,7 @@
 import json
+from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_elasticloadbalancing as elasticloadbalancing
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
@@ -89,21 +91,24 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        app_instance_profile = iam.CfnInstanceProfile(
+        amis = ec2.MachineImage.generic_linux({
+            "us-west-1": "ami-08e38d38bafbb63f1"
+        })
+        asg = autoscaling.AutoScalingGroup(
             self,
-            "AppInstanceProfile",
-            roles=[app_instance_role.role_name]
-        )
-        app_alb_security_group = ec2.SecurityGroup(
-            self,
-            "AppAlbSecurityGroup",
+            "AppAsg",
+            instance_type=ec2.InstanceType("t3.micro"),
+            machine_image=amis,
+            role=app_instance_role,
             vpc=vpc
         )
-        # alb = alb(
-        #     self,
-        #     "alb"
-        # )
-        # asg = asg(
-        #     self,
-        #     "asg"
-        # )
+        lb = elasticloadbalancing.LoadBalancer(
+            self,
+            "AppAlb",
+            vpc=vpc
+        )
+        lb.add_target(asg)
+        listener = lb.add_listener(
+            external_port=80
+        )
+        listener.connections.allow_default_port_from_any_ipv4("Open to the world")
