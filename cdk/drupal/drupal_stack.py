@@ -72,7 +72,32 @@ class DrupalStack(core.Stack):
         app_instance_role = iam.Role(
             self,
             "AppInstanceRole",
-            assumed_by=iam.ServicePrincipal('ec2.amazonaws.com')
+            assumed_by=iam.ServicePrincipal('ec2.amazonaws.com'),
+            inline_policies={
+                "AllowStreamMetricsToCloudWatch": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            effect=iam.Effect.ALLOW,
+                            actions=[
+                                'cloudwatch:GetMetricStatistics',
+                                'cloudwatch:ListMetrics',
+                                'cloudwatch:PutMetricData'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                )
+            }
+        )
+        app_instance_profile = iam.CfnInstanceProfile(
+            self,
+            "AppInstanceProfile",
+            roles=[app_instance_role.role_name]
+        )
+        app_alb_security_group = ec2.SecurityGroup(
+            self,
+            "AppAlbSecurityGroup",
+            vpc=vpc
         )
         # alb = alb(
         #     self,
