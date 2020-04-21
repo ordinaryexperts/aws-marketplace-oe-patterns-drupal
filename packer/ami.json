@@ -17,17 +17,7 @@
     {
       "type": "shell",
       "execute_command": "{{.Vars}} sudo -S -E bash '{{.Path}}'",
-      "script": "scripts/ansible.sh"
-    },
-    {
-      "type": "ansible-local",
-      "playbook_file": "ansible/main.yml",
-      "clean_staging_directory": true
-    },
-    {
-      "type": "shell",
-      "execute_command": "{{.Vars}} sudo -S -E bash '{{.Path}}'",
-      "script": "scripts/cleanup.sh"
+      "script": "scripts/setup.sh"
     }
   ]
 }

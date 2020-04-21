@@ -3,6 +3,7 @@ from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_elasticloadbalancingv2 as elasticloadbalancingv2
 from aws_cdk import aws_iam as iam
+from aws_cdk import aws_logs as logs
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
 from aws_cdk import aws_sns as sns
@@ -71,6 +72,10 @@ class DrupalStack(core.Stack):
             self,
             "NotificationTopic"
         )
+        log_group = logs.LogGroup(
+            self,
+            "LogGroup"
+        )
         app_instance_role = iam.Role(
             self,
             "AppInstanceRole",
@@ -91,6 +96,8 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        app_instance_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+
         amis = ec2.MachineImage.generic_linux({
             "us-west-1": "ami-08e38d38bafbb63f1"
         })
@@ -99,7 +106,9 @@ class DrupalStack(core.Stack):
             "AppAsg",
             instance_type=ec2.InstanceType("t3.micro"),
             machine_image=amis,
+            # key_name="oe-dylan-us-west-1",
             role=app_instance_role,
+            # vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             vpc=vpc
         )
         alb = elasticloadbalancingv2.ApplicationLoadBalancer(
