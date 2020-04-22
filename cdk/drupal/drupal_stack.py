@@ -99,7 +99,7 @@ class DrupalStack(core.Stack):
         app_instance_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
 
         amis = ec2.MachineImage.generic_linux({
-            "us-west-1": "ami-08e38d38bafbb63f1"
+            "us-west-1": "ami-0bfb5a8eb3ae9f953"
         })
         asg = autoscaling.AutoScalingGroup(
             self,
@@ -114,6 +114,7 @@ class DrupalStack(core.Stack):
         alb = elasticloadbalancingv2.ApplicationLoadBalancer(
             self,
             "AppAlb",
+            internet_facing=True,
             vpc=vpc
         )
         listener = alb.add_listener(
