@@ -1,39 +1,34 @@
 import json
-from aws_cdk import aws_autoscaling as autoscaling
-from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_elasticloadbalancingv2 as elasticloadbalancingv2
-from aws_cdk import aws_iam as iam
-from aws_cdk import aws_logs as logs
-from aws_cdk import aws_rds as rds
-from aws_cdk import aws_secretsmanager as secretsmanager
-from aws_cdk import aws_sns as sns
-from aws_cdk import core
+from aws_cdk import (
+    aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
+    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
+)
 
 class DrupalStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        vpc = ec2.Vpc(
+        vpc = aws_ec2.Vpc(
             self,
             "vpc",
             cidr="10.0.0.0/16"
         )
-        secret = secretsmanager.Secret(
+        secret = aws_secretsmanager.Secret(
             self,
             "secret",
-            generate_secret_string=secretsmanager.SecretStringGenerator(
+            generate_secret_string=aws_secretsmanager.SecretStringGenerator(
                 secret_string_template=json.dumps({"username":"user"}),
                 generate_string_key="password"
             )
         )
-        db_subnet_group = rds.CfnDBSubnetGroup(
+        db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         )
-        db_cluster_parameter_group = rds.CfnDBClusterParameterGroup(
+        db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
             "DBClusterParameterGroup",
             description="test",
@@ -49,7 +44,7 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
-        db_cluster = rds.CfnDBCluster(
+        db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
             engine="aurora",
@@ -68,23 +63,23 @@ class DrupalStack(core.Stack):
             },
             storage_encrypted=True
         )
-        notification_topic = sns.Topic(
+        notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
         )
-        log_group = logs.LogGroup(
+        log_group = aws_logs.LogGroup(
             self,
             "LogGroup"
         )
-        app_instance_role = iam.Role(
+        app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
-            assumed_by=iam.ServicePrincipal('ec2.amazonaws.com'),
+            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
             inline_policies={
-                "AllowStreamMetricsToCloudWatch": iam.PolicyDocument(
+                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
                     statements=[
-                        iam.PolicyStatement(
-                            effect=iam.Effect.ALLOW,
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
                             actions=[
                                 'cloudwatch:GetMetricStatistics',
                                 'cloudwatch:ListMetrics',
@@ -96,22 +91,22 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        app_instance_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
 
-        amis = ec2.MachineImage.generic_linux({
+        amis = aws_ec2.MachineImage.generic_linux({
             "us-west-1": "ami-0bfb5a8eb3ae9f953"
         })
-        asg = autoscaling.AutoScalingGroup(
+        asg = aws_autoscaling.AutoScalingGroup(
             self,
             "AppAsg",
-            instance_type=ec2.InstanceType("t3.micro"),
+            instance_type=aws_ec2.InstanceType("t3.micro"),
             machine_image=amis,
             # key_name="oe-dylan-us-west-1",
             role=app_instance_role,
-            # vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            # vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.PUBLIC),
             vpc=vpc
         )
-        alb = elasticloadbalancingv2.ApplicationLoadBalancer(
+        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
             self,
             "AppAlb",
             internet_facing=True,
