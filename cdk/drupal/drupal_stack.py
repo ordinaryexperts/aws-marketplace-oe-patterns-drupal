@@ -9,6 +9,21 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        certificate_arn_param = core.CfnParameter(
+            self,
+            "CertificateArn",
+            default=""
+        )
+        certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+        )
+        certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CertificateArnNotExists",
+            expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+        )
         vpc = aws_ec2.Vpc(
             self,
             "vpc",
@@ -112,13 +127,41 @@ class DrupalStack(core.Stack):
             internet_facing=True,
             vpc=vpc
         )
-        listener = alb.add_listener(
+        # if there is no cert...
+        http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+            self,
+            "AsgHttpTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=80,
+            vpc=vpc
+        )
+        http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
             "HttpListener",
-            port=80,
-            open=True
+            default_target_groups=[http_target_group],
+            load_balancer=alb,
+            open=True,
+            port=80
         )
-        listener.add_targets(
-            "AppAsg",
-            port=80,
-            targets=[asg]
+        http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+
+        # if there is a cert...
+        https_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+            self,
+            "AsgHttpsTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=443,
+            vpc=vpc
         )
+        https_target_group.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
+            "HttpsListener",
+            certificates=[aws_elasticloadbalancingv2.ListenerCertificate(certificate_arn_param.value_as_string)],
+            default_target_groups=[https_target_group],
+            load_balancer=alb,
+            open=True,
+            port=443
+        )
+        https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
