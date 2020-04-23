@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-aws-vault exec oe-prod -- packer build ami.json
+aws-vault exec oe-patterns-dev -- packer build ami.json

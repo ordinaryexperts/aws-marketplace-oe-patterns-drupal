@@ -4,5 +4,9 @@
   "availability-zones:account=440643590597:region=us-west-1": [
     "us-west-1a",
     "us-west-1b"
+  ],
+  "availability-zones:account=992593896645:region=us-west-1": [
+    "us-west-1b",
+    "us-west-1c"
   ]
 }

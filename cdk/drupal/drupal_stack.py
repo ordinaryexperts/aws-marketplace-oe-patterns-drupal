@@ -94,14 +94,14 @@ class DrupalStack(core.Stack):
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
 
         amis = aws_ec2.MachineImage.generic_linux({
-            "us-west-1": "ami-0bfb5a8eb3ae9f953"
+            "us-west-1": "ami-0150dcb71aef71061"
         })
         asg = aws_autoscaling.AutoScalingGroup(
             self,
             "AppAsg",
             instance_type=aws_ec2.InstanceType("t3.micro"),
             machine_image=amis,
-            # key_name="oe-dylan-us-west-1",
+            # key_name="oe-patterns-dev-us-west-1",
             role=app_instance_role,
             # vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.PUBLIC),
             vpc=vpc
