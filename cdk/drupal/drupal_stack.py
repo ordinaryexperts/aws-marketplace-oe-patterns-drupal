@@ -225,5 +225,24 @@ class DrupalStack(core.Stack):
         core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
 
-        sg.add_ingress_rule(alb_sg, aws_ec2.Port.tcp(443), 'allow 443 from alb')
+        sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpIngress",
+            from_port=80,
+            group_id=sg.security_group_id,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.security_group_id,
+            to_port=80
+        )
+        sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
 
+        sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpsIngress",
+            from_port=443,
+            group_id=sg.security_group_id,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.security_group_id,
+            to_port=443
+        )
+        sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
