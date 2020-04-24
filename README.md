@@ -2,6 +2,7 @@
 
 ## Setup
 
+    $ npm install -g aws-cdk
     $ cd cdk
     $ python3 -m venv .env
     $ source .env/bin/activate
