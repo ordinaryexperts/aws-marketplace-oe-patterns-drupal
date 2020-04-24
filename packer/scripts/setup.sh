@@ -35,6 +35,64 @@ apt-get -y install            \
         php7.2-mbstring       \
         php7.2-xml
 
+# configure apache
+a2enmod rewrite
+a2enmod ssl
+
+a2dissite 000-default
+cat <<EOF > /etc/apache2/sites-available/app.conf
+<VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+        LogLevel warn
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        RewriteEngine On
+        RewriteOptions Inherit
+
+        <Directory /var/www/html>
+            Options Indexes FollowSymLinks MultiViews
+            AllowOverride All
+            Require all granted
+        </Directory>
+
+        AddType application/x-httpd-php .php
+        AddType application/x-httpd-php phtml pht php
+</VirtualHost>
+<VirtualHost *:443>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+        LogLevel warn
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        RewriteEngine On
+        RewriteOptions Inherit
+
+        <Directory /var/www/html>
+            Options Indexes FollowSymLinks MultiViews
+            AllowOverride All
+            Require all granted
+        </Directory>
+
+        AddType application/x-httpd-php .php
+        AddType application/x-httpd-php phtml pht php
+
+        # self-signed cert
+        # real cert is managed by the ELB
+        SSLEngine on
+        SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt
+        SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+</VirtualHost>
+EOF
+a2ensite app
+
+# apache2 will be enabled / started on boot
+systemctl disable apache2
+
 # apt cleanup
 apt-get -y autoremove
 apt-get -y update

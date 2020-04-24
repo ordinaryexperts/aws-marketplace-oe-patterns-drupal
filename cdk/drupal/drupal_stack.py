@@ -78,49 +78,7 @@ class DrupalStack(core.Stack):
             },
             storage_encrypted=True
         )
-        notification_topic = aws_sns.Topic(
-            self,
-            "NotificationTopic"
-        )
-        log_group = aws_logs.LogGroup(
-            self,
-            "LogGroup"
-        )
-        app_instance_role = aws_iam.Role(
-            self,
-            "AppInstanceRole",
-            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
-            inline_policies={
-                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                'cloudwatch:GetMetricStatistics',
-                                'cloudwatch:ListMetrics',
-                                'cloudwatch:PutMetricData'
-                            ],
-                            resources=['*']
-                        )
-                    ]
-                )
-            }
-        )
-        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
 
-        amis = aws_ec2.MachineImage.generic_linux({
-            "us-west-1": "ami-0150dcb71aef71061"
-        })
-        asg = aws_autoscaling.AutoScalingGroup(
-            self,
-            "AppAsg",
-            instance_type=aws_ec2.InstanceType("t3.micro"),
-            machine_image=amis,
-            # key_name="oe-patterns-dev-us-west-1",
-            role=app_instance_role,
-            # vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.PUBLIC),
-            vpc=vpc
-        )
         alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
             self,
             "AppAlb",
@@ -165,3 +123,74 @@ class DrupalStack(core.Stack):
             port=443
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+
+        notification_topic = aws_sns.Topic(
+            self,
+            "NotificationTopic"
+        )
+        log_group = aws_logs.LogGroup(
+            self,
+            "LogGroup"
+        )
+        app_instance_role = aws_iam.Role(
+            self,
+            "AppInstanceRole",
+            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
+            inline_policies={
+                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'cloudwatch:GetMetricStatistics',
+                                'cloudwatch:ListMetrics',
+                                'cloudwatch:PutMetricData'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                )
+            }
+        )
+        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+
+        amis = aws_ec2.MachineImage.generic_linux({
+            "us-west-1": "ami-0759bf9f708bf044b"
+        })
+        sg = aws_ec2.SecurityGroup(
+            self,
+            "AppSg",
+            vpc=vpc
+        )
+        instance_profile = aws_iam.CfnInstanceProfile(
+            self,
+            "AppInstanceProfile",
+            roles=[app_instance_role.role_name]
+        )
+        launch_config = aws_autoscaling.CfnLaunchConfiguration(
+            self,
+            "AppLaunchConfig",
+            image_id="ami-0759bf9f708bf044b", # TODO: Put into CFN Mapping
+            instance_type="t3.micro", # TODO: Parameterize
+            iam_instance_profile=instance_profile.ref,
+            security_groups=[sg.security_group_id],
+            user_data=(
+                core.Fn.base64(
+                    "#!/bin/bash\n"
+                    "openssl req -x509 -nodes -days 3650 -newkey rsa:2048 "
+                    "-keyout /etc/ssl/private/apache-selfsigned.key "
+                    "-out /etc/ssl/certs/apache-selfsigned.crt -subj '/CN=localhost'\n"
+                    "systemctl enable apache2 && systemctl start apache2\n"
+                )
+            )
+        )
+        asg = aws_autoscaling.CfnAutoScalingGroup(
+            self,
+            "AppAsg",
+            launch_configuration_name=launch_config.ref,
+            max_size="1",
+            min_size="1",
+            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
