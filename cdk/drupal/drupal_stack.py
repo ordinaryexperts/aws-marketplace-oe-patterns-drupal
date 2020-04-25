@@ -9,6 +9,21 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        certificate_arn_param = core.CfnParameter(
+            self,
+            "CertificateArn",
+            default=""
+        )
+        certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+        )
+        certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CertificateArnNotExists",
+            expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+        )
         vpc = aws_ec2.Vpc(
             self,
             "vpc",
@@ -63,6 +78,75 @@ class DrupalStack(core.Stack):
             },
             storage_encrypted=True
         )
+
+        alb_sg = aws_ec2.SecurityGroup(
+            self,
+            "AlbSg",
+            vpc=vpc
+        )
+        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+            self,
+            "AppAlb",
+            internet_facing=True,
+            security_group=alb_sg,
+            vpc=vpc
+        )
+        # if there is no cert...
+        http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+            self,
+            "AsgHttpTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=80,
+            vpc=vpc
+        )
+        http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
+            "HttpListener",
+            default_target_groups=[http_target_group],
+            load_balancer=alb,
+            open=True,
+            port=80
+        )
+        http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+
+        # if there is a cert...
+        http_redirect_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
+            "HttpRedirectListener",
+            load_balancer=alb,
+            open=True,
+            port=80
+        )
+        http_redirect_listener.add_redirect_response(
+            "HttpRedirectResponse",
+            host="#{host}",
+            path="/#{path}",
+            port="443",
+            protocol="HTTPS",
+            query="#{query}",
+            status_code="HTTP_301"
+        )
+        http_redirect_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+            self,
+            "AsgHttpsTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=443,
+            vpc=vpc
+        )
+        https_target_group.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
+            "HttpsListener",
+            certificates=[aws_elasticloadbalancingv2.ListenerCertificate(certificate_arn_param.value_as_string)],
+            default_target_groups=[https_target_group],
+            load_balancer=alb,
+            open=True,
+            port=443
+        )
+        https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -92,33 +176,73 @@ class DrupalStack(core.Stack):
             }
         )
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+        sg = aws_ec2.SecurityGroup(
+            self,
+            "AppSg",
+            vpc=vpc
+        )
+        instance_profile = aws_iam.CfnInstanceProfile(
+            self,
+            "AppInstanceProfile",
+            roles=[app_instance_role.role_name]
+        )
+        launch_config = aws_autoscaling.CfnLaunchConfiguration(
+            self,
+            "AppLaunchConfig",
+            image_id="ami-0759bf9f708bf044b", # TODO: Put into CFN Mapping
+            instance_type="t3.micro", # TODO: Parameterize
+            iam_instance_profile=instance_profile.ref,
+            security_groups=[sg.security_group_id],
+            user_data=(
+                core.Fn.base64(
+                    "#!/bin/bash\n"
+                    "openssl req -x509 -nodes -days 3650 -newkey rsa:2048 "
+                    "-keyout /etc/ssl/private/apache-selfsigned.key "
+                    "-out /etc/ssl/certs/apache-selfsigned.crt -subj '/CN=localhost'\n"
+                    "systemctl enable apache2 && systemctl start apache2\n"
+                )
+            )
+        )
+        asg = aws_autoscaling.CfnAutoScalingGroup(
+            self,
+            "AppAsg",
+            launch_configuration_name=launch_config.ref,
+            max_size="1",
+            min_size="1",
+            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        # https://github.com/aws/aws-cdk/issues/3615
+        asg.add_override(
+            "Properties.TargetGroupARNs",
+            {
+                "Fn::If": [
+                    certificate_arn_exists_condition.logical_id,
+                    [https_target_group.target_group_arn],
+                    [http_target_group.target_group_arn]
+                ]
+            }
+        )
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
 
-        amis = aws_ec2.MachineImage.generic_linux({
-            "us-west-1": "ami-0150dcb71aef71061"
-        })
-        asg = aws_autoscaling.AutoScalingGroup(
+        sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "AppAsg",
-            instance_type=aws_ec2.InstanceType("t3.micro"),
-            machine_image=amis,
-            # key_name="oe-patterns-dev-us-west-1",
-            role=app_instance_role,
-            # vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.PUBLIC),
-            vpc=vpc
+            "AppSgHttpIngress",
+            from_port=80,
+            group_id=sg.security_group_id,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.security_group_id,
+            to_port=80
         )
-        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+        sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
+
+        sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "AppAlb",
-            internet_facing=True,
-            vpc=vpc
+            "AppSgHttpsIngress",
+            from_port=443,
+            group_id=sg.security_group_id,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.security_group_id,
+            to_port=443
         )
-        listener = alb.add_listener(
-            "HttpListener",
-            port=80,
-            open=True
-        )
-        listener.add_targets(
-            "AppAsg",
-            port=80,
-            targets=[asg]
-        )
+        sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
