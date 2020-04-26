@@ -387,6 +387,12 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
             "timezone": "UTC"
           },
           {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/syslog",
+            "timezone": "UTC"
+          },
+          {
             "file_path": "/var/log/amazon/ssm/amazon-ssm-agent.log",
             "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/amazon/ssm/amazon-ssm-agent.log",
