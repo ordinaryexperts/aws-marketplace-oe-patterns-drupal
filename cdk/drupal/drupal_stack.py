@@ -380,7 +380,7 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
             "log_group_name": "${DrupalLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/amazon/ssm/errors.log",
             "timezone": "UTC"
-          }
+          },
           {
             "file_path": "/var/log/apache2/access.log",
             "log_group_name": "${DrupalLogGroup}",
