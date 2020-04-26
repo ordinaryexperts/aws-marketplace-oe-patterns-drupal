@@ -25,6 +25,8 @@ cd /tmp
 curl https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb
 dpkg -i -E ./amazon-cloudwatch-agent.deb
 cd -
+# collectd for metrics
+apt-get -y install collectd
 
 # install apache and php
 apt-get -y install            \

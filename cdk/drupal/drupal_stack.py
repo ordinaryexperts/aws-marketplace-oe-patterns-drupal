@@ -4,7 +4,7 @@ from aws_cdk import (
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
 )
 
-AMI="ami-02cddcd78452fcbc0"
+AMI="ami-045479e70f8eb387b"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -239,97 +239,23 @@ class DrupalStack(core.Stack):
 cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 {
   "agent": {
-    "metrics_collection_interval": 10,
+    "metrics_collection_interval": 60,
+    "run_as_user": "root",
     "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
   },
   "metrics": {
     "metrics_collected": {
-      "cpu": {
-        "resources": ["*"],
-        "measurement": [
-          {
-            "name": "cpu_usage_idle",
-            "rename": "CPU_USAGE_IDLE",
-            "unit": "Percent"
-          },
-          {
-            "name": "cpu_usage_nice",
-            "unit": "Percent"
-          },
-          "cpu_usage_guest"
-        ],
-        "totalcpu": false,
-        "metrics_collection_interval": 10
+      "collectd": {
+        "metrics_aggregation_interval": 60
       },
       "disk": {
-        "resources": ["/", "/tmp"],
-        "measurement": [
-          {
-            "name": "free",
-            "rename": "disk_free",
-            "unit": "Gigabytes"
-          },
-          "total",
-          "used"
-        ],
-        "ignore_file_system_types": [
-          "sysfs",
-          "devtmpfs"
-        ],
-        "metrics_collection_interval": 60
-      },
-      "diskio": {
-        "resources": ["*"],
-        "measurement": [
-          "reads",
-          "writes",
-          "read_time",
-          "write_time",
-          "io_time"
-        ],
-        "metrics_collection_interval": 60
-      },
-      "swap": {
-        "measurement": [
-          "swap_used",
-          "swap_free",
-          "swap_used_percent"
-        ]
+        "measurement": ["used_percent"],
+        "metrics_collection_interval": 60,
+        "resources": ["*"]
       },
       "mem": {
-        "measurement": [
-          "mem_used",
-          "mem_cached",
-          "mem_total",
-          "mem_used_percent"
-        ],
-        "metrics_collection_interval": 10
-      },
-      "net": {
-        "resources": ["eth0"],
-        "measurement": [
-          "bytes_sent",
-          "bytes_recv",
-          "drop_in",
-          "drop_out",
-          "err_in",
-          "err_out"
-        ]
-      },
-      "netstat": {
-        "measurement": [
-          "tcp_established",
-          "tcp_syn_sent",
-          "tcp_close"
-        ],
+        "measurement": ["mem_used_percent"],
         "metrics_collection_interval": 60
-      },
-      "processes": {
-        "measurement": [
-          "running",
-          "sleeping",
-          "dead"
-        ]
       }
     },
     "append_dimensions": {
@@ -337,14 +263,7 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
       "InstanceId": "\${!aws:InstanceId}",
       "InstanceType": "\${!aws:InstanceType}",
       "AutoScalingGroupName": "\${!aws:AutoScalingGroupName}"
-    },
-    "aggregation_dimensions": [
-      ["ImageId"],
-      ["AutoScalingGroupName"],
-      ["InstanceId"],
-      ["InstanceType"],
-      ["InstanceId","InstanceType"],[]
-    ]
+    }
   },
   "logs": {
     "logs_collected": {
