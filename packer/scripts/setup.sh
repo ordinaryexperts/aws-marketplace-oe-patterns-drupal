@@ -20,6 +20,12 @@ unzip awscliv2.zip
 ./aws/install
 cd -
 
+# install CloudWatch agent
+cd /tmp
+curl https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb
+dpkg -i -E ./amazon-cloudwatch-agent.deb
+cd -
+
 # install apache and php
 apt-get -y install            \
         apache2               \
@@ -46,8 +52,8 @@ cat <<EOF > /etc/apache2/sites-available/app.conf
         DocumentRoot /var/www/html
 
         LogLevel warn
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        ErrorLog /var/log/apache2/error.log
+        CustomLog /var/log/apache2/access.log combined
 
         RewriteEngine On
         RewriteOptions Inherit
@@ -66,8 +72,8 @@ cat <<EOF > /etc/apache2/sites-available/app.conf
         DocumentRoot /var/www/html
 
         LogLevel warn
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        ErrorLog /var/log/apache2/error-ssl.log
+        CustomLog /var/log/apache2/access-ssl.log combined
 
         RewriteEngine On
         RewriteOptions Inherit
