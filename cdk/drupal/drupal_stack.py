@@ -4,7 +4,8 @@ from aws_cdk import (
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
 )
 
-AMI="ami-0e3c4472d8acd177d"
+AMI="ami-02cddcd78452fcbc0"
+TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
 
@@ -153,15 +154,27 @@ class DrupalStack(core.Stack):
             self,
             "NotificationTopic"
         )
-        log_group = aws_logs.CfnLogGroup(
+        system_log_group = aws_logs.CfnLogGroup(
             self,
-            "DrupalLogGroup"
-    #             Properties:
-    #   RetentionInDays: 731
-    # UpdateReplacePolicy: Retain
-    # DeletionPolicy: Retain
-
+            "DrupalSystemLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
         )
+        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalAccessLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalErrorLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -176,7 +189,11 @@ class DrupalStack(core.Stack):
                                 'logs:DescribeLogStreams',
                                 'logs:PutLogEvents'
                             ],
-                            resources=[log_group.attr_arn]
+                            resources=[
+                                access_log_group.attr_arn,
+                                error_log_group.attr_arn,
+                                system_log_group.attr_arn
+                            ]
                         )
                     ]
                 ),
@@ -335,73 +352,73 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
         "collect_list": [
           {
             "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/dpkg.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/dpkg.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/apt/history.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apt/history.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/cloud-init.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/cloud-init.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/cloud-init-output.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/cloud-init-output.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/auth.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/auth.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/amazon/ssm/amazon-ssm-agent.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/amazon/ssm/amazon-ssm-agent.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/amazon/ssm/errors.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalSystemLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/amazon/ssm/errors.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/apache2/access.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalAccessLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/apache2/error.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalErrorLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/error.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/apache2/access-ssl.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalAccessLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/access-ssl.log",
             "timezone": "UTC"
           },
           {
             "file_path": "/var/log/apache2/error-ssl.log",
-            "log_group_name": "${DrupalLogGroup}",
+            "log_group_name": "${DrupalErrorLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/error-ssl.log",
             "timezone": "UTC"
           }
