@@ -20,6 +20,14 @@ unzip awscliv2.zip
 ./aws/install
 cd -
 
+# install CloudWatch agent
+cd /tmp
+curl https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -o amazon-cloudwatch-agent.deb
+dpkg -i -E ./amazon-cloudwatch-agent.deb
+cd -
+# collectd for metrics
+apt-get -y install collectd
+
 # install apache and php
 apt-get -y install            \
         apache2               \
@@ -41,13 +49,16 @@ a2enmod ssl
 
 a2dissite 000-default
 cat <<EOF > /etc/apache2/sites-available/app.conf
+LogFormat "{\"time\":\"%{%Y-%m-%d}tT%{%T}t.%{msec_frac}tZ\", \"process\":\"%D\", \"filename\":\"%f\", \"remoteIP\":\"%a\", \"host\":\"%V\", \"request\":\"%U\", \"query\":\"%q\", \"method\":\"%m\", \"status\":\"%>s\", \"userAgent\":\"%{User-agent}i\", \"referer\":\"%{Referer}i\"}" cloudwatch
+ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"process\":\"[pid%P]\", \"message\":\"%M\"}"
+
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         DocumentRoot /var/www/html
 
         LogLevel warn
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        ErrorLog /var/log/apache2/error.log
+        CustomLog /var/log/apache2/access.log cloudwatch
 
         RewriteEngine On
         RewriteOptions Inherit
@@ -66,8 +77,8 @@ cat <<EOF > /etc/apache2/sites-available/app.conf
         DocumentRoot /var/www/html
 
         LogLevel warn
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        ErrorLog /var/log/apache2/error-ssl.log
+        CustomLog /var/log/apache2/access-ssl.log cloudwatch
 
         RewriteEngine On
         RewriteOptions Inherit

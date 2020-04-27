@@ -4,6 +4,9 @@ from aws_cdk import (
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
 )
 
+AMI="ami-045479e70f8eb387b"
+TWO_YEARS_IN_DAYS=731
+
 class DrupalStack(core.Stack):
 
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
@@ -151,20 +154,56 @@ class DrupalStack(core.Stack):
             self,
             "NotificationTopic"
         )
-        log_group = aws_logs.LogGroup(
+        system_log_group = aws_logs.CfnLogGroup(
             self,
-            "LogGroup"
+            "DrupalSystemLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
         )
+        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalAccessLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalErrorLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
             assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
             inline_policies={
+                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'logs:CreateLogStream',
+                                'logs:DescribeLogStreams',
+                                'logs:PutLogEvents'
+                            ],
+                            resources=[
+                                access_log_group.attr_arn,
+                                error_log_group.attr_arn,
+                                system_log_group.attr_arn
+                            ]
+                        )
+                    ]
+                ),
                 "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
+                                'ec2:DescribeVolumes',
+                                'ec2:DescribeTags',
                                 'cloudwatch:GetMetricStatistics',
                                 'cloudwatch:ListMetrics',
                                 'cloudwatch:PutMetricData'
@@ -189,17 +228,141 @@ class DrupalStack(core.Stack):
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
-            image_id="ami-0759bf9f708bf044b", # TODO: Put into CFN Mapping
+            image_id=AMI, # TODO: Put into CFN Mapping
             instance_type="t3.micro", # TODO: Parameterize
             iam_instance_profile=instance_profile.ref,
             security_groups=[sg.security_group_id],
             user_data=(
                 core.Fn.base64(
-                    "#!/bin/bash\n"
-                    "openssl req -x509 -nodes -days 3650 -newkey rsa:2048 "
-                    "-keyout /etc/ssl/private/apache-selfsigned.key "
-                    "-out /etc/ssl/certs/apache-selfsigned.crt -subj '/CN=localhost'\n"
-                    "systemctl enable apache2 && systemctl start apache2\n"
+                    core.Fn.sub(
+                        """#!/bin/bash
+cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root",
+    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+  },
+  "metrics": {
+    "metrics_collected": {
+      "collectd": {
+        "metrics_aggregation_interval": 60
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "metrics_collection_interval": 60,
+        "resources": ["*"]
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"],
+        "metrics_collection_interval": 60
+      }
+    },
+    "append_dimensions": {
+      "ImageId": "\${!aws:ImageId}",
+      "InstanceId": "\${!aws:InstanceId}",
+      "InstanceType": "\${!aws:InstanceType}",
+      "AutoScalingGroupName": "\${!aws:AutoScalingGroupName}"
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/dpkg.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/dpkg.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/apt/history.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/apt/history.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/cloud-init.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/cloud-init.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/cloud-init-output.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/cloud-init-output.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/auth.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/auth.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/syslog",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/amazon/ssm/amazon-ssm-agent.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/amazon/ssm/amazon-ssm-agent.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/amazon/ssm/errors.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/amazon/ssm/errors.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/apache2/access.log",
+            "log_group_name": "${DrupalAccessLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/apache2/error.log",
+            "log_group_name": "${DrupalErrorLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/apache2/error.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/apache2/access-ssl.log",
+            "log_group_name": "${DrupalAccessLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/apache2/access-ssl.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/apache2/error-ssl.log",
+            "log_group_name": "${DrupalErrorLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/apache2/error-ssl.log",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    },
+    "log_stream_name": "{instance_id}"
+  }
+}
+EOF
+systemctl enable amazon-cloudwatch-agent
+systemctl start amazon-cloudwatch-agent
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/apache-selfsigned.key \
+  -out /etc/ssl/certs/apache-selfsigned.crt \
+  -subj '/CN=localhost'
+systemctl enable apache2 && systemctl start apache2
+"""
+                    )
                 )
             )
         )
