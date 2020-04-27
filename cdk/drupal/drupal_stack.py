@@ -1,7 +1,8 @@
 import json
 from aws_cdk import (
     aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
-    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
+    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_s3,
+    aws_codepipeline, aws_codepipeline_actions
 )
 
 AMI="ami-045479e70f8eb387b"
@@ -409,3 +410,43 @@ systemctl enable apache2 && systemctl start apache2
             to_port=443
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
+
+        source_bucket = aws_cdk.aws_s3.Bucket.fromBucketArn(
+            self,
+            "SourceBucketByArn",
+            bucketArn="arn:aws:s3:::github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+        )
+
+        source_output = aws_codepipeline.Artifact(artifact_name='source')
+
+        cicd = aws_cdk.aws_codepipeline.Pipeline(
+            self,
+            "AppCICDPipeline",
+            artifactBucket=,
+            stages=[
+                aws_codepipeline.StageProps(
+                    stage_name="Source",
+                    actions=[
+                        aws_codepipeline_actions.S3SourceAction(
+                            bucket=source_bucket,
+                            bucket_key="aws-marketplace-oe-patterns-drupal-example-site.tar.gz",
+                            action_name="SourceAction",
+                            run_order=1,
+                            output=source_output,
+                            trigger=aws_codepipeline_actions.S3Trigger.POLL
+                        ),
+                    ]
+                ),
+                aws_codepipeline.StageProps(
+                    stage_name='Deploy',
+                    actions=[
+                        aws_codepipeline_actions.S3DeployAction(
+                            action_name='DeployAction',
+                            input=source_output,
+                            run_order=1,
+                        )
+                    ]
+                )
+            ]
+
+        )
