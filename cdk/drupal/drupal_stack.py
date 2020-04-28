@@ -411,18 +411,99 @@ systemctl enable apache2 && systemctl start apache2
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
-        source_bucket = aws_cdk.aws_s3.Bucket.fromBucketArn(
+        # CICD Pipeline
+
+        pipeline_role = aws_iam.Role(
             self,
-            "SourceBucketByArn",
-            bucketArn="arn:aws:s3:::github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            "PipelineRole",
+            assumed_by=aws_iam.ServicePrincipal('codepipeline.amazonaws.com'),
+            inline_policies={
+                "CodePipelinePerms": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'codedeploy:GetApplication',
+                                'codedeploy:GetDeploymentGroup',
+                                'codedeploy:ListApplications',
+                                'codedeploy:ListDeploymentGroups',
+                                'codepipeline:*',
+                                'iam:ListRoles',
+                                'iam:PassRole',
+                                'lambda:GetFunctionConfiguration',
+                                'lambda:ListFunctions',
+                                's3:CreateBucket',
+                                's3:GetBucketPolicy',
+                                's3:GetObject',
+                                's3:ListAllMyBuckets',
+                                's3:ListBucket',
+                                's3:PutBucketPolicy'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                )
+            }
         )
 
-        source_output = aws_codepipeline.Artifact(artifact_name='source')
+        source_bucket = aws_s3.Bucket.from_bucket_name(
+            self,
+            "SourceBucketByName",
+            bucket_name="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+        )
 
-        cicd = aws_cdk.aws_codepipeline.Pipeline(
+        source_stage_role = aws_iam.Role(
+            self,
+            "SourceStageRole",
+            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            inline_policies={
+                "SourceRolePerms": aws_iam.PolicyDocument(
+                    statements=[
+                            aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:*'
+                            ],
+                            resources=[
+                                source_bucket.bucket_arn
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
+
+        source_output = aws_codepipeline.Artifact(artifact_name="DrupalBuild")
+
+        code_deploy_role = aws_iam.Role(
+            self,
+            "CodeDeployRole",
+            assumed_by=aws_iam.CompositePrincipal(
+                    aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
+                    aws_iam.ArnPrincipal(arn=pipeline_role.role_arn)
+            ),
+            inline_policies={
+                "CodeDeployPerms": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'autoscaling:*',
+                                'codedeploy:*',
+                                'ec2:*',
+                                's3:*'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                )
+            }
+        )
+
+        cicd_pipeline = aws_codepipeline.Pipeline(
             self,
             "AppCICDPipeline",
-            artifactBucket=,
+            role=pipeline_role,
             stages=[
                 aws_codepipeline.StageProps(
                     stage_name="Source",
@@ -431,19 +512,22 @@ systemctl enable apache2 && systemctl start apache2
                             bucket=source_bucket,
                             bucket_key="aws-marketplace-oe-patterns-drupal-example-site.tar.gz",
                             action_name="SourceAction",
-                            run_order=1,
                             output=source_output,
+                            role=source_stage_role,
+                            run_order=1,
                             trigger=aws_codepipeline_actions.S3Trigger.POLL
                         ),
                     ]
                 ),
                 aws_codepipeline.StageProps(
-                    stage_name='Deploy',
+                    stage_name="Deploy",
                     actions=[
-                        aws_codepipeline_actions.S3DeployAction(
-                            action_name='DeployAction',
+                        aws_codepipeline_actions.CodeDeployServerDeployAction(
+                            action_name="DeployAction",
                             input=source_output,
-                            run_order=1,
+                            deployment_group="${DrupalApp}",
+                            role=code_deploy_role,
+                            run_order=1
                         )
                     ]
                 )

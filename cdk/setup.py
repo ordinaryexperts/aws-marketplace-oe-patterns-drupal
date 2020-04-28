@@ -28,7 +28,10 @@ setuptools.setup(
         f"aws-cdk.aws-iam=={CDK_VERSION}",
         f"aws-cdk.aws-rds=={CDK_VERSION}",
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",
-        f"aws-cdk.aws-sns=={CDK_VERSION}"
+        f"aws-cdk.aws-sns=={CDK_VERSION}",
+        f"aws-cdk.aws-s3=={CDK_VERSION}",
+        f"aws-cdk.aws-codepipeline=={CDK_VERSION}",
+        f"aws-cdk.aws-codepipeline-actions=={CDK_VERSION}"
     ],
 
     python_requires=">=3.6",
