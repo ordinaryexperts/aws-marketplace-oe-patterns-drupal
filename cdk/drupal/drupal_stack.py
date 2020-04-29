@@ -40,6 +40,13 @@ class DrupalStack(core.Stack):
                 generate_string_key="password"
             )
         )
+        rds_sg = aws_ec2.SecurityGroup(
+            self,
+            "RdsSg",
+            vpc=vpc,
+            allow_all_outbound=False
+        )
+        rds_sg.add_ingress_rule(aws_ec2.Peer.ipv4(vpc.vpc_cidr_block), aws_ec2.Port.tcp(3306))
         db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DBSubnetGroup",
@@ -80,7 +87,8 @@ class DrupalStack(core.Stack):
                 "max_capacity": 2,
                 "seconds_until_auto_pause": 30
             },
-            storage_encrypted=True
+            storage_encrypted=True,
+            vpc_security_group_ids=[ rds_sg.security_group_id ]
         )
 
         alb_sg = aws_ec2.SecurityGroup(
