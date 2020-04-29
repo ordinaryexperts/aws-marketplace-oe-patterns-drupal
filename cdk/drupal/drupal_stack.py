@@ -71,6 +71,7 @@ class DrupalStack(core.Stack):
             engine_mode="serverless",
             master_username="dbadmin",
             # TODO: get this working
+            # https://docs.aws.amazon.com/cdk/latest/guide/get_secrets_manager_value.html
             # master_user_password=core.SecretValue.cfnDynamicReference(secret),
             master_user_password="dbpassword",
             scaling_configuration={
