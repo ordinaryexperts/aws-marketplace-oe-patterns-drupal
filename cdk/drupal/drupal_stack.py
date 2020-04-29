@@ -2,7 +2,7 @@ import json
 from aws_cdk import (
     aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_s3,
-    aws_codepipeline, aws_codepipeline_actions
+    aws_codepipeline, aws_codepipeline_actions, aws_codedeploy
 )
 
 AMI="ami-045479e70f8eb387b"
@@ -500,9 +500,27 @@ systemctl enable apache2 && systemctl start apache2
             }
         )
 
+        code_deployment_application = aws_codedeploy.ServerApplication(
+            self,
+            "CodeDeploymentApplication",
+            application_name="drupal"
+        )
+
+        # doesn't support cfn_asgs and elbvs
+        code_deployment_group = aws_codedeploy.ServerDeploymentGroup(
+            self,
+            "CodeDeploymentGroup",
+            application=code_deployment_application,
+            # auto_scaling_groups=[asg],
+            deployment_group_name="drupal-app",
+            deployment_config=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE,
+            # load_balancer=alb,
+            role=code_deploy_role
+        )
+
         cicd_pipeline = aws_codepipeline.Pipeline(
             self,
-            "AppCICDPipeline",
+            "AppPipeline",
             role=pipeline_role,
             stages=[
                 aws_codepipeline.StageProps(
@@ -510,7 +528,7 @@ systemctl enable apache2 && systemctl start apache2
                     actions=[
                         aws_codepipeline_actions.S3SourceAction(
                             bucket=source_bucket,
-                            bucket_key="aws-marketplace-oe-patterns-drupal-example-site.tar.gz",
+                            bucket_key="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz",
                             action_name="SourceAction",
                             output=source_output,
                             role=source_stage_role,
@@ -522,15 +540,15 @@ systemctl enable apache2 && systemctl start apache2
                 aws_codepipeline.StageProps(
                     stage_name="Deploy",
                     actions=[
+                        # temp filler action since pipeline requires deploy stage
                         aws_codepipeline_actions.CodeDeployServerDeployAction(
                             action_name="DeployAction",
                             input=source_output,
-                            deployment_group="${DrupalApp}",
+                            deployment_group=code_deployment_group,
                             role=code_deploy_role,
                             run_order=1
                         )
                     ]
                 )
             ]
-
         )
