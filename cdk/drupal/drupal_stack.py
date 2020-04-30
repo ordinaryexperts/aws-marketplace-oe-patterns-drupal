@@ -1,7 +1,7 @@
 import json
 from aws_cdk import (
     aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
-    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core
+    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_efs
 )
 
 AMI="ami-045479e70f8eb387b"
@@ -410,3 +410,34 @@ systemctl enable apache2 && systemctl start apache2
             to_port=443
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
+
+        # EFS
+
+        efs_target_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsTargetSg",
+            vpc=vpc
+        )
+
+        efs_sg_ingress = aws_ec2.CfnSecurityGroup.IngressProperty(
+            from_port=2049,
+            group_id=sg.security_group_id,
+            ip_protocol="tcp",
+            source_security_group_id=efs_target_sg.security_group_id,
+            to_port=2049
+        )
+
+        efs_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "EfsSg",
+            group_description='EFS security group',
+            security_group_ingress=[efs_sg_ingress],
+            vpc_id=vpc.vpc_id
+        )
+
+        efs = aws_efs.EfsFileSystem(
+            self,
+            "AppEfs",
+            security_group=efs_sg,
+            vpc=vpc
+        )
