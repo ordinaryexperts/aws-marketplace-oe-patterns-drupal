@@ -512,7 +512,7 @@ systemctl enable apache2 && systemctl start apache2
             "CodeDeploymentGroup",
             application=code_deployment_application,
             # auto_scaling_groups=[asg],
-            deployment_group_name="drupal-app",
+            deployment_group_name="{}-app".format(self.stack_name),
             deployment_config=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE,
             # load_balancer=alb,
             role=code_deploy_role
