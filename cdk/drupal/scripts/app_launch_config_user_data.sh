@@ -141,7 +141,7 @@ $databases['default']['default'] = array (
   'password' => 'dbpassword',
   'prefix' => '',
   'host' => '${DBCluster.Endpoint.Address}',
-  'port' => '3306',
+  'port' => '${DBCluster.Endpoint.Port}',
   'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
   'driver' => 'mysql',
 );
