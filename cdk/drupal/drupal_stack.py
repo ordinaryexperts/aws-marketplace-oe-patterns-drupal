@@ -506,7 +506,7 @@ systemctl enable apache2 && systemctl start apache2
             application_name="drupal"
         )
 
-        # doesn't support cfn_asgs and elbvs
+        # doesn't support cfn_asgs
         code_deployment_group = aws_codedeploy.ServerDeploymentGroup(
             self,
             "CodeDeploymentGroup",
@@ -514,7 +514,7 @@ systemctl enable apache2 && systemctl start apache2
             # auto_scaling_groups=[asg],
             deployment_group_name="{}-app".format(self.stack_name),
             deployment_config=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE,
-            # load_balancer=alb,
+            load_balancer=aws_codedeploy.LoadBalancer.application(http_target_group),
             role=code_deploy_role
         )
 
