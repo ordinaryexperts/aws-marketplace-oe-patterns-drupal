@@ -149,6 +149,8 @@ $settings['config_sync_directory'] = 'sites/default/files/config_VIcd0I50kQ3zW70
 OXtkkIPy7DpAwxs0G-ZyQ/sync';
 EOF
 
+/var/www/drupal/post-deploy.sh
+
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
   -keyout /etc/ssl/private/apache-selfsigned.key \
