@@ -67,14 +67,13 @@ class DrupalStack(core.Stack):
         db_username = None
         db_password = None
         db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        db_snapshot_param = core.CfnParameter(
+            self,
+            "DBSnapshotIdentifier",
+            default=db_snapshot_arn
+        )
         if db_snapshot_arn:
-            db_snapshot_param = core.CfnParameter(
-                self,
-                "DBSnapshotIdentifier",
-                default=db_snapshot_arn
-            )
             db_snapshot_identifier = db_snapshot_param.value_as_string
-        # TODO: move to db_snapshot_param or other mechanism to look for user and pwd in secrets
         else:
             db_secret = aws_secretsmanager.Secret(
                 self,
