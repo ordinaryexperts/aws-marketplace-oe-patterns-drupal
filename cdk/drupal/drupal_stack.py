@@ -33,14 +33,6 @@ class DrupalStack(core.Stack):
             "vpc",
             cidr="10.0.0.0/16"
         )
-        secret = aws_secretsmanager.Secret(
-            self,
-            "secret",
-            generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps({"username":"user"}),
-                generate_string_key="password"
-            )
-        )
         db_sg = aws_ec2.SecurityGroup(
             self,
             "RdsSg",
@@ -70,20 +62,32 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
-        db_snapshot_param = core.CfnParameter(
-            self,
-            "DBSnapshotIdentifier",
-            default=self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
-        )
-        db_username=None
-        db_password=None
+        db_secret = None
+        db_snapshot_identifier = None
+        db_username = None
+        db_password = None
+        db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        if db_snapshot_arn:
+            db_snapshot_param = core.CfnParameter(
+                self,
+                "DBSnapshotIdentifier",
+                default=db_snapshot_arn
+            )
+            db_snapshot_identifier = db_snapshot_param.value_as_string
         # TODO: move to db_snapshot_param or other mechanism to look for user and pwd in secrets
-        if not self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn"):
-            # TODO: move to secrets
-            # https://docs.aws.amazon.com/cdk/latest/guide/get_secrets_manager_value.html
-            # master_user_password=core.SecretValue.cfnDynamicReference(secret),
-            db_username="dbadmin"
-            db_password="dbpassword"
+        else:
+            db_secret = aws_secretsmanager.Secret(
+                self,
+                "secret",
+                generate_secret_string=aws_secretsmanager.SecretStringGenerator(
+                    exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
+                    exclude_punctuation=True,
+                    generate_string_key="password",
+                    secret_string_template=json.dumps({"username":"dbadmin"})
+                )
+            )
+            db_username = db_secret.secret_value_from_json("username").to_string()
+            db_password = db_secret.secret_value_from_json("password").to_string()
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
@@ -99,7 +103,7 @@ class DrupalStack(core.Stack):
                 "max_capacity": 2,
                 "seconds_until_auto_pause": 30
             },
-            snapshot_identifier=db_snapshot_param.value_as_string,
+            snapshot_identifier=db_snapshot_identifier,
             storage_encrypted=True,
             vpc_security_group_ids=[ db_sg.security_group_id ]
         )
