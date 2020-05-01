@@ -1,7 +1,0 @@
-project:
-  name: aws-marketplace-oe-patterns-drupal
-  regions:
-  - us-west-1
-tests:
-  default:
-    template: ./template.yaml
