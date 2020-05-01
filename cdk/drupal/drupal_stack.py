@@ -27,11 +27,28 @@ class DrupalStack(core.Stack):
             "CertificateArnNotExists",
             expression=core.Fn.condition_equals(certificate_arn_param.value, "")
         )
-        vpc = aws_ec2.Vpc(
+        customer_vpc_param = core.CfnParameter(
             self,
-            "vpc",
-            cidr="10.0.0.0/16"
+            "CustomerVpcName",
+            default=""
         )
+        # create default VPC if customer vpc param wasn't provided
+        if core.Fn.condition_equals(customer_vpc_param.value, ""):
+            print("vpc empty")
+            vpc = aws_ec2.Vpc(
+                self,
+                "vpc",
+                cidr="10.0.0.0/16"
+            )
+        # find VPC by customer vpc param if provided
+        else:
+            print("vpc not empty")
+            vpc = aws_ec2.Vpc.from_lookup(
+                self,
+                "CustomerVpc",
+                vpc_name=customer_vpc_param.value
+            )
+
         secret = aws_secretsmanager.Secret(
             self,
             "secret",
