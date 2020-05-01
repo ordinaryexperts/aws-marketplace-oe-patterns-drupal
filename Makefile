@@ -12,6 +12,12 @@ deploy:
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
+lint:
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth > ../template.yaml \
+	&& cd .. \
+	&& taskcat lint"
+
 packer:
 	docker-compose run -w /code/packer drupal packer build ami.json
 .PHONY: packer
