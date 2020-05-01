@@ -9,5 +9,6 @@ __pycache__
 .cdk.staging
 cdk.out
 
-# generated template file
+# generated test files
 test/template.yaml
+test/taskcat_outputs
