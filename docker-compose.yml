@@ -1,6 +1,6 @@
 version: '3'
 services:
-  cdk:
+  drupal:
     build: .
     environment:
       - AWS_ACCESS_KEY_ID
