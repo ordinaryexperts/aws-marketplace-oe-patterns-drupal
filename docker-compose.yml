@@ -2,6 +2,8 @@ version: '3'
 services:
   drupal:
     build: .
+    volumes:
+    - .:/code
     environment:
       - AWS_ACCESS_KEY_ID
       - AWS_DEFAULT_REGION
