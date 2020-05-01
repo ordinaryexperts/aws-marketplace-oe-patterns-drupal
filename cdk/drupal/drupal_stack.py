@@ -33,13 +33,29 @@ class DrupalStack(core.Stack):
             "vpc",
             cidr="10.0.0.0/16"
         )
+        app_sg = aws_ec2.SecurityGroup(
+            self,
+            "AppSg",
+            vpc=vpc
+        )
         db_sg = aws_ec2.SecurityGroup(
             self,
-            "RdsSg",
-            vpc=vpc,
-            allow_all_outbound=False
+            "DBSg",
+            vpc=vpc
         )
-        db_sg.add_ingress_rule(aws_ec2.Peer.ipv4(vpc.vpc_cidr_block), aws_ec2.Port.tcp(3306))
+        db_sg_ingress = aws_ec2.CfnSecurityGroup.IngressProperty(
+            from_port=3306,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.security_group_id,
+            to_port=3306
+        )
+        db_cdk_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "DBSecurityGroup",
+            group_description="DB Security Group",
+            security_group_ingress=[ db_sg_ingress ],
+            vpc_id=vpc.vpc_id
+        )
         db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DBSubnetGroup",
@@ -104,9 +120,8 @@ class DrupalStack(core.Stack):
             },
             snapshot_identifier=db_snapshot_identifier,
             storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg.security_group_id ]
+            vpc_security_group_ids=[ db_cdk_sg.ref ]
         )
-
         alb_sg = aws_ec2.SecurityGroup(
             self,
             "AlbSg",
@@ -251,11 +266,6 @@ class DrupalStack(core.Stack):
             }
         )
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        sg = aws_ec2.SecurityGroup(
-            self,
-            "AppSg",
-            vpc=vpc
-        )
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
@@ -269,7 +279,7 @@ class DrupalStack(core.Stack):
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type="t3.micro", # TODO: Parameterize
             iam_instance_profile=instance_profile.ref,
-            security_groups=[sg.security_group_id],
+            security_groups=[app_sg.security_group_id],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(app_launch_config_user_data)
@@ -302,7 +312,7 @@ class DrupalStack(core.Stack):
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=sg.security_group_id,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.security_group_id,
             to_port=80
@@ -313,7 +323,7 @@ class DrupalStack(core.Stack):
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=sg.security_group_id,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.security_group_id,
             to_port=443
