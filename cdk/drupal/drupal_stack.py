@@ -413,26 +413,17 @@ systemctl enable apache2 && systemctl start apache2
 
         # EFS
 
-        efs_target_sg = aws_ec2.SecurityGroup(
-            self,
-            "EfsTargetSg",
-            vpc=vpc
-        )
-
-        efs_sg_ingress = aws_ec2.CfnSecurityGroup.IngressProperty(
-            from_port=2049,
-            group_id=sg.security_group_id,
-            ip_protocol="tcp",
-            source_security_group_id=efs_target_sg.security_group_id,
-            to_port=2049
-        )
-
-        efs_sg = aws_ec2.CfnSecurityGroup(
+        efs_sg = aws_ec2.SecurityGroup(
             self,
             "EfsSg",
-            group_description='EFS security group',
-            security_group_ingress=[efs_sg_ingress],
-            vpc_id=vpc.vpc_id
+            description="EFS security group",
+            security_group_name="sg_efs",
+            vpc=vpc,
+        )
+
+        efs_sg.add_ingress_rule(
+            peer=aws_ec2.Peer.ipv4("10.0.0.0/16"),
+            connection=aws_ec2.Port.tcp(2049)
         )
 
         efs = aws_efs.EfsFileSystem(
