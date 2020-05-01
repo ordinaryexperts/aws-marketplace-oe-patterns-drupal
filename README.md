@@ -2,14 +2,12 @@
 
 ## Setup
 
-    $ npm install -g aws-cdk
-    $ cd cdk
-    $ python3 -m venv .env
-    $ source .env/bin/activate
-    $ pip install -r requirements.txt
+We are following the [3 Musketeers](https://3musketeers.io/) pattern for project layout / setup.
 
-## Deploying
+First, install [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), and [Make](https://www.gnu.org/software/make/).
 
-    $ cd cdk
-    $ source .env/bin/activate
-    $ aws-vault exec oe-prod-us-west-1 cdk deploy
+Then:
+
+    $ make build
+    $ make synth
+    $ aws-vault exec oe-patterns-dev -- make deploy
