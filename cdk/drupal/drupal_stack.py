@@ -252,7 +252,7 @@ class DrupalStack(core.Stack):
                         )
                     ]
                 ),
-                "AllowGetFromGithubArtifactBucket": aws_iam.PolicyDocument(
+                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
