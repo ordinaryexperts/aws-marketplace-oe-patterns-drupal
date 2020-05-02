@@ -16,7 +16,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-045479e70f8eb387b"
+AMI="ami-0a3f10562bb95d4b9"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):

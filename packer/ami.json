@@ -17,7 +17,7 @@
     {
       "type": "shell",
       "execute_command": "{{.Vars}} sudo -S -E bash '{{.Path}}'",
-      "script": "scripts/setup.sh"
+      "script": "setup.sh"
     }
   ]
 }

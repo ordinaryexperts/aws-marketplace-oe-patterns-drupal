@@ -28,6 +28,14 @@ cd -
 # collectd for metrics
 apt-get -y install collectd
 
+# install CodeDeploy agent - requires ruby
+apt-get -y install ruby
+cd /tmp
+curl https://aws-codedeploy-us-west-1.s3.us-west-1.amazonaws.com/latest/install -o install
+chmod +x ./install
+./install auto
+cd -
+
 # install apache and php
 apt-get -y install            \
         apache2               \
