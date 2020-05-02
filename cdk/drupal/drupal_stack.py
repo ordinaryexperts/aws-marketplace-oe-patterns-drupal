@@ -1,8 +1,19 @@
 import json
 from aws_cdk import (
-    aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
-    aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_s3,
-    aws_codepipeline, aws_codepipeline_actions, aws_codedeploy
+    aws_autoscaling,
+    aws_codedeploy,
+    aws_codepipeline,
+    aws_codepipeline_actions,
+    aws_ec2,
+    aws_efs,
+    aws_elasticloadbalancingv2,
+    aws_iam,
+    aws_logs,
+    aws_rds,
+    aws_s3,
+    aws_secretsmanager,
+    aws_sns,
+    core
 )
 
 AMI="ami-045479e70f8eb387b"
@@ -72,6 +83,7 @@ class DrupalStack(core.Stack):
             engine_mode="serverless",
             master_username="dbadmin",
             # TODO: get this working
+            # https://docs.aws.amazon.com/cdk/latest/guide/get_secrets_manager_value.html
             # master_user_password=core.SecretValue.cfnDynamicReference(secret),
             master_user_password="dbpassword",
             scaling_configuration={
@@ -232,7 +244,7 @@ class DrupalStack(core.Stack):
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type="t3.micro", # TODO: Parameterize
             iam_instance_profile=instance_profile.ref,
-            security_groups=[sg.security_group_id],
+            security_groups=[sg.security_group_name],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(
@@ -459,7 +471,7 @@ systemctl enable apache2 && systemctl start apache2
             inline_policies={
                 "SourceRolePerms": aws_iam.PolicyDocument(
                     statements=[
-                            aws_iam.PolicyStatement(
+                        aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
                                 's3:*'
@@ -479,8 +491,8 @@ systemctl enable apache2 && systemctl start apache2
             self,
             "CodeDeployRole",
             assumed_by=aws_iam.CompositePrincipal(
-                    aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
-                    aws_iam.ArnPrincipal(arn=pipeline_role.role_arn)
+                aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
+                aws_iam.ArnPrincipal(arn=pipeline_role.role_arn)
             ),
             inline_policies={
                 "CodeDeployPerms": aws_iam.PolicyDocument(
@@ -551,4 +563,24 @@ systemctl enable apache2 && systemctl start apache2
                     ]
                 )
             ]
+            # EFS
+
+        efs_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsSg",
+            description="EFS security group",
+            security_group_name="sg_efs",
+            vpc=vpc,
+        )
+
+        efs_sg.add_ingress_rule(
+            peer=sg,
+            connection=aws_ec2.Port.tcp(2049)
+        )
+
+        efs = aws_efs.EfsFileSystem(
+            self,
+            "AppEfs",
+            security_group=efs_sg,
+            vpc=vpc
         )
