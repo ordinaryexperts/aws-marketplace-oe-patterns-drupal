@@ -43,18 +43,9 @@ class DrupalStack(core.Stack):
             "DBSg",
             vpc=vpc
         )
-        db_sg_ingress = aws_ec2.CfnSecurityGroup.IngressProperty(
-            from_port=3306,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.security_group_id,
-            to_port=3306
-        )
-        db_cdk_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "DBSecurityGroup",
-            group_description="DB Security Group",
-            security_group_ingress=[ db_sg_ingress ],
-            vpc_id=vpc.vpc_id
+        db_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(3306)
         )
         db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
@@ -120,7 +111,7 @@ class DrupalStack(core.Stack):
             },
             snapshot_identifier=db_snapshot_identifier,
             storage_encrypted=True,
-            vpc_security_group_ids=[ db_cdk_sg.ref ]
+            vpc_security_group_ids=[ db_sg.security_group_id ]
         )
         alb_sg = aws_ec2.SecurityGroup(
             self,
@@ -341,7 +332,7 @@ class DrupalStack(core.Stack):
         )
 
         efs_sg.add_ingress_rule(
-            peer=sg,
+            peer=app_sg,
             connection=aws_ec2.Port.tcp(2049)
         )
 
