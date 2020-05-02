@@ -24,6 +24,17 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        source_artifact_s3_bucket_name_param = core.CfnParameter(
+            self,
+            "SourceArtifactS3BucketName",
+            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+        )
+        source_artifact_s3_bucket_name_param = core.CfnParameter(
+            self,
+            "SourceArtifactS3Path",
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
+        )
+
         certificate_arn_param = core.CfnParameter(
             self,
             "CertificateArn",
@@ -424,7 +435,6 @@ systemctl enable apache2 && systemctl start apache2
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # CICD Pipeline
-
         pipeline_role = aws_iam.Role(
             self,
             "PipelineRole",
@@ -526,7 +536,8 @@ systemctl enable apache2 && systemctl start apache2
             # auto_scaling_groups=[asg],
             deployment_group_name="{}-app".format(self.stack_name),
             deployment_config=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE,
-            load_balancer=aws_codedeploy.LoadBalancer.application(http_target_group),
+            # TODO: get to work with either http or https
+            load_balancer=aws_codedeploy.LoadBalancer.application(https_target_group),
             role=code_deploy_role
         )
 
