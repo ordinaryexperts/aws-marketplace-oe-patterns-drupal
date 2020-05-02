@@ -26,7 +26,10 @@ rebuild:
 	docker-compose build --no-cache
 
 synth:
-	docker-compose run -w /code/cdk --rm drupal cdk synth
+	docker-compose run -w /code/cdk --rm drupal cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false
 
 test:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
