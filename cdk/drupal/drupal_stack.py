@@ -344,6 +344,17 @@ class DrupalStack(core.Stack):
         )
 
         # elasticache
+        enable_elasticache_param = core.CfnParameter(
+            self,
+            "EnableElastiCache",
+            allowed_values=[ "true", "false" ],
+            default="true",
+        )
+        enable_elasticache_condition = core.CfnCondition(
+            self,
+            "EnableElastiCacheCondition",
+            expression=core.Fn.condition_equals(enable_elasticache_param.value, "true")
+        )
         elasticache_sg = aws_ec2.SecurityGroup(
             self,
             "ElastiCacheSg",
@@ -353,13 +364,15 @@ class DrupalStack(core.Stack):
             peer=app_sg,
             connection=aws_ec2.Port.tcp(11211)
         )
+        elasticache_sg.node.default_child.cfn_options.condition = enable_elasticache_condition
         elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
             subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         )
-        elasticache = aws_elasticache.CfnCacheCluster(
+        elasticache_subnet_group.cfn_options.condition = enable_elasticache_condition
+        elasticache_cluster = aws_elasticache.CfnCacheCluster(
             self,
             "ElastiCacheCluster",
             cache_node_type="cache.t2.micro",
@@ -369,3 +382,4 @@ class DrupalStack(core.Stack):
             num_cache_nodes=1,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
+        elasticache_cluster.cfn_options.condition = enable_elasticache_condition
