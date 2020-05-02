@@ -1,6 +1,6 @@
 import json
 from aws_cdk import (
-    aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
+    aws_autoscaling, aws_cloudfront, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_efs
 )
 
@@ -341,4 +341,53 @@ class DrupalStack(core.Stack):
             "AppEfs",
             security_group=efs_sg,
             vpc=vpc
+        )
+
+        # cloudfront
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true"
+        )
+        cloudFront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                # aliases=[ "cdn.ordinaryexperts.com" ],
+                comment=self.stack_name,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.load_balancer_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy="match-viewer" # TODO: parameterize?
+                    )
+                )],
+                price_class="PriceClass_All", # TODO: parameterize
+                # TODO: conditionalize based on supplied cert
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=None,
+                    cloud_front_default_certificate=True,
+                    ssl_support_method=None
+                )
+            )
         )
