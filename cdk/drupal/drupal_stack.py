@@ -563,8 +563,9 @@ systemctl enable apache2 && systemctl start apache2
                     ]
                 )
             ]
-            # EFS
+        )
 
+        # EFS
         efs_sg = aws_ec2.SecurityGroup(
             self,
             "EfsSg",
