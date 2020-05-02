@@ -377,6 +377,7 @@ class DrupalStack(core.Stack):
             "ElastiCacheCluster",
             cache_node_type="cache.t2.micro",
             cache_subnet_group_name=elasticache_subnet_group.ref,
+            cluster_name=self.stack_name,
             engine="memcached",
             engine_version="1.5.16",
             num_cache_nodes=1,
