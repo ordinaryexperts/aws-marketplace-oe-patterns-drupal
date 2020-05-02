@@ -350,7 +350,7 @@ class DrupalStack(core.Stack):
             allowed_values=[ "true", "false" ],
             default="true"
         )
-        cloudFront_enable_condition = core.CfnCondition(
+        cloudfront_enable_condition = core.CfnCondition(
             self,
             "CloudFrontEnableCondition",
             expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
@@ -390,4 +390,12 @@ class DrupalStack(core.Stack):
                     ssl_support_method=None
                 )
             )
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enable_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
         )
