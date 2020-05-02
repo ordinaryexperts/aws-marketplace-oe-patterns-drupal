@@ -4,7 +4,8 @@ from aws_cdk import (
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_efs
 )
 
-AMI="ami-045479e70f8eb387b"
+AMI="ami-0423ff58236b36794"
+DB_SNAPSHOT="arn:aws:rds:us-west-1:992593896645:cluster-snapshot:oe-patterns-drupal-acarlton-snapshot-oe-patterns-drupal-acarlton-dbcluster-dr23p7cx4unn-13ix1kbgrwk17"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -32,13 +33,28 @@ class DrupalStack(core.Stack):
             "vpc",
             cidr="10.0.0.0/16"
         )
-        secret = aws_secretsmanager.Secret(
+        app_sg = aws_ec2.SecurityGroup(
             self,
-            "secret",
-            generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps({"username":"user"}),
-                generate_string_key="password"
-            )
+            "AppSg",
+            vpc=vpc
+        )
+        db_sg = aws_ec2.SecurityGroup(
+            self,
+            "DBSg",
+            vpc=vpc
+        )
+        db_sg_ingress = aws_ec2.CfnSecurityGroup.IngressProperty(
+            from_port=3306,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.security_group_id,
+            to_port=3306
+        )
+        db_cdk_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "DBSecurityGroup",
+            group_description="DB Security Group",
+            security_group_ingress=[ db_sg_ingress ],
+            vpc_id=vpc.vpc_id
         )
         db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
@@ -62,6 +78,31 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
+        db_secret = None
+        db_snapshot_identifier = None
+        db_username = None
+        db_password = None
+        db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        db_snapshot_param = core.CfnParameter(
+            self,
+            "DBSnapshotIdentifier",
+            default=db_snapshot_arn
+        )
+        if db_snapshot_arn:
+            db_snapshot_identifier = db_snapshot_param.value_as_string
+        else:
+            db_secret = aws_secretsmanager.Secret(
+                self,
+                "secret",
+                generate_secret_string=aws_secretsmanager.SecretStringGenerator(
+                    exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
+                    exclude_punctuation=True,
+                    generate_string_key="password",
+                    secret_string_template=json.dumps({"username":"dbadmin"})
+                )
+            )
+            db_username = db_secret.secret_value_from_json("username").to_string()
+            db_password = db_secret.secret_value_from_json("password").to_string()
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
@@ -69,20 +110,18 @@ class DrupalStack(core.Stack):
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
             engine_mode="serverless",
-            master_username="dbadmin",
-            # TODO: get this working
-            # https://docs.aws.amazon.com/cdk/latest/guide/get_secrets_manager_value.html
-            # master_user_password=core.SecretValue.cfnDynamicReference(secret),
-            master_user_password="dbpassword",
+            master_username=db_username,
+            master_user_password=db_password,
             scaling_configuration={
                 "auto_pause": True,
                 "min_capacity": 1,
                 "max_capacity": 2,
                 "seconds_until_auto_pause": 30
             },
-            storage_encrypted=True
+            snapshot_identifier=db_snapshot_identifier,
+            storage_encrypted=True,
+            vpc_security_group_ids=[ db_cdk_sg.ref ]
         )
-
         alb_sg = aws_ec2.SecurityGroup(
             self,
             "AlbSg",
@@ -212,158 +251,38 @@ class DrupalStack(core.Stack):
                             resources=['*']
                         )
                     ]
+                ),
+                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:GetObject',
+                            ],
+                            resources=['arn:aws:s3:::github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p/*']
+                        )
+                    ]
                 )
             }
         )
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        sg = aws_ec2.SecurityGroup(
-            self,
-            "AppSg",
-            vpc=vpc
-        )
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
             roles=[app_instance_role.role_name]
         )
+        with open('drupal/scripts/app_launch_config_user_data.sh') as f:
+            app_launch_config_user_data = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type="t3.micro", # TODO: Parameterize
             iam_instance_profile=instance_profile.ref,
-            security_groups=[sg.security_group_name],
+            security_groups=[app_sg.security_group_id],
             user_data=(
                 core.Fn.base64(
-                    core.Fn.sub(
-                        """#!/bin/bash
-cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-{
-  "agent": {
-    "metrics_collection_interval": 60,
-    "run_as_user": "root",
-    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
-  },
-  "metrics": {
-    "metrics_collected": {
-      "collectd": {
-        "metrics_aggregation_interval": 60
-      },
-      "disk": {
-        "measurement": ["used_percent"],
-        "metrics_collection_interval": 60,
-        "resources": ["*"]
-      },
-      "mem": {
-        "measurement": ["mem_used_percent"],
-        "metrics_collection_interval": 60
-      }
-    },
-    "append_dimensions": {
-      "ImageId": "\${!aws:ImageId}",
-      "InstanceId": "\${!aws:InstanceId}",
-      "InstanceType": "\${!aws:InstanceType}",
-      "AutoScalingGroupName": "\${!aws:AutoScalingGroupName}"
-    }
-  },
-  "logs": {
-    "logs_collected": {
-      "files": {
-        "collect_list": [
-          {
-            "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/dpkg.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/dpkg.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/apt/history.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/apt/history.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/cloud-init.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/cloud-init.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/cloud-init-output.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/cloud-init-output.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/auth.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/auth.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/syslog",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/syslog",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/amazon/ssm/amazon-ssm-agent.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/amazon/ssm/amazon-ssm-agent.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/amazon/ssm/errors.log",
-            "log_group_name": "${DrupalSystemLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/amazon/ssm/errors.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/apache2/access.log",
-            "log_group_name": "${DrupalAccessLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/apache2/error.log",
-            "log_group_name": "${DrupalErrorLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/apache2/error.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/apache2/access-ssl.log",
-            "log_group_name": "${DrupalAccessLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/apache2/access-ssl.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/apache2/error-ssl.log",
-            "log_group_name": "${DrupalErrorLogGroup}",
-            "log_stream_name": "{instance_id}-/var/log/apache2/error-ssl.log",
-            "timezone": "UTC"
-          }
-        ]
-      }
-    },
-    "log_stream_name": "{instance_id}"
-  }
-}
-EOF
-systemctl enable amazon-cloudwatch-agent
-systemctl start amazon-cloudwatch-agent
-openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-  -keyout /etc/ssl/private/apache-selfsigned.key \
-  -out /etc/ssl/certs/apache-selfsigned.crt \
-  -subj '/CN=localhost'
-systemctl enable apache2 && systemctl start apache2
-"""
-                    )
+                    core.Fn.sub(app_launch_config_user_data)
                 )
             )
         )
@@ -393,7 +312,7 @@ systemctl enable apache2 && systemctl start apache2
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=sg.security_group_id,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.security_group_id,
             to_port=80
@@ -404,7 +323,7 @@ systemctl enable apache2 && systemctl start apache2
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=sg.security_group_id,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.security_group_id,
             to_port=443
