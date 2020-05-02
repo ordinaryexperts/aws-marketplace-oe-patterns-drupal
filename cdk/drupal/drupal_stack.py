@@ -1,6 +1,6 @@
 import json
 from aws_cdk import (
-    aws_autoscaling, aws_ec2, aws_elasticloadbalancingv2, aws_iam,
+    aws_autoscaling, aws_ec2, aws_elasticache, aws_elasticloadbalancingv2, aws_iam,
     aws_logs, aws_rds, aws_secretsmanager, aws_sns, core, aws_efs
 )
 
@@ -341,4 +341,31 @@ class DrupalStack(core.Stack):
             "AppEfs",
             security_group=efs_sg,
             vpc=vpc
+        )
+
+        # elasticache
+        elasticache_sg = aws_ec2.SecurityGroup(
+            self,
+            "ElastiCacheSg",
+            vpc=vpc
+        )
+        elasticache_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(11211)
+        )
+        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
+            self,
+            "ElastiCacheSubnetGroup",
+            description="ElastiCache subnet group",
+            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        elasticache = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheCluster",
+            cache_node_type="cache.t2.micro",
+            cache_subnet_group_name=elasticache_subnet_group.ref,
+            engine="memcached",
+            engine_version="1.5.16",
+            num_cache_nodes=1,
+            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
