@@ -400,12 +400,29 @@ class DrupalStack(core.Stack):
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
             self,
             "ElastiCacheCluster",
+            az_mode=None, # default
             cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
             cache_subnet_group_name=elasticache_subnet_group.ref,
             cluster_name=self.stack_name,
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            preferred_availability_zones=None, # default
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster_id_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterIdOutput",
+            condition=elasticache_enable_condition,
+            description="The Id of the ElastiCache cluster.",
+            value=elasticache_cluster.ref
+        )
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enable_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
+        )
