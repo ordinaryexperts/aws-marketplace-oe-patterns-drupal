@@ -156,4 +156,3 @@ openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
   -out /etc/ssl/certs/apache-selfsigned.crt \
   -subj '/CN=localhost'
 systemctl enable apache2 && systemctl start apache2
-
