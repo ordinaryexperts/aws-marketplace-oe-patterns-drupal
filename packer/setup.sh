@@ -39,6 +39,7 @@ cd -
 # install apache and php
 apt-get -y install            \
         apache2               \
+        libapache2-mod-php7.2 \
         mysql-client-5.7      \
         mysql-client-core-5.7 \
         nfs-common            \
@@ -56,13 +57,14 @@ a2enmod rewrite
 a2enmod ssl
 
 a2dissite 000-default
-cat <<EOF > /etc/apache2/sites-available/app.conf
+mkdir -p /var/www/drupal
+cat <<EOF > /etc/apache2/sites-available/drupal.conf
 LogFormat "{\"time\":\"%{%Y-%m-%d}tT%{%T}t.%{msec_frac}tZ\", \"process\":\"%D\", \"filename\":\"%f\", \"remoteIP\":\"%a\", \"host\":\"%V\", \"request\":\"%U\", \"query\":\"%q\", \"method\":\"%m\", \"status\":\"%>s\", \"userAgent\":\"%{User-agent}i\", \"referer\":\"%{Referer}i\"}" cloudwatch
 ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"process\":\"[pid%P]\", \"message\":\"%M\"}"
 
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/html
+        DocumentRoot /var/www/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error.log
@@ -71,7 +73,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/html>
+        <Directory /var/www/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted
@@ -79,10 +81,14 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
 
         AddType application/x-httpd-php .php
         AddType application/x-httpd-php phtml pht php
+
+        php_value memory_limit 128M
+        php_value post_max_size 100M
+        php_value upload_max_filesize 100M
 </VirtualHost>
 <VirtualHost *:443>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/html
+        DocumentRoot /var/www/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error-ssl.log
@@ -91,7 +97,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/html>
+        <Directory /var/www/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted
@@ -105,9 +111,13 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         SSLEngine on
         SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt
         SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+
+        php_value memory_limit 128M
+        php_value post_max_size 100M
+        php_value upload_max_filesize 100M
 </VirtualHost>
 EOF
-a2ensite app
+a2ensite drupal
 
 # apache2 will be enabled / started on boot
 systemctl disable apache2
