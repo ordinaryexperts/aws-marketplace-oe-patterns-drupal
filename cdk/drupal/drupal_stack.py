@@ -344,16 +344,41 @@ class DrupalStack(core.Stack):
         )
 
         # elasticache
-        enable_elasticache_param = core.CfnParameter(
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
-            "EnableElastiCache",
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnableParam",
             allowed_values=[ "true", "false" ],
             default="true",
         )
-        enable_elasticache_condition = core.CfnCondition(
+        elasticache_enable_condition = core.CfnCondition(
             self,
-            "EnableElastiCacheCondition",
-            expression=core.Fn.condition_equals(enable_elasticache_param.value, "true")
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
         )
         elasticache_sg = aws_ec2.SecurityGroup(
             self,
@@ -364,23 +389,23 @@ class DrupalStack(core.Stack):
             peer=app_sg,
             connection=aws_ec2.Port.tcp(11211)
         )
-        elasticache_sg.node.default_child.cfn_options.condition = enable_elasticache_condition
+        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
         elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
             subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         )
-        elasticache_subnet_group.cfn_options.condition = enable_elasticache_condition
+        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
             self,
             "ElastiCacheCluster",
-            cache_node_type="cache.t2.micro",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
             cache_subnet_group_name=elasticache_subnet_group.ref,
             cluster_name=self.stack_name,
             engine="memcached",
-            engine_version="1.5.16",
-            num_cache_nodes=1,
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
-        elasticache_cluster.cfn_options.condition = enable_elasticache_condition
+        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
