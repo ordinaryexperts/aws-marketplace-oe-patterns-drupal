@@ -25,14 +25,14 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        source_artifact_s3_bucket_name_param = core.CfnParameter(
+        source_artifact_s3_bucket_param = core.CfnParameter(
             self,
-            "SourceArtifactS3BucketName",
+            "SourceArtifactS3Bucket",
             default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
         )
-        source_artifact_s3_bucket_name_param = core.CfnParameter(
+        source_artifact_s3_object_key_param = core.CfnParameter(
             self,
-            "SourceArtifactS3Path",
+            "SourceArtifactS3ObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
         )
 
@@ -378,12 +378,6 @@ class DrupalStack(core.Stack):
             }
         )
 
-        source_bucket = aws_s3.Bucket.from_bucket_name(
-            self,
-            "SourceBucketByName",
-            bucket_name="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
-        )
-
         source_stage_role = aws_iam.Role(
             self,
             "SourceStageRole",
@@ -394,18 +388,20 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:*'
+                                's3:Get*'
                             ],
                             resources=[
-                                source_bucket.bucket_arn
+                                "arn:{}:s3:::{}/{}".format(
+                                    core.Aws.PARTITION,
+                                    source_artifact_s3_bucket_param.value.to_string(),
+                                    source_artifact_s3_object_key_param.value.to_string()
+                                )
                             ]
                         )
                     ]
                 )
             }
         )
-
-        source_output = aws_codepipeline.Artifact(artifact_name="DrupalBuild")
 
         code_deploy_role = aws_iam.Role(
             self,
@@ -414,77 +410,80 @@ class DrupalStack(core.Stack):
                 aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
                 aws_iam.ArnPrincipal(arn=pipeline_role.role_arn)
             ),
-            inline_policies={
-                "CodeDeployPerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                'autoscaling:*',
-                                'codedeploy:*',
-                                'ec2:*',
-                                's3:*'
-                            ],
-                            resources=['*']
-                        )
-                    ]
-                )
-            }
+            managed_policies= [aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')],
         )
 
-        code_deployment_application = aws_codedeploy.ServerApplication(
+        code_deployment_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeploymentApplication",
-            application_name="drupal"
+            application_name="drupal",
+            compute_platform="Server"
         )
 
-        # doesn't support cfn_asgs
-        code_deployment_group = aws_codedeploy.ServerDeploymentGroup(
+        code_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
             "CodeDeploymentGroup",
-            application=code_deployment_application,
-            # auto_scaling_groups=[asg],
+            application_name=code_deployment_application.application_name,
+            auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(self.stack_name),
-            deployment_config=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE,
-            # TODO: get to work with either http or https
-            load_balancer=aws_codedeploy.LoadBalancer.application(https_target_group),
-            role=code_deploy_role
+            deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
+            service_role_arn=code_deploy_role.role_arn
         )
 
-        cicd_pipeline = aws_codepipeline.Pipeline(
+        artifact_bucket = aws_s3.Bucket(
             self,
-            "AppPipeline",
-            role=pipeline_role,
-            stages=[
-                aws_codepipeline.StageProps(
-                    stage_name="Source",
-                    actions=[
-                        aws_codepipeline_actions.S3SourceAction(
-                            bucket=source_bucket,
-                            bucket_key="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz",
-                            action_name="SourceAction",
-                            output=source_output,
-                            role=source_stage_role,
-                            run_order=1,
-                            trigger=aws_codepipeline_actions.S3Trigger.POLL
-                        ),
-                    ]
-                ),
-                aws_codepipeline.StageProps(
-                    stage_name="Deploy",
-                    actions=[
-                        # temp filler action since pipeline requires deploy stage
-                        aws_codepipeline_actions.CodeDeployServerDeployAction(
-                            action_name="DeployAction",
-                            input=source_output,
-                            deployment_group=code_deployment_group,
-                            role=code_deploy_role,
-                            run_order=1
-                        )
-                    ]
-                )
-            ]
+            "ArtifactBucket",
+            access_control=aws_s3.BucketAccessControl.PRIVATE,
+            block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
+
+        # cicd_pipeline = aws_codepipeline.CfnPipeline(
+        #     self,
+        #     "AppPipeline",
+        #     artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
+        #         location=artifact_bucket.bucket_name,
+        #         type='S3'
+        #     ),
+        #     role_arn=pipeline_role.role_arn,
+        #     stages=[
+        #         aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+        #             name="Source",
+        #             actions=[
+        #                 aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+        #                     action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+        #                         category='Source',
+        #                         owner='AWS',
+        #                         provider='S3',
+        #                         version='1'
+        #                     ),
+        #                     configuration={
+        #                         'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
+        #                         'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+        #                     },
+        #                     output_artifacts=[
+        #                         aws_codepipeline.CfnPipeline.OutputArtifactProperty(
+        #                             name="build"
+        #                         )
+        #                     ],
+        #                     name="SourceAction"
+        #                 )
+        #             ]
+        #         )
+        #         # aws_codepipeline.StageProps(
+        #         #     stage_name="Deploy",
+        #         #     actions=[
+        #         #         # temp filler action since pipeline requires deploy stage
+        #         #         aws_codepipeline_actions.CodeDeployServerDeployAction(
+        #         #             action_name="DeployAction",
+        #         #             input=source_output,
+        #         #             deployment_group=code_deployment_group,
+        #         #             role=code_deploy_role,
+        #         #             run_order=1
+        #         #         )
+        #         #     ]
+        #         # )
+        #     ]
+        # )
 
         # EFS
         efs_sg = aws_ec2.SecurityGroup(

@@ -12,6 +12,9 @@ deploy:
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
+diff:
+	docker-compose run -w /code/cdk --rm drupal cdk diff
+
 lint:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../template.yaml \
