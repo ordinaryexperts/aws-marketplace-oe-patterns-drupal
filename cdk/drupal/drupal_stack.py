@@ -480,7 +480,7 @@ class DrupalStack(core.Stack):
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name="drupal",
+            application_name="{}".format(self.stack_name),
             compute_platform="Server"
         )
 
