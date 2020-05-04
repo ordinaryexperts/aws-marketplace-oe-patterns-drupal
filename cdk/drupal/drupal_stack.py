@@ -319,7 +319,9 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            max_size="1",
+            # TODO: Parameterize desired_capacity, max_size, min_size
+            desired_capacity="1",
+            max_size="2",
             min_size="1",
             vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         )
@@ -336,6 +338,11 @@ class DrupalStack(core.Stack):
         )
         core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
+        asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
+        asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
