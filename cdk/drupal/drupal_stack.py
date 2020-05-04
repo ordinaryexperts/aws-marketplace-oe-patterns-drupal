@@ -409,12 +409,12 @@ class DrupalStack(core.Stack):
                 price_class="PriceClass_All", # TODO: parameterize
                 viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
                     acm_certificate_arn=core.Fn.condition_if(
-                        "CloudFrontCertificateArnExists",
+                        cloudfront_certificate_arn_exists_condition.logical_id,
                         cloudfront_certificate_arn_param.value_as_string,
                         "AWS::NoValue"
                     ).to_string(),
                     ssl_support_method= core.Fn.condition_if(
-                        "CloudFrontCertificateArnExists",
+                        cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
                         core.Fn.ref("AWS::NoValue")
                     ).to_string()
