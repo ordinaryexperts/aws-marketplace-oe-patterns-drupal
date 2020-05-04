@@ -344,11 +344,28 @@ class DrupalStack(core.Stack):
         )
 
         # cloudfront
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnNotExists",
+            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
+        )
         cloudfront_enable_param = core.CfnParameter(
             self,
             "CloudFrontEnableParam",
             allowed_values=[ "true", "false" ],
-            default="true"
+            default="true",
+            description="Enable CloudFront CDN support."
         )
         cloudfront_enable_condition = core.CfnCondition(
             self,
@@ -360,7 +377,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                # aliases=[ "cdn.ordinaryexperts.com" ],
+                aliases=[ "oe-patterns-drupal-acarlton.dev.patterns.ordinaryexperts.com" ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
@@ -383,13 +400,29 @@ class DrupalStack(core.Stack):
                     )
                 )],
                 price_class="PriceClass_All", # TODO: parameterize
-                # TODO: conditionalize based on supplied cert
                 viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=None,
-                    cloud_front_default_certificate=True,
-                    ssl_support_method=None
+                    acm_certificate_arn=core.Fn.condition_if(
+                        "CloudFrontCertificateArnExists",
+                        cloudfront_certificate_arn_param.value_as_string,
+                        "AWS::NoValue"
+                    ).to_string(),
+                    ssl_support_method= core.Fn.condition_if(
+                        "CloudFrontCertificateArnExists",
+                        "sni-only",
+                        core.Fn.ref("AWS::NoValue")
+                    ).to_string()
                 )
             )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
         )
         cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
         cloudfront_distribution_endpoint_output = core.CfnOutput(
