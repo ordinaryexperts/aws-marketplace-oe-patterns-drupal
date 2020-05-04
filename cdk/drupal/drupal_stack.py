@@ -581,7 +581,7 @@ class DrupalStack(core.Stack):
             connection=aws_ec2.Port.tcp(2049)
         )
 
-        efs = aws_efs.EfsFileSystem(
+        efs = aws_efs.FileSystem(
             self,
             "AppEfs",
             security_group=efs_sg,
