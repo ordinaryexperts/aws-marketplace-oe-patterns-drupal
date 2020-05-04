@@ -61,6 +61,31 @@ class DrupalStack(core.Stack):
             "CertificateArnNotExists",
             expression=core.Fn.condition_equals(certificate_arn_param.value, "")
         )
+        customer_vpc_id_param = core.CfnParameter(
+            self,
+            "CustomerVpcId",
+            default=""
+        )
+        customer_vpc_public_subnet_ids_param = core.CfnParameter(
+            self,
+            "CustomerVpcPublicSubnets",
+            default=""
+        )
+        customer_vpc_private_subnet_ids_param = core.CfnParameter(
+            self,
+            "CustomerVpcPrivateSubnets",
+            default=""
+        )
+        customer_vpc_id_exists_condition = core.CfnCondition(
+            self,
+            "CustomerVpcIdExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, ""))
+        )
+        customer_vpc_id_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CustomerVpcIdNotExists",
+            expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
+        )
         vpc = aws_ec2.Vpc(
             self,
             "Vpc",
@@ -71,6 +96,13 @@ class DrupalStack(core.Stack):
             "AppSg",
             vpc=vpc
         )
+        app_sg_customer_vpc = aws_ec2.CfnSecurityGroup(
+            self,
+            "AppSgCustomerVpc",
+            group_description="AppSG using customer VPC ID",
+            vpc_id=customer_vpc_id_param.value_as_string
+        )
+        app_sg_customer_vpc.cfn_options.condition = customer_vpc_id_exists_condition
         db_sg = aws_ec2.SecurityGroup(
             self,
             "DBSg",
