@@ -379,12 +379,24 @@ class DrupalStack(core.Stack):
             default="match-viewer",
             description="CloudFront access policy for communicating with content origin."
         )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "oe-patterns-drupal-acarlton.dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "dev.patterns.ordinaryexperts.com" ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
@@ -406,7 +418,7 @@ class DrupalStack(core.Stack):
                         origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
                     )
                 )],
-                price_class="PriceClass_All", # TODO: parameterize
+                price_class=cloudfront_price_class_param.value_as_string,
                 viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
                     acm_certificate_arn=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
