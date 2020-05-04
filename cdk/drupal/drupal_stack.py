@@ -30,7 +30,7 @@ class DrupalStack(core.Stack):
         )
         vpc = aws_ec2.Vpc(
             self,
-            "vpc",
+            "Vpc",
             cidr="10.0.0.0/16"
         )
         app_sg = aws_ec2.SecurityGroup(
