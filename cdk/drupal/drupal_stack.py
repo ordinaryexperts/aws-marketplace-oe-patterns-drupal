@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_codepipeline_actions,
     aws_ec2,
     aws_efs,
+    aws_elasticache,
     aws_elasticloadbalancingv2,
     aws_iam,
     aws_logs,
@@ -62,7 +63,7 @@ class DrupalStack(core.Stack):
         )
         vpc = aws_ec2.Vpc(
             self,
-            "vpc",
+            "Vpc",
             cidr="10.0.0.0/16"
         )
         app_sg = aws_ec2.SecurityGroup(
@@ -587,4 +588,88 @@ class DrupalStack(core.Stack):
             "AppEfs",
             security_group=efs_sg,
             vpc=vpc
+        )
+
+        # elasticache
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+        elasticache_sg = aws_ec2.SecurityGroup(
+            self,
+            "ElastiCacheSg",
+            vpc=vpc
+        )
+        elasticache_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(11211)
+        )
+        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
+        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
+            self,
+            "ElastiCacheSubnetGroup",
+            description="ElastiCache subnet group",
+            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheCluster",
+            az_mode="cross-az",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
+            cache_subnet_group_name=elasticache_subnet_group.ref,
+            engine="memcached",
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            preferred_availability_zones=core.Stack.of(self).availability_zones,
+            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
+        )
+        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster_id_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterIdOutput",
+            condition=elasticache_enable_condition,
+            description="The Id of the ElastiCache cluster.",
+            value=elasticache_cluster.ref
+        )
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enable_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
         )
