@@ -130,7 +130,7 @@ mkdir /var/www/drupal/sites/default/files
 chgrp www-data /var/www/drupal/sites/default/files
 chmod 775 /var/www/drupal/sites/default/files
 mkdir -p /opt/drupal
-cat <<"EOF" > /opt/drupal/settings.php
+cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
 <?php
 
 $settings['hash_salt'] = 'Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA';
