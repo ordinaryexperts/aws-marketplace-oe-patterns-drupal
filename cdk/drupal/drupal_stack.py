@@ -477,9 +477,9 @@ class DrupalStack(core.Stack):
             }
         )
 
-        code_deployment_application = aws_codedeploy.CfnApplication(
+        code_deploy_application = aws_codedeploy.CfnApplication(
             self,
-            "CodeDeploymentApplication",
+            "CodeDeployApplication",
             application_name="drupal",
             compute_platform="Server"
         )
@@ -491,9 +491,9 @@ class DrupalStack(core.Stack):
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
 
-        code_deployment_group = aws_codedeploy.CfnDeploymentGroup(
+        code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
-            "CodeDeploymentGroup",
+            "CodeDeployDeploymentGroup",
             application_name=code_deployment_application.application_name,
             auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(self.stack_name),
@@ -501,9 +501,9 @@ class DrupalStack(core.Stack):
             service_role_arn=code_deploy_role.role_arn
         )
 
-        cicd_pipeline = aws_codepipeline.CfnPipeline(
+        pipeline = aws_codepipeline.CfnPipeline(
             self,
-            "AppPipeline",
+            "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
                 location=artifact_bucket.bucket_name,
                 type='S3'
