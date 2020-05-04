@@ -372,6 +372,13 @@ class DrupalStack(core.Stack):
             "CloudFrontEnableCondition",
             expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
         )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
             "CloudFrontDistribution",
@@ -396,7 +403,7 @@ class DrupalStack(core.Stack):
                     domain_name=alb.load_balancer_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy="match-viewer" # TODO: parameterize?
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
                     )
                 )],
                 price_class="PriceClass_All", # TODO: parameterize
