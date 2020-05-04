@@ -494,7 +494,7 @@ class DrupalStack(core.Stack):
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
             "CodeDeployDeploymentGroup",
-            application_name=code_deployment_application.application_name,
+            application_name=code_deploy_application.application_name,
             auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(self.stack_name),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
@@ -545,8 +545,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'ApplicationName': code_deployment_application.ref,
-                                'DeploymentGroupName': code_deployment_group.ref,
+                                'ApplicationName': code_deploy_application.ref,
+                                'DeploymentGroupName': code_deploy_deployment_group.ref,
                             },
                             input_artifacts=[
                                 aws_codepipeline.CfnPipeline.InputArtifactProperty(
