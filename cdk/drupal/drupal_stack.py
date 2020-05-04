@@ -573,9 +573,7 @@ class DrupalStack(core.Stack):
         efs_sg = aws_ec2.SecurityGroup(
             self,
             "EfsSg",
-            description="EFS security group",
-            security_group_name="sg_efs",
-            vpc=vpc,
+            vpc=vpc
         )
 
         efs_sg.add_ingress_rule(
