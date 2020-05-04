@@ -17,8 +17,8 @@ diff:
 
 lint:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
-	&& cdk synth > ../template.yaml \
-	&& cd .. \
+	&& cdk synth > ../test/template.yaml \
+	&& cd ../test \
 	&& taskcat lint"
 
 packer:

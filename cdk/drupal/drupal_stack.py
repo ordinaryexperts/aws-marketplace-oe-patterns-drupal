@@ -308,7 +308,7 @@ class DrupalStack(core.Stack):
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type="t3.micro", # TODO: Parameterize
             iam_instance_profile=instance_profile.ref,
-            security_groups=[app_sg.security_group_id],
+            security_groups=[app_sg.security_group_name],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(app_launch_config_user_data)
