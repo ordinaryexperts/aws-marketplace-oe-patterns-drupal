@@ -13,10 +13,13 @@ deploy:
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
+diff:
+	docker-compose run -w /code/cdk --rm drupal cdk diff
+
 lint:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
-	&& cdk synth > ../template.yaml \
-	&& cd .. \
+	&& cdk synth > ../test/template.yaml \
+	&& cd ../test \
 	&& taskcat lint"
 
 packer:
@@ -27,7 +30,10 @@ rebuild:
 	docker-compose build --no-cache
 
 synth:
-	docker-compose run -w /code/cdk --rm drupal cdk synth
+	docker-compose run -w /code/cdk --rm drupal cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false
 
 test:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
