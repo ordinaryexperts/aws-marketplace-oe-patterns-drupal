@@ -80,12 +80,12 @@ class DrupalStack(core.Stack):
         customer_vpc_private_subnet_id1 = core.CfnParameter(
             self,
             "CustomerVpcPrivateSubnet1",
-            default="subnet-02791c93da8bf3b6a"
+            default=""
         )
         customer_vpc_private_subnet_id2 = core.CfnParameter(
             self,
             "CustomerVpcPrivateSubnet2",
-            default="subnet-0d89e6fecdd4de1dd"
+            default=""
         )
         customer_vpc_given_condition = core.CfnCondition(
             self,
@@ -98,16 +98,52 @@ class DrupalStack(core.Stack):
             expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
         )
 
+        # no cert + no vpc given
+        cert_arn_and_customer_vpc_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CertArnAndCustomerVpcDoesNotExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
+                core.Fn.condition_equals(certificate_arn_param.value, "")
+            )
+        )
+        # no cert + vpc given
+        cert_arn_does_not_exist_customer_vpc_does_exist_condition = core.CfnCondition(
+            self,
+            "CertArnDoesNotExistCustomerVpcDoesExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
+                core.Fn.condition_equals(certificate_arn_param.value, "")
+            )
+        )
+        # cert + no vpc given
+        cert_arn_does_exist_customer_vpc_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CertArnDoesExistCustomerVpcDoesNotExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
+                core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+            )
+        )
+        # cert + vpc given
+        cert_arn_and_customer_vpc_does_exist_condition = core.CfnCondition(
+            self,
+            "CertArnAndCustomerVpcDoesExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
+                core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+            )
+        )
+
         vpc = aws_ec2.Vpc(
             self,
             "Vpc",
             cidr="10.0.0.0/16"
         )
-
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
-            "AppSgStackDefault",
-            group_description="AppSg using default stack VPC",
+            "AppSg",
+            group_description="AppSG using default VPC ID",
             vpc_id=vpc.vpc_id
         )
         app_sg.cfn_options.condition = customer_vpc_not_given_condition
@@ -119,16 +155,16 @@ class DrupalStack(core.Stack):
         )
         app_sg_customer.cfn_options.condition = customer_vpc_given_condition
 
-        db_sg = aws_ec2.CfnSecurityGroup(
+        db_sg= aws_ec2.CfnSecurityGroup(
             self,
-            "DBSgStackDefault",
-            group_description="DBSg using default stack VPC",
+            "DBSg",
+            group_description="DBSG using default VPC ID",
             vpc_id=vpc.vpc_id
         )
         db_sg.cfn_options.condition = customer_vpc_not_given_condition
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "DBSgDefaultIngress",
+            "DBSgIngress",
             from_port=3306,
             group_id=db_sg.ref,
             ip_protocol="tcp",
@@ -251,21 +287,40 @@ class DrupalStack(core.Stack):
             vpc_security_group_ids=[ db_sg_customer.ref ]
         )
         db_customer_cluster.cfn_options.condition = customer_vpc_given_condition
-
-
-        # alb_sg = aws_ec2.SecurityGroup(
-        #     self,
-        #     "AlbSg",
-        #     vpc=vpc
-        # )
-        # alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+        alb_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "AlbSg",
+            group_description="AlbSG using default VPC ID",
+            vpc_id=vpc.vpc_id
+        )
+        alb_sg.cfn_options.condition = customer_vpc_not_given_condition
+        alb_sg_customer = aws_ec2.CfnSecurityGroup(
+            self,
+            "AlbSgCustomerVpc",
+            group_description="AlbSG using customer VPC ID",
+            vpc_id=customer_vpc_id_param.value_as_string
+        )
+        alb_sg_customer.cfn_options.condition = customer_vpc_given_condition
+        # alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
         #     self,
         #     "AppAlb",
-        #     internet_facing=True,
-        #     security_group=alb_sg,
-        #     vpc=vpc
+        #     scheme="internet-facing",
+        #     security_groups=[ alb_sg.ref ],
+        #     subnets=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids,
+        #     type="application"
         # )
-        # # if there is no cert...
+        # alb.cfn_options.condition = customer_vpc_not_given_condition
+        # alb_customer = aws_elasticloadbalancingv2.CfnLoadBalancer(
+        #     self,
+        #     "AppAlbCustomer",
+        #     scheme="internet-facing",
+        #     security_groups=[ alb_sg_customer.ref ],
+        #     subnets=[customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string],
+        #     type="application"
+        # )
+        # alb_customer.cfn_options.condition = customer_vpc_given_condition
+
+        # if no cert + no vpc given...
         # http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
         #     self,
         #     "AsgHttpTargetGroup",
@@ -273,7 +328,7 @@ class DrupalStack(core.Stack):
         #     port=80,
         #     vpc=vpc
         # )
-        # http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        # http_target_group.node.default_child.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
         # http_listener = aws_elasticloadbalancingv2.ApplicationListener(
         #     self,
         #     "HttpListener",
@@ -282,7 +337,7 @@ class DrupalStack(core.Stack):
         #     open=True,
         #     port=80
         # )
-        # http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        # http_listener.node.default_child.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
 
         # # if there is a cert...
         # http_redirect_listener = aws_elasticloadbalancingv2.ApplicationListener(
