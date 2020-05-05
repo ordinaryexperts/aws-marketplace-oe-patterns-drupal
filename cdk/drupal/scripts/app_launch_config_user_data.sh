@@ -122,14 +122,6 @@ EOF
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
-# Drupal; TODO: remove after CodePipline integration
-aws s3 cp s3://github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p/aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz .
-tar xvfz develop.tar.gz
-mv -T drupal /var/www/drupal
-mkdir /var/www/drupal/sites/default/files
-chgrp www-data /var/www/drupal/sites/default/files
-chmod 775 /var/www/drupal/sites/default/files
-mkdir -p /opt/drupal
 cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
 <?php
 
@@ -147,8 +139,6 @@ $databases['default']['default'] = array (
 );
 $settings['config_sync_directory'] = 'sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync';
 EOF
-
-/var/www/drupal/post-deploy.sh
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
