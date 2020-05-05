@@ -156,3 +156,5 @@ openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
   -out /etc/ssl/certs/apache-selfsigned.crt \
   -subj '/CN=localhost'
 systemctl enable apache2 && systemctl start apache2
+
+cfn-signal --exit-code $? --stack ${AWS::StackName} --resource AppAsg --region ${AWS::Region}

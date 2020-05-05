@@ -7,7 +7,14 @@ export TASKCAT_VERSION=0.9.17
 # system upgrades and tools
 export DEBIAN_FRONTEND=noninteractive
 apt-get -y update && apt-get -y upgrade
-apt-get -y install unzip vim wget
+apt-get -y install curl unzip vim wget
+
+# aws cli
+cd /tmp
+curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
+unzip awscliv2.zip
+./aws/install
+cd -
 
 # taskcat
 apt-get -y install python3 python3-pip
