@@ -646,248 +646,411 @@ class DrupalStack(core.Stack):
         asg_customer.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
         asg_customer.cfn_options.condition = customer_vpc_given_condition
 
-        # sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
-        #     self,
-        #     "AppSgHttpIngress",
-        #     from_port=80,
-        #     group_id=app_sg.security_group_id,
-        #     ip_protocol="tcp",
-        #     source_security_group_id=alb_sg.security_group_id,
-        #     to_port=80
-        # )
-        # sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
+        # no cert + no vpc
+        sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpIngress",
+            from_port=80,
+            group_id=app_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.ref,
+            to_port=80
+        )
+        sg_http_ingress.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
 
-        # sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
-        #     self,
-        #     "AppSgHttpsIngress",
-        #     from_port=443,
-        #     group_id=app_sg.security_group_id,
-        #     ip_protocol="tcp",
-        #     source_security_group_id=alb_sg.security_group_id,
-        #     to_port=443
-        # )
-        # sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
+        # no cert + vpc
+        sg_http_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpIngressCustomer",
+            from_port=80,
+            group_id=app_sg_customer.ref,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg_customer.ref,
+            to_port=80
+        )
+        sg_http_ingress_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
 
-        # # CICD Pipeline
+        # cert + no vpc
+        sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpsIngress",
+            from_port=443,
+            group_id=app_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg.ref,
+            to_port=443
+        )
+        sg_https_ingress.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
 
-        # # TODO: Tighten role / use managed roles?
-        # pipeline_role = aws_iam.Role(
-        #     self,
-        #     "PipelineRole",
-        #     assumed_by=aws_iam.ServicePrincipal('codepipeline.amazonaws.com'),
-        #     inline_policies={
-        #         "CodePipelinePerms": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         'codedeploy:GetApplication',
-        #                         'codedeploy:GetDeploymentGroup',
-        #                         'codedeploy:ListApplications',
-        #                         'codedeploy:ListDeploymentGroups',
-        #                         'codepipeline:*',
-        #                         'iam:ListRoles',
-        #                         'iam:PassRole',
-        #                         'lambda:GetFunctionConfiguration',
-        #                         'lambda:ListFunctions',
-        #                         's3:CreateBucket',
-        #                         's3:GetBucketPolicy',
-        #                         's3:GetObject',
-        #                         's3:ListAllMyBuckets',
-        #                         's3:ListBucket',
-        #                         's3:PutBucketPolicy'
-        #                     ],
-        #                     resources=['*']
-        #                 )
-        #             ]
-        #         )
-        #     }
-        # )
+        # cert + vpc
+        sg_https_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AppSgHttpsIngressCustomer",
+            from_port=443,
+            group_id=app_sg_customer.ref,
+            ip_protocol="tcp",
+            source_security_group_id=alb_sg_customer.ref,
+            to_port=443
+        )
+        sg_https_ingress_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
-        # source_stage_role = aws_iam.Role(
-        #     self,
-        #     "SourceStageRole",
-        #     assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
-        #     inline_policies={
-        #         "SourceRolePerms": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         's3:Get*',
-        #                         's3:Head*'
-        #                     ],
-        #                     resources=[
-        #                         "arn:{}:s3:::{}/{}".format(
-        #                             core.Aws.PARTITION,
-        #                             source_artifact_s3_bucket_param.value.to_string(),
-        #                             source_artifact_s3_object_key_param.value.to_string()
-        #                         )
-        #                     ]
-        #                 ),
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         's3:GetBucketVersioning'
-        #                     ],
-        #                     resources=[
-        #                         "arn:{}:s3:::{}".format(
-        #                             core.Aws.PARTITION,
-        #                             source_artifact_s3_bucket_param.value.to_string()
-        #                         )
-        #                     ]
-        #                 ),
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         's3:*'
-        #                     ],
-        #                     resources=[
-        #                         "arn:{}:s3:::{}/*".format(
-        #                             core.Aws.PARTITION,
-        #                             artifact_bucket.bucket_name
-        #                         )
-        #                     ]
-        #                 )
-        #             ]
-        #         )
-        #     }
-        # )
+        # CICD Pipeline
 
-        # deploy_stage_role = aws_iam.Role(
-        #     self,
-        #     "DeployStageRole",
-        #     assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
-        #     inline_policies={
-        #         "DeployRolePerms": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         'codedeploy:*'
-        #                     ],
-        #                     resources=['*']
-        #                 ),
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         's3:Get*',
-        #                         's3:Head*'
-        #                     ],
-        #                     resources=[
-        #                         "arn:{}:s3:::{}/*".format(
-        #                             core.Aws.PARTITION,
-        #                             artifact_bucket.bucket_name
-        #                         )
-        #                     ]
-        #                 )
-        #             ]
-        #         )
-        #     }
-        # )
+        # TODO: Tighten role / use managed roles?
+        pipeline_role = aws_iam.Role(
+            self,
+            "PipelineRole",
+            assumed_by=aws_iam.ServicePrincipal('codepipeline.amazonaws.com'),
+            inline_policies={
+                "CodePipelinePerms": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'codedeploy:GetApplication',
+                                'codedeploy:GetDeploymentGroup',
+                                'codedeploy:ListApplications',
+                                'codedeploy:ListDeploymentGroups',
+                                'codepipeline:*',
+                                'iam:ListRoles',
+                                'iam:PassRole',
+                                'lambda:GetFunctionConfiguration',
+                                'lambda:ListFunctions',
+                                's3:CreateBucket',
+                                's3:GetBucketPolicy',
+                                's3:GetObject',
+                                's3:ListAllMyBuckets',
+                                's3:ListBucket',
+                                's3:PutBucketPolicy'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                )
+            }
+        )
 
-        # code_deploy_application = aws_codedeploy.CfnApplication(
-        #     self,
-        #     "CodeDeployApplication",
-        #     application_name=self.stack_name,
-        #     compute_platform="Server"
-        # )
+        source_stage_role = aws_iam.Role(
+            self,
+            "SourceStageRole",
+            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            inline_policies={
+                "SourceRolePerms": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:Get*',
+                                's3:Head*'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/{}".format(
+                                    core.Aws.PARTITION,
+                                    source_artifact_s3_bucket_param.value.to_string(),
+                                    source_artifact_s3_object_key_param.value.to_string()
+                                )
+                            ]
+                        ),
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:GetBucketVersioning'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}".format(
+                                    core.Aws.PARTITION,
+                                    source_artifact_s3_bucket_param.value.to_string()
+                                )
+                            ]
+                        ),
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:*'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/*".format(
+                                    core.Aws.PARTITION,
+                                    artifact_bucket.bucket_name
+                                )
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
 
-        # code_deploy_role = aws_iam.Role(
-        #      self,
-        #     "CodeDeployRole",
-        #     assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
-        #     managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
-        # )
+        deploy_stage_role = aws_iam.Role(
+            self,
+            "DeployStageRole",
+            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            inline_policies={
+                "DeployRolePerms": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'codedeploy:*'
+                            ],
+                            resources=['*']
+                        ),
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:Get*',
+                                's3:Head*'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/*".format(
+                                    core.Aws.PARTITION,
+                                    artifact_bucket.bucket_name
+                                )
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
 
-        # code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
-        #     self,
-        #     "CodeDeployDeploymentGroup",
-        #     application_name=code_deploy_application.application_name,
-        #     auto_scaling_groups=[asg.ref],
-        #     deployment_group_name="{}-app".format(self.stack_name),
-        #     deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-        #     service_role_arn=code_deploy_role.role_arn
-        # )
+        code_deploy_application = aws_codedeploy.CfnApplication(
+            self,
+            "CodeDeployApplication",
+            application_name=self.stack_name,
+            compute_platform="Server"
+        )
 
-        # pipeline = aws_codepipeline.CfnPipeline(
-        #     self,
-        #     "Pipeline",
-        #     artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-        #         location=artifact_bucket.bucket_name,
-        #         type='S3'
-        #     ),
-        #     role_arn=pipeline_role.role_arn,
-        #     stages=[
-        #         aws_codepipeline.CfnPipeline.StageDeclarationProperty(
-        #             name="Source",
-        #             actions=[
-        #                 aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
-        #                     action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-        #                         category='Source',
-        #                         owner='AWS',
-        #                         provider='S3',
-        #                         version='1'
-        #                     ),
-        #                     configuration={
-        #                         'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-        #                         'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
-        #                     },
-        #                     output_artifacts=[
-        #                         aws_codepipeline.CfnPipeline.OutputArtifactProperty(
-        #                             name="build"
-        #                         )
-        #                     ],
-        #                     name="SourceAction",
-        #                     role_arn=source_stage_role.role_arn
-        #                 )
-        #             ]
-        #         ),
-        #         aws_codepipeline.CfnPipeline.StageDeclarationProperty(
-        #             name="Deploy",
-        #             actions=[
-        #                 aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
-        #                     action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-        #                         category='Deploy',
-        #                         owner='AWS',
-        #                         provider='CodeDeploy',
-        #                         version='1'
-        #                     ),
-        #                     configuration={
-        #                         'ApplicationName': code_deploy_application.ref,
-        #                         'DeploymentGroupName': code_deploy_deployment_group.ref,
-        #                     },
-        #                     input_artifacts=[
-        #                         aws_codepipeline.CfnPipeline.InputArtifactProperty(
-        #                             name="build"
-        #                         )
-        #                     ],
-        #                     name="DeployAction",
-        #                     role_arn=deploy_stage_role.role_arn
-        #                 )
-        #             ]
-        #         )
-        #     ]
-        # )
+        code_deploy_role = aws_iam.Role(
+             self,
+            "CodeDeployRole",
+            assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
+            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
+        )
 
-        # # EFS
-        # efs_sg = aws_ec2.SecurityGroup(
-        #     self,
-        #     "EfsSg",
-        #     vpc=vpc
-        # )
+        code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
+            self,
+            "CodeDeployDeploymentGroup",
+            application_name=code_deploy_application.application_name,
+            auto_scaling_groups=[asg.ref],
+            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
+            service_role_arn=code_deploy_role.role_arn
+        )
+        code_deploy_deployment_group.cfn_options.condition = customer_vpc_not_given_condition
+        code_deploy_deployment_group_customer = aws_codedeploy.CfnDeploymentGroup(
+            self,
+            "CodeDeployDeploymentGroupCustomer",
+            application_name=code_deploy_application.application_name,
+            auto_scaling_groups=[asg_customer.ref],
+            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
+            service_role_arn=code_deploy_role.role_arn
+        )
+        code_deploy_deployment_group_customer.cfn_options.condition = customer_vpc_given_condition
 
-        # efs_sg.add_ingress_rule(
-        #     peer=app_sg,
-        #     connection=aws_ec2.Port.tcp(2049)
-        # )
+        pipeline = aws_codepipeline.CfnPipeline(
+            self,
+            "Pipeline",
+            artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
+                location=artifact_bucket.bucket_name,
+                type='S3'
+            ),
+            role_arn=pipeline_role.role_arn,
+            stages=[
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Source",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Source',
+                                owner='AWS',
+                                provider='S3',
+                                version='1'
+                            ),
+                            configuration={
+                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                            },
+                            output_artifacts=[
+                                aws_codepipeline.CfnPipeline.OutputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="SourceAction",
+                            role_arn=source_stage_role.role_arn
+                        )
+                    ]
+                ),
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Deploy",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Deploy',
+                                owner='AWS',
+                                provider='CodeDeploy',
+                                version='1'
+                            ),
+                            configuration={
+                                'ApplicationName': code_deploy_application.ref,
+                                'DeploymentGroupName': code_deploy_deployment_group.ref,
+                            },
+                            input_artifacts=[
+                                aws_codepipeline.CfnPipeline.InputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="DeployAction",
+                            role_arn=deploy_stage_role.role_arn
+                        )
+                    ]
+                )
+            ]
+        )
+        pipeline.cfn_options.condition = customer_vpc_not_given_condition
 
-        # efs = aws_efs.FileSystem(
-        #     self,
-        #     "AppEfs",
-        #     security_group=efs_sg,
-        #     vpc=vpc
-        # )
+        pipeline_customer = aws_codepipeline.CfnPipeline(
+            self,
+            "PipelineCustomer",
+            artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
+                location=artifact_bucket.bucket_name,
+                type='S3'
+            ),
+            role_arn=pipeline_role.role_arn,
+            stages=[
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Source",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Source',
+                                owner='AWS',
+                                provider='S3',
+                                version='1'
+                            ),
+                            configuration={
+                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                            },
+                            output_artifacts=[
+                                aws_codepipeline.CfnPipeline.OutputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="SourceAction",
+                            role_arn=source_stage_role.role_arn
+                        )
+                    ]
+                ),
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Deploy",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Deploy',
+                                owner='AWS',
+                                provider='CodeDeploy',
+                                version='1'
+                            ),
+                            configuration={
+                                'ApplicationName': code_deploy_application.ref,
+                                'DeploymentGroupName': code_deploy_deployment_group_customer.ref,
+                            },
+                            input_artifacts=[
+                                aws_codepipeline.CfnPipeline.InputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="DeployAction",
+                            role_arn=deploy_stage_role.role_arn
+                        )
+                    ]
+                )
+            ]
+        )
+        pipeline.cfn_options.condition = customer_vpc_given_condition
+
+        # EFS
+        efs_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "EfsSg",
+            group_description="EfsSg using default VPC ID",
+            vpc_id=vpc.vpc_id
+        )
+        efs_sg.cfn_options.condition = customer_vpc_not_given_condition
+        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EfsSgIngress",
+            from_port=2049,
+            group_id=efs_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=2049
+        )
+        efs_sg_ingress.cfn_options.condition = customer_vpc_not_given_condition
+        efs_sg_customer = aws_ec2.CfnSecurityGroup(
+            self,
+            "EfsSgCustomer",
+            group_description="EfsSg using customer VPC ID",
+            vpc_id=customer_vpc_id_param.value_as_string
+        )
+        efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
+        efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EfsSgIngressCustomer",
+            from_port=2049,
+            group_id=efs_sg_customer.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg_customer.ref,
+            to_port=2049
+        )
+        efs_sg_customer_ingress.cfn_options.condition = customer_vpc_given_condition
+
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs",
+            encrypted=None
+        )
+        efs.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfs".format(self.stack_name)}])
+        efs.cfn_options.condition = customer_vpc_not_given_condition
+        efs_customer = aws_efs.CfnFileSystem(
+            self,
+            "AppEfsCustomer",
+            encrypted=None
+        )
+        efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
+        efs_customer.cfn_options.condition = customer_vpc_given_condition
+        efs_mount_target1 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget1",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids[0]
+        )
+        efs_mount_target1.cfn_options.condition = customer_vpc_not_given_condition
+        efs_mount_target2 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget2",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids[1]
+        )
+        efs_mount_target2.cfn_options.condition = customer_vpc_not_given_condition
+        efs_mount_target1_customer = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget1Customer",
+            file_system_id=efs_customer.ref,
+            security_groups=[ efs_sg_customer.ref ],
+            subnet_id=customer_vpc_private_subnet_id1.value_as_string
+        )
+        efs_mount_target1_customer.cfn_options.condition = customer_vpc_given_condition
+        efs_mount_target2_customer = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget2Customer",
+            file_system_id=efs_customer.ref,
+            security_groups=[ efs_sg_customer.ref ],
+            subnet_id=customer_vpc_private_subnet_id2.value_as_string
+        )
+        efs_mount_target2_customer.cfn_options.condition = customer_vpc_given_condition
 
         # # cloudfront
         # cloudfront_certificate_arn_param = core.CfnParameter(
