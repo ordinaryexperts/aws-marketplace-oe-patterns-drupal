@@ -1175,67 +1175,127 @@ class DrupalStack(core.Stack):
         efs_mount_target2_customer.cfn_options.condition = customer_vpc_given_condition
 
         # cloudfront
-        # cloudfront_distribution = aws_cloudfront.CfnDistribution(
-        #     self,
-        #     "CloudFrontDistribution",
-        #     distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-        #         # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-        #         aliases=[ "dev.patterns.ordinaryexperts.com" ],
-        #         comment=self.stack_name,
-        #         default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-        #             allowed_methods=[ "HEAD", "GET" ],
-        #             compress=False,
-        #             default_ttl=86400,
-        #             forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-        #                 query_string=False
-        #             ),
-        #             min_ttl=0,
-        #             max_ttl=31536000,
-        #             target_origin_id="alb",
-        #             viewer_protocol_policy="allow-all"
-        #         ),
-        #         enabled=True,
-        #         origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-        #             domain_name=alb.load_balancer_dns_name,
-        #             id="alb",
-        #             custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-        #                 origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-        #             )
-        #         )],
-        #         price_class=cloudfront_price_class_param.value_as_string,
-        #         viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-        #             acm_certificate_arn=core.Fn.condition_if(
-        #                 cloudfront_certificate_arn_exists_condition.logical_id,
-        #                 cloudfront_certificate_arn_param.value_as_string,
-        #                 "AWS::NoValue"
-        #             ).to_string(),
-        #             ssl_support_method= core.Fn.condition_if(
-        #                 cloudfront_certificate_arn_exists_condition.logical_id,
-        #                 "sni-only",
-        #                 core.Fn.ref("AWS::NoValue")
-        #             ).to_string()
-        #         )
-        #     )
-        # )
-        # cloudfront_distribution.add_override(
-        #     "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-        #     {
-        #         "Fn::If": [
-        #             cloudfront_certificate_arn_exists_condition.logical_id,
-        #             { "Ref": "AWS::NoValue" },
-        #             True
-        #         ]
-        #     }
-        # )
-        # cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
-        # cloudfront_distribution_endpoint_output = core.CfnOutput(
-        #     self,
-        #     "CloudFrontDistributionEndpointOutput",
-        #     condition=cloudfront_enable_condition,
-        #     description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-        #     value=cloudfront_distribution.attr_domain_name
-        # )
-
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                comment=self.stack_name,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.attr_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        "AWS::NoValue"
+                    ).to_string(),
+                    ssl_support_method= core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Fn.ref("AWS::NoValue")
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enabled_customer_vpc_does_not_exist_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enabled_customer_vpc_does_not_exist_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
+        )
+        cloudfront_distribution_customer = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistributionCustomer",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                comment=self.stack_name,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb_customer.attr_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        "AWS::NoValue"
+                    ).to_string(),
+                    ssl_support_method= core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Fn.ref("AWS::NoValue")
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution_customer.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution_customer.cfn_options.condition = cloudfront_enabled_customer_vpc_exists_condition
+        cloudfront_distribution_customer_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionCustomerEndpointOutput",
+            condition=cloudfront_enabled_customer_vpc_exists_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
+        )
+        
         # elasticache
         # elasticache_sg = aws_ec2.SecurityGroup(
         #     self,
