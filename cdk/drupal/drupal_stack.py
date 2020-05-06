@@ -18,8 +18,8 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-0a3f10562bb95d4b9"
-DB_SNAPSHOT="arn:aws:rds:us-west-1:992593896645:cluster-snapshot:oe-patterns-drupal-acarlton-snapshot-oe-patterns-drupal-acarlton-dbcluster-dr23p7cx4unn-13ix1kbgrwk17"
+AMI="ami-020957f1bf92e5753"
+DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -348,7 +348,7 @@ class DrupalStack(core.Stack):
         db_snapshot_identifier = None
         db_username = None
         db_password = None
-        db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        db_snapshot_arn = DB_SNAPSHOT
         db_snapshot_param = core.CfnParameter(
             self,
             "DBSnapshotIdentifier",
@@ -1089,7 +1089,7 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        pipeline.cfn_options.condition = customer_vpc_given_condition
+        pipeline_customer.cfn_options.condition = customer_vpc_given_condition
 
         # EFS
         efs_sg = aws_ec2.CfnSecurityGroup(
