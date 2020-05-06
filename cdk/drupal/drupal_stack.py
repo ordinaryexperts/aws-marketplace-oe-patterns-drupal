@@ -471,136 +471,180 @@ class DrupalStack(core.Stack):
         https_listener_customer.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
-        # notification_topic = aws_sns.Topic(
-        #     self,
-        #     "NotificationTopic"
-        # )
-        # system_log_group = aws_logs.CfnLogGroup(
-        #     self,
-        #     "DrupalSystemLogGroup",
-        #     retention_in_days=TWO_YEARS_IN_DAYS
-        # )
-        # system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        # system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        # access_log_group = aws_logs.CfnLogGroup(
-        #     self,
-        #     "DrupalAccessLogGroup",
-        #     retention_in_days=TWO_YEARS_IN_DAYS
-        # )
-        # access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        # access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        # error_log_group = aws_logs.CfnLogGroup(
-        #     self,
-        #     "DrupalErrorLogGroup",
-        #     retention_in_days=TWO_YEARS_IN_DAYS
-        # )
-        # error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        # error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        # app_instance_role = aws_iam.Role(
-        #     self,
-        #     "AppInstanceRole",
-        #     assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
-        #     inline_policies={
-        #         "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         'logs:CreateLogStream',
-        #                         'logs:DescribeLogStreams',
-        #                         'logs:PutLogEvents'
-        #                     ],
-        #                     resources=[
-        #                         access_log_group.attr_arn,
-        #                         error_log_group.attr_arn,
-        #                         system_log_group.attr_arn
-        #                     ]
-        #                 )
-        #             ]
-        #         ),
-        #         "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         'ec2:DescribeVolumes',
-        #                         'ec2:DescribeTags',
-        #                         'cloudwatch:GetMetricStatistics',
-        #                         'cloudwatch:ListMetrics',
-        #                         'cloudwatch:PutMetricData'
-        #                     ],
-        #                     resources=['*']
-        #                 )
-        #             ]
-        #         ),
-        #         "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
-        #             statements=[
-        #                 aws_iam.PolicyStatement(
-        #                     effect=aws_iam.Effect.ALLOW,
-        #                     actions=[
-        #                         's3:Get*',
-        #                         's3:Head*'
-        #                     ],
-        #                     resources=[
-        #                         "arn:{}:s3:::{}/*".format(
-        #                             core.Aws.PARTITION,
-        #                             artifact_bucket.bucket_name
-        #                         )
-        #                     ]
-        #                 )
-        #             ]
-        #         )
-        #     }
-        # )
-        # app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        # instance_profile = aws_iam.CfnInstanceProfile(
-        #     self,
-        #     "AppInstanceProfile",
-        #     roles=[app_instance_role.role_name]
-        # )
-        # with open('drupal/scripts/app_launch_config_user_data.sh') as f:
-        #     app_launch_config_user_data = f.read()
-        # launch_config = aws_autoscaling.CfnLaunchConfiguration(
-        #     self,
-        #     "AppLaunchConfig",
-        #     image_id=AMI, # TODO: Put into CFN Mapping
-        #     instance_type="t3.micro", # TODO: Parameterize
-        #     iam_instance_profile=instance_profile.ref,
-        #     security_groups=[app_sg.security_group_name],
-        #     user_data=(
-        #         core.Fn.base64(
-        #             core.Fn.sub(app_launch_config_user_data)
-        #         )
-        #     )
-        # )
-        # asg = aws_autoscaling.CfnAutoScalingGroup(
-        #     self,
-        #     "AppAsg",
-        #     launch_configuration_name=launch_config.ref,
-        #     # TODO: Parameterize desired_capacity, max_size, min_size
-        #     desired_capacity="1",
-        #     max_size="2",
-        #     min_size="1",
-        #     vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
-        # )
-        # # https://github.com/aws/aws-cdk/issues/3615
-        # asg.add_override(
-        #     "Properties.TargetGroupARNs",
-        #     {
-        #         "Fn::If": [
-        #             certificate_arn_exists_condition.logical_id,
-        #             [https_target_group.target_group_arn],
-        #             [http_target_group.target_group_arn]
-        #         ]
-        #     }
-        # )
-        # core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
-        # asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
-        # asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
-        # asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
-        # asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
-        # asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
-        # asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        notification_topic = aws_sns.Topic(
+            self,
+            "NotificationTopic"
+        )
+        system_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalSystemLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalAccessLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalErrorLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        app_instance_role = aws_iam.Role(
+            self,
+            "AppInstanceRole",
+            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
+            inline_policies={
+                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'logs:CreateLogStream',
+                                'logs:DescribeLogStreams',
+                                'logs:PutLogEvents'
+                            ],
+                            resources=[
+                                access_log_group.attr_arn,
+                                error_log_group.attr_arn,
+                                system_log_group.attr_arn
+                            ]
+                        )
+                    ]
+                ),
+                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'ec2:DescribeVolumes',
+                                'ec2:DescribeTags',
+                                'cloudwatch:GetMetricStatistics',
+                                'cloudwatch:ListMetrics',
+                                'cloudwatch:PutMetricData'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                ),
+                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:Get*',
+                                's3:Head*'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/*".format(
+                                    core.Aws.PARTITION,
+                                    artifact_bucket.bucket_name
+                                )
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
+        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+        instance_profile = aws_iam.CfnInstanceProfile(
+            self,
+            "AppInstanceProfile",
+            roles=[app_instance_role.role_name]
+        )
+        with open('drupal/scripts/app_launch_config_user_data.sh') as f:
+            app_launch_config_user_data = f.read()
+        launch_config = aws_autoscaling.CfnLaunchConfiguration(
+            self,
+            "AppLaunchConfig",
+            image_id=AMI, # TODO: Put into CFN Mapping
+            instance_type="t3.micro", # TODO: Parameterize
+            iam_instance_profile=instance_profile.ref,
+            security_groups=[ app_sg.ref ],
+            user_data=(
+                core.Fn.base64(
+                    core.Fn.sub(app_launch_config_user_data)
+                )
+            )
+        )
+        launch_config.cfn_options.condition = customer_vpc_not_given_condition
+        launch_config_customer = aws_autoscaling.CfnLaunchConfiguration(
+            self,
+            "AppLaunchConfigCustomer",
+            image_id=AMI, # TODO: Put into CFN Mapping
+            instance_type="t3.micro", # TODO: Parameterize
+            iam_instance_profile=instance_profile.ref,
+            security_groups=[ app_sg_customer.ref ],
+            user_data=(
+                core.Fn.base64(
+                    core.Fn.sub(app_launch_config_user_data)
+                )
+            )
+        )
+        launch_config.cfn_options.condition = customer_vpc_given_condition
+        asg = aws_autoscaling.CfnAutoScalingGroup(
+            self,
+            "AppAsg",
+            launch_configuration_name=launch_config.ref,
+            # TODO: Parameterize desired_capacity, max_size, min_size
+            desired_capacity="1",
+            max_size="2",
+            min_size="1",
+            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        # https://github.com/aws/aws-cdk/issues/3615
+        asg.add_override(
+            "Properties.TargetGroupARNs",
+            {
+                "Fn::If": [
+                    certificate_arn_exists_condition.logical_id,
+                    [https_target_group.ref],
+                    [http_target_group.ref]
+                ]
+            }
+        )
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
+        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
+        asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
+        asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        asg.cfn_options.condition = customer_vpc_not_given_condition
+        asg_customer = aws_autoscaling.CfnAutoScalingGroup(
+            self,
+            "AppAsgCustomer",
+            launch_configuration_name=launch_config_customer.ref,
+            # TODO: Parameterize desired_capacity, max_size, min_size
+            desired_capacity="1",
+            max_size="2",
+            min_size="1",
+            vpc_zone_identifier=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+        )
+        asg_customer.add_override(
+            "Properties.TargetGroupARNs",
+            {
+                "Fn::If": [
+                    certificate_arn_exists_condition.logical_id,
+                    [https_target_group_customer.ref],
+                    [http_target_group_customer.ref]
+                ]
+            }
+        )
+        core.Tag.add(asg_customer, "Name", "{}/AppAsg".format(self.stack_name))
+        asg_customer.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
+        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
+        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
+        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
+        asg_customer.add_override("CreationPolicy.ResourceSignal.Count", 1)
+        asg_customer.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        asg_customer.cfn_options.condition = customer_vpc_given_condition
 
         # sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
         #     self,
