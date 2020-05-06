@@ -122,22 +122,31 @@ EOF
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
+# write application configuration values to env
+echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$(aws ssm get-parameter --name /oe/patterns/drupal/database-name --query Parameter.Value) >> /etc/profile
+echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$(aws ssm get-parameter --name /oe/patterns/drupal/database-user --query Parameter.Value) >> /etc/profile
+# TODO: currently using regular string ssm parameter for password to allow for user input use case
+echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$(aws ssm get-parameter --name /oe/patterns/drupal/database-password --query Parameter.Value) >> /etc/profile
+echo export OE_PATTERNS_DRUPAL_HASH_SALT=$(aws ssm get-parameter --name /oe/patterns/drupal/hash-salt --query Parameter.Value) >> /etc/profile
+echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$(aws ssm get-parameter --name /oe/patterns/drupal/config-sync-directory --query Parameter.Value) >> /etc/profile
+
+mkdir -p /opt/oe/patterns/drupal
 cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
 <?php
 
-$settings['hash_salt'] = 'Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA';
+$settings['hash_salt'] = getenv('OE_PATTERNS_DRUPAL_HASH_SALT');
 
 $databases['default']['default'] = array (
-  'database' => 'drupal',
-  'username' => 'dbadmin',
-  'password' => 'dbpassword',
+  'database' => getenv('OE_PATTERNS_DRUPAL_DATABASE_NAME'),
+  'username' => getenv('OE_PATTERNS_DRUPAL_DATABASE_USER'),
+  'password' => getenv('OE_PATTERNS_DRUPAL_DATABASE_PASSWORD'),
   'prefix' => '',
   'host' => '${DBCluster.Endpoint.Address}',
   'port' => '${DBCluster.Endpoint.Port}',
   'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
   'driver' => 'mysql',
 );
-$settings['config_sync_directory'] = 'sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync';
+$settings['config_sync_directory'] = getenv('OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY');
 EOF
 
 # apache

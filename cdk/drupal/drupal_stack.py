@@ -14,6 +14,7 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     core
 )
 
@@ -123,7 +124,8 @@ class DrupalStack(core.Stack):
                     exclude_punctuation=True,
                     generate_string_key="password",
                     secret_string_template=json.dumps({"username":"dbadmin"})
-                )
+                ),
+                secret_name="oe/patterns/drupal/database-password"
             )
             db_username = db_secret.secret_value_from_json("username").to_string()
             db_password = db_secret.secret_value_from_json("password").to_string()
@@ -369,6 +371,71 @@ class DrupalStack(core.Stack):
 
         # CICD Pipeline
 
+        # ssm
+        ssm_drupal_database_name_string_parameter = aws_ssm.StringParameter(
+            self,
+            "SsmDrupalDatabaseNameStringParameter",
+            description="The name of the database for the Drupal application.",
+            parameter_name="/oe/patterns/drupal/database-name",
+            string_value="drupal", # TODO: from param?
+            type=aws_ssm.ParameterType.STRING
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_string_parameter = aws_ssm.StringParameter(
+            self,
+            "SsmDrupalDatabasePasswordSecuredStringParameter",
+            description="The database password for the Drupal application.",
+            parameter_name="/oe/patterns/drupal/database-password",
+            string_value="dbpassword", # TODO: from param?
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type=aws_ssm.ParameterType.STRING
+        )
+        ssm_drupal_database_user_string_parameter = aws_ssm.StringParameter(
+            self,
+            "SsmDrupalDatabaseUserStringParameter",
+            description="The database user for the Drupal application.",
+            parameter_name="/oe/patterns/drupal/database-user",
+            string_value="dbadmin", # TODO: from param?
+            type=aws_ssm.ParameterType.STRING
+        )
+        ssm_drupal_hash_salt_string_parameter = aws_ssm.StringParameter(
+            self,
+            "SsmDrupalHashSaltStringParameter",
+            description="The configured hash salt for the Drupal application.",
+            parameter_name="/oe/patterns/drupal/hash-salt",
+            # TODO: from param?
+            string_value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA",
+            type=aws_ssm.ParameterType.STRING
+        )
+        ssm_drupal_config_sync_directory_string_parameter = aws_ssm.StringParameter(
+            self,
+            "SsmDrupalSyncDirectoryStringParameter",
+            description="The configured sync directory for the Drupal application.",
+            parameter_name="/oe/patterns/drupal/config-sync-directory",
+            # TODO: from param?
+            string_value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync",
+            type=aws_ssm.ParameterType.STRING
+        )
+        ssm_parameter_store_policy = aws_iam.Policy(
+            self,
+            "SsmParameterStorePolicy",
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:DescribeParameters" ],
+                    resources=[ "*" ]
+                ),
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:GetParameters" ],
+                    # TODO: specify parameters
+                    resources=[ "*" ]
+                )
+                # TODO: add statement for KMS key decryption?
+            ]
+        )
+        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
+
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -419,8 +486,8 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string(),
-                                    source_artifact_s3_object_key_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string,
+                                    source_artifact_s3_object_key_param.value_as_string
                                 )
                             ]
                         ),
@@ -432,7 +499,7 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string
                                 )
                             ]
                         ),
@@ -484,6 +551,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -498,6 +566,7 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
+        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -529,8 +598,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
