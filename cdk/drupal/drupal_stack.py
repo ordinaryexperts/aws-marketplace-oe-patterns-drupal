@@ -36,6 +36,7 @@ class DrupalStack(core.Stack):
             block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
 
+        # CfnParameters & Conditions
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -99,6 +100,91 @@ class DrupalStack(core.Stack):
             expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
         )
 
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnNotExists",
+            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Enable CloudFront CDN support."
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
+
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+
         # no cert + no vpc given
         cert_arn_and_customer_vpc_does_not_exist_condition = core.CfnCondition(
             self,
@@ -133,6 +219,42 @@ class DrupalStack(core.Stack):
             expression=core.Fn.condition_and(
                 core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
                 core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+            )
+        )
+        # cloudfront enable + no vpc
+        cloudfront_enabled_customer_vpc_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnabledCustomerVpcDoesNotExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
+                core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+            )
+        )
+        # cloudfront enable + vpc
+        cloudfront_enabled_customer_vpc_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnabledCustomerVpcExistsCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
+                core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+            )
+        )
+        # elasticache enable + no vpc
+        elasticache_enabled_customer_vpc_does_not_exist_condition = core.CfnCondition(
+            self,
+            "ElasticacheEnabledCustomerVpcDoesNotExistCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
+                core.Fn.condition_equals(elasticache_enable_param.value, "true")
+            )
+        )
+        # elasticache enable + vpc
+        elasticache_enabled_customer_vpc_exists_condition = core.CfnCondition(
+            self,
+            "ElasticacheEnabledCustomerVpcExistsCondition",
+            expression=core.Fn.condition_and(
+                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
+                core.Fn.condition_equals(elasticache_enable_param.value, "true")
             )
         )
 
@@ -1052,54 +1174,7 @@ class DrupalStack(core.Stack):
         )
         efs_mount_target2_customer.cfn_options.condition = customer_vpc_given_condition
 
-        # # cloudfront
-        # cloudfront_certificate_arn_param = core.CfnParameter(
-        #     self,
-        #     "CloudFrontCertificateArn",
-        #     default="",
-        #     description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
-        # )
-        # cloudfront_certificate_arn_exists_condition = core.CfnCondition(
-        #     self,
-        #     "CloudFrontCertificateArnExists",
-        #     expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        # )
-        # cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
-        #     self,
-        #     "CloudFrontCertificateArnNotExists",
-        #     expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
-        # )
-        # cloudfront_enable_param = core.CfnParameter(
-        #     self,
-        #     "CloudFrontEnableParam",
-        #     allowed_values=[ "true", "false" ],
-        #     default="true",
-        #     description="Enable CloudFront CDN support."
-        # )
-        # cloudfront_enable_condition = core.CfnCondition(
-        #     self,
-        #     "CloudFrontEnableCondition",
-        #     expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-        # )
-        # cloudfront_origin_access_policy_param = core.CfnParameter(
-        #     self,
-        #     "CloudFrontOriginAccessPolicyParam",
-        #     allowed_values = [ "http-only", "https-only", "match-viewer" ],
-        #     default="match-viewer",
-        #     description="CloudFront access policy for communicating with content origin."
-        # )
-        # cloudfront_price_class_param = core.CfnParameter(
-        #     self,
-        #     "CloudFrontPriceClassParam",
-        #     # possible to use a map to make the values more human readable
-        #     allowed_values = [
-        #         "PriceClass_All",
-        #         "PriceClass_200",
-        #         "PriceClass_100"
-        #     ],
-        #     default="PriceClass_All",
-        #     description="Price class to use for CloudFront CDN."
-        # )
+        # cloudfront
         # cloudfront_distribution = aws_cloudfront.CfnDistribution(
         #     self,
         #     "CloudFrontDistribution",
@@ -1160,43 +1235,8 @@ class DrupalStack(core.Stack):
         #     description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
         #     value=cloudfront_distribution.attr_domain_name
         # )
-        # # elasticache
-        # elasticache_cluster_cache_node_type_param = core.CfnParameter(
-        #     self,
-        #     "ElastiCacheClusterCacheNodeTypeParam",
-        #     allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
-        #     default="cache.t2.micro",
-        #     type="String"
-        # )
-        # elasticache_cluster_engine_version_param = core.CfnParameter(
-        #     self,
-        #     "ElastiCacheClusterEngineVersionParam",
-        #     # TODO: determine which versions are supported by the Drupal memcached module
-        #     allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
-        #     default="1.5.16",
-        #     description="The memcached version of the cache cluster.",
-        #     type="String"
-        # )
-        # elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
-        #     self,
-        #     "ElastiCacheClusterNumCacheNodesParam",
-        #     default=2,
-        #     description="The number of cache nodes in the memcached cluster.",
-        #     min_value=1,
-        #     max_value=20,
-        #     type="Number"
-        # )
-        # elasticache_enable_param = core.CfnParameter(
-        #     self,
-        #     "ElastiCacheEnableParam",
-        #     allowed_values=[ "true", "false" ],
-        #     default="true",
-        # )
-        # elasticache_enable_condition = core.CfnCondition(
-        #     self,
-        #     "ElastiCacheEnableCondition",
-        #     expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
-        # )
+
+        # elasticache
         # elasticache_sg = aws_ec2.SecurityGroup(
         #     self,
         #     "ElastiCacheSg",
