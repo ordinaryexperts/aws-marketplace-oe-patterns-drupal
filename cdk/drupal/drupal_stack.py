@@ -1297,49 +1297,111 @@ class DrupalStack(core.Stack):
         )
         
         # elasticache
-        # elasticache_sg = aws_ec2.SecurityGroup(
-        #     self,
-        #     "ElastiCacheSg",
-        #     vpc=vpc
-        # )
-        # elasticache_sg.add_ingress_rule(
-        #     peer=app_sg,
-        #     connection=aws_ec2.Port.tcp(11211)
-        # )
-        # elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
-        # elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
-        #     self,
-        #     "ElastiCacheSubnetGroup",
-        #     description="ElastiCache subnet group",
-        #     subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
-        # )
-        # elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
-        # elasticache_cluster = aws_elasticache.CfnCacheCluster(
-        #     self,
-        #     "ElastiCacheCluster",
-        #     az_mode="cross-az",
-        #     cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
-        #     cache_subnet_group_name=elasticache_subnet_group.ref,
-        #     engine="memcached",
-        #     engine_version=elasticache_cluster_engine_version_param.value_as_string,
-        #     num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-        #     preferred_availability_zones=core.Stack.of(self).availability_zones,
-        #     vpc_security_group_ids=[ elasticache_sg.security_group_id ]
-        # )
-        # core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
-        # elasticache_cluster.cfn_options.condition = elasticache_enable_condition
-        # elasticache_cluster_id_output = core.CfnOutput(
-        #     self,
-        #     "ElastiCacheClusterIdOutput",
-        #     condition=elasticache_enable_condition,
-        #     description="The Id of the ElastiCache cluster.",
-        #     value=elasticache_cluster.ref
-        # )
-        # elasticache_cluster_endpoint_output = core.CfnOutput(
-        #     self,
-        #     "ElastiCacheClusterEndpointOutput",
-        #     condition=elasticache_enable_condition,
-        #     description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
-        #     value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
-        #                          elasticache_cluster.attr_configuration_endpoint_port)
-        # )
+        elasticache_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "ElastiCacheSg",
+            group_description="ElastiCacheSg using default VPC ID",
+            vpc_id=vpc.vpc_id
+        )
+        elasticache_sg.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
+        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "ElastiCacheSgIngress",
+            from_port=11211,
+            group_id=elasticache_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=11211
+        )
+        elasticache_sg_ingress.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
+        elasticache_sg_customer = aws_ec2.CfnSecurityGroup(
+            self,
+            "ElastiCacheSgCustomer",
+            group_description="ElastiCacheSg using customer VPC ID",
+            vpc_id=customer_vpc_id_param.value_as_string
+        )
+        elasticache_sg_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
+        elasticache_sg_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "ElastiCacheSgIngressCustomer",
+            from_port=11211,
+            group_id=elasticache_sg_customer.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg_customer.ref,
+            to_port=11211
+        )
+        elasticache_sg_ingress_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
+        
+        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
+            self,
+            "ElastiCacheSubnetGroup",
+            description="ElastiCache subnet group",
+            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        )
+        elasticache_subnet_group.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
+        elasticache_subnet_group_customer = aws_elasticache.CfnSubnetGroup(
+            self,
+            "ElastiCacheSubnetGroupCustomer",
+            description="ElastiCache subnet group with customer subnets",
+            subnet_ids=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+        )
+        elasticache_subnet_group_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
+        
+        elasticache_cluster = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheCluster",
+            az_mode="cross-az",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
+            cache_subnet_group_name=elasticache_subnet_group.ref,
+            engine="memcached",
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            preferred_availability_zones=core.Stack.of(self).availability_zones,
+            vpc_security_group_ids=[ elasticache_sg.ref ]
+        )
+        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        elasticache_cluster.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
+        elasticache_cluster_customer = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheClusterCustomer",
+            az_mode="cross-az",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
+            cache_subnet_group_name=elasticache_subnet_group_customer.ref,
+            engine="memcached",
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            preferred_availability_zones=core.Stack.of(self).availability_zones,
+            vpc_security_group_ids=[ elasticache_sg_customer.ref ]
+        )
+        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        elasticache_cluster_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
+        elasticache_cluster_id_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterIdOutput",
+            condition=elasticache_enabled_customer_vpc_does_not_exist_condition,
+            description="The Id of the ElastiCache cluster.",
+            value=elasticache_cluster.ref
+        )
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enabled_customer_vpc_does_not_exist_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
+        )
+        elasticache_cluster_customer_id_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterCustomerIdOutput",
+            condition=elasticache_enabled_customer_vpc_exists_condition,
+            description="The Id of the ElastiCache cluster with customer VPC.",
+            value=elasticache_cluster_customer.ref
+        )
+        elasticache_cluster_customer_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterCustomerEndpointOutput",
+            condition=elasticache_enabled_customer_vpc_exists_condition,
+            description="The endpoint of the cluster with customer VPC for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster_customer.attr_configuration_endpoint_address,
+                                 elasticache_cluster_customer.attr_configuration_endpoint_port)
+        )
