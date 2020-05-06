@@ -107,7 +107,7 @@ class DrupalStack(core.Stack):
         db_snapshot_identifier = None
         db_username = None
         db_password = None
-        db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        db_snapshot_arn = DB_SNAPSHOT
         db_snapshot_param = core.CfnParameter(
             self,
             "DBSnapshotIdentifier",
