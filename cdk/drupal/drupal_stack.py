@@ -450,6 +450,7 @@ class DrupalStack(core.Stack):
             health_check_enabled=None,
             health_check_interval_seconds=None,
             port=80,
+            protocol="HTTP",
             target_type="instance",
             vpc_id=vpc.vpc_id
         )
@@ -475,6 +476,7 @@ class DrupalStack(core.Stack):
             health_check_enabled=None,
             health_check_interval_seconds=None,
             port=80,
+            protocol="HTTP",
             target_type="instance",
             vpc_id=customer_vpc_id_param.value_as_string
         )
@@ -521,6 +523,7 @@ class DrupalStack(core.Stack):
             health_check_enabled=None,
             health_check_interval_seconds=None,
             port=443,
+            protocol="HTTPS",
             target_type="instance",
             vpc_id=vpc.vpc_id
         )
@@ -543,7 +546,7 @@ class DrupalStack(core.Stack):
         https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
 
-        # if cert and vpc given...
+        # # if cert and vpc given...
         http_redirect_listener_customer = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListenerCustomer",
@@ -571,6 +574,7 @@ class DrupalStack(core.Stack):
             health_check_enabled=None,
             health_check_interval_seconds=None,
             port=443,
+            protocol="HTTPS",
             target_type="instance",
             vpc_id=customer_vpc_id_param.value_as_string
         )
@@ -709,7 +713,7 @@ class DrupalStack(core.Stack):
                 )
             )
         )
-        launch_config.cfn_options.condition = customer_vpc_given_condition
+        launch_config_customer.cfn_options.condition = customer_vpc_given_condition
         asg = aws_autoscaling.CfnAutoScalingGroup(
             self,
             "AppAsg",

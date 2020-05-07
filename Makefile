@@ -1,17 +1,15 @@
 bash:
 	docker-compose run -w /code --rm drupal bash
 
+bootstrap:
+	docker-compose run -w /code/cdk --rm drupal cdk bootstrap aws://992593896645/us-east-1
+
 build:
 	docker-compose build
 
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \
-	--parameters CustomerVpcId= \
-	--parameters CustomerVpcPrivateSubnet1=\
-	--parameters CustomerVpcPrivateSubnet2= \
-	--parameters CustomerVpcPublicSubnet1= \
-	--parameters CustomerVpcPublicSubnet2= \
 	--parameters CertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4 \
 	--parameters CloudFrontCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
 
