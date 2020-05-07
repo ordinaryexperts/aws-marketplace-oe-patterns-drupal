@@ -18,7 +18,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-02f82a6c34c985d19"
+AMI="ami-066ae22bcfcc62764"
 DB_SNAPSHOT="arn:aws:rds:us-west-1:992593896645:cluster-snapshot:oe-patterns-drupal-acarlton-snapshot-oe-patterns-drupal-acarlton-dbcluster-dr23p7cx4unn-13ix1kbgrwk17"
 TWO_YEARS_IN_DAYS=731
 
@@ -67,6 +67,7 @@ class DrupalStack(core.Stack):
             "Vpc",
             cidr="10.0.0.0/16"
         )
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         app_sg = aws_ec2.SecurityGroup(
             self,
             "AppSg",
@@ -85,7 +86,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -216,6 +217,7 @@ class DrupalStack(core.Stack):
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
 
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -241,6 +243,31 @@ class DrupalStack(core.Stack):
         )
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+
+        # efs
+        efs_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsSg",
+            vpc=vpc
+        )
+        efs_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(2049)
+        )
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs"
+        )
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.security_group_id ],
+                subnet_id=subnet_id
+            )
+
+        # app
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -326,7 +353,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
@@ -368,8 +395,6 @@ class DrupalStack(core.Stack):
             to_port=443
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
-
-        # CICD Pipeline
 
         # ssm
         ssm_drupal_database_name_parameter = aws_ssm.StringParameter(
@@ -443,6 +468,7 @@ class DrupalStack(core.Stack):
         )
         app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
 
+        # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -645,25 +671,6 @@ class DrupalStack(core.Stack):
             ]
         )
 
-        # EFS
-        efs_sg = aws_ec2.SecurityGroup(
-            self,
-            "EfsSg",
-            vpc=vpc
-        )
-
-        efs_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(2049)
-        )
-
-        efs = aws_efs.FileSystem(
-            self,
-            "AppEfs",
-            security_group=efs_sg,
-            vpc=vpc
-        )
-
         # elasticache
         elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
@@ -715,7 +722,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(

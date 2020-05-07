@@ -122,6 +122,11 @@ EOF
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
+# efs
+mkdir /mnt/efs
+mount -t efs "${AppEfs}":/ /mnt/efs
+echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
+
 # write application configuration values to env
 DB_NAME=$(aws ssm get-parameter --name /oe/patterns/drupal/database-name --query Parameter.Value --output text)
 DB_USER=$(aws ssm get-parameter --name /oe/patterns/drupal/database-user --query Parameter.Value --output text)

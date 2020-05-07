@@ -36,6 +36,14 @@ chmod +x ./install
 ./install auto
 cd -
 
+# install efs mount helper - requires git
+apt-get -y install bin-utils git
+git clone https://github.com/aws/efs-utils /tmp/efs-utils
+cd /tmp/efs-utils
+./build-deb.sh
+apt-get install -y ./build/amazon-efs-utils*deb
+cd -
+
 # install apache and php
 apt-get -y install            \
         apache2               \
