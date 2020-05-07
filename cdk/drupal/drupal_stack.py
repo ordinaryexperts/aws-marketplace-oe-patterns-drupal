@@ -372,7 +372,7 @@ class DrupalStack(core.Stack):
         # CICD Pipeline
 
         # ssm
-        ssm_drupal_database_name_string_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_name_parameter = aws_ssm.StringParameter(
             self,
             "SsmDrupalDatabaseNameStringParameter",
             description="The name of the database for the Drupal application.",
@@ -381,7 +381,7 @@ class DrupalStack(core.Stack):
             type=aws_ssm.ParameterType.STRING
         )
         # cannot create SECURE_STRING parameters via cloudformation
-        ssm_drupal_database_password_string_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_password_parameter = aws_ssm.StringParameter(
             self,
             "SsmDrupalDatabasePasswordSecuredStringParameter",
             description="The database password for the Drupal application.",
@@ -390,7 +390,7 @@ class DrupalStack(core.Stack):
             # type=aws_ssm.ParameterType.SECURE_STRING
             type=aws_ssm.ParameterType.STRING
         )
-        ssm_drupal_database_user_string_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_user_parameter = aws_ssm.StringParameter(
             self,
             "SsmDrupalDatabaseUserStringParameter",
             description="The database user for the Drupal application.",
@@ -398,7 +398,7 @@ class DrupalStack(core.Stack):
             string_value="dbadmin", # TODO: from param?
             type=aws_ssm.ParameterType.STRING
         )
-        ssm_drupal_hash_salt_string_parameter = aws_ssm.StringParameter(
+        ssm_drupal_hash_salt_parameter = aws_ssm.StringParameter(
             self,
             "SsmDrupalHashSaltStringParameter",
             description="The configured hash salt for the Drupal application.",
@@ -407,7 +407,7 @@ class DrupalStack(core.Stack):
             string_value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA",
             type=aws_ssm.ParameterType.STRING
         )
-        ssm_drupal_config_sync_directory_string_parameter = aws_ssm.StringParameter(
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.StringParameter(
             self,
             "SsmDrupalSyncDirectoryStringParameter",
             description="The configured sync directory for the Drupal application.",
@@ -429,7 +429,14 @@ class DrupalStack(core.Stack):
                     effect=aws_iam.Effect.ALLOW,
                     actions=[ "ssm:GetParameters" ],
                     # TODO: specify parameters
-                    resources=[ "*" ]
+                    resources=[
+                        ssm_drupal_database_name_parameter.parameter_arn,
+                        ssm_drupal_database_password_parameter.parameter_arn,
+                        ssm_drupal_database_user_parameter.parameter_arn,
+                        ssm_drupal_database_name_parameter.parameter_arn,
+                        ssm_drupal_hash_salt_parameter.parameter_arn,
+                        ssm_drupal_config_sync_directory_parameter.parameter_arn
+                    ]
                 )
                 # TODO: add statement for KMS key decryption?
             ]
