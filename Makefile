@@ -38,6 +38,18 @@ synth:
 	--path-metadata false \
 	--asset-metadata false
 
+synth-drupal-stack:
+	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-drupal-helenkim \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false
+
+synth-vpc-stack:
+	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-vpc-helenkim \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false
+
 test:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
