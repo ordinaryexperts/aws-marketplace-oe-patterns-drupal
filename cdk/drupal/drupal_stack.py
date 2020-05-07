@@ -1359,7 +1359,7 @@ class DrupalStack(core.Stack):
             preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg.ref ]
         )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", self.stack_name)
         elasticache_cluster.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_cluster_customer = aws_elasticache.CfnCacheCluster(
             self,
@@ -1373,7 +1373,7 @@ class DrupalStack(core.Stack):
             preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg_customer.ref ]
         )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        core.Tag.add(elasticache_cluster_customer, "oe:patterns:drupal:stack", self.stack_name)
         elasticache_cluster_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
         elasticache_cluster_id_output = core.CfnOutput(
             self,
