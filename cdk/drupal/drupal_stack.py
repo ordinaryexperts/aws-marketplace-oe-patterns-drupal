@@ -18,7 +18,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-0a3f10562bb95d4b9"
+AMI="ami-02f82a6c34c985d19"
 DB_SNAPSHOT="arn:aws:rds:us-west-1:992593896645:cluster-snapshot:oe-patterns-drupal-acarlton-snapshot-oe-patterns-drupal-acarlton-dbcluster-dr23p7cx4unn-13ix1kbgrwk17"
 TWO_YEARS_IN_DAYS=731
 

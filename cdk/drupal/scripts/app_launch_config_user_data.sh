@@ -123,12 +123,26 @@ systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
 # write application configuration values to env
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$(aws ssm get-parameter --name /oe/patterns/drupal/database-name --query Parameter.Value) >> /etc/profile
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$(aws ssm get-parameter --name /oe/patterns/drupal/database-user --query Parameter.Value) >> /etc/profile
+DB_NAME=$(aws ssm get-parameter --name /oe/patterns/drupal/database-name --query Parameter.Value --output text)
+DB_USER=$(aws ssm get-parameter --name /oe/patterns/drupal/database-user --query Parameter.Value --output text)
+DB_PASSWORD=$(aws ssm get-parameter --name /oe/patterns/drupal/database-password --query Parameter.Value --output text)
+HASH_SALT=$(aws ssm get-parameter --name /oe/patterns/drupal/hash-salt --query Parameter.Value --output text)
+CONFIG_SYNC_DIR=$(aws ssm get-parameter --name /oe/patterns/drupal/config-sync-directory --query Parameter.Value --output text)
+
+echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
+echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
 # TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$(aws ssm get-parameter --name /oe/patterns/drupal/database-password --query Parameter.Value) >> /etc/profile
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$(aws ssm get-parameter --name /oe/patterns/drupal/hash-salt --query Parameter.Value) >> /etc/profile
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$(aws ssm get-parameter --name /oe/patterns/drupal/config-sync-directory --query Parameter.Value) >> /etc/profile
+echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh
+echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/profile.d/oe-patterns-drupal.sh
+echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/profile.d/oe-patterns-drupal.sh
+
+echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/apache2/envvars
+echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/apache2/envvars
+# TODO: currently using regular string ssm parameter for password to allow for user input use case
+echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/apache2/envvars
+echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/apache2/envvars
+echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/apache2/envvars
+
 
 mkdir -p /opt/oe/patterns/drupal
 cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
