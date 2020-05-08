@@ -263,6 +263,12 @@ class DrupalStack(core.Stack):
             "Vpc",
             cidr="10.0.0.0/16"
         )
+        vpc_customer = customer_vpc_id_param.value_as_string
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        vpc_public_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PUBLIC).subnet_ids
+        vpc_customer_private_subnet_ids = [ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+        vpc_customer_public_subnet_ids = [ customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string ]
+
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
@@ -274,7 +280,7 @@ class DrupalStack(core.Stack):
             self,
             "AppSgCustomerVpc",
             group_description="AppSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         app_sg_customer.cfn_options.condition = customer_vpc_given_condition
 
@@ -299,7 +305,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSgCustomerVpc",
             group_description="DBSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         db_sg_customer.cfn_options.condition = customer_vpc_given_condition
         db_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -317,7 +323,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         db_subnet_group.cfn_options.condition = customer_vpc_not_given_condition
         db_customer_subnet_group = aws_rds.CfnDBSubnetGroup(
@@ -421,7 +427,7 @@ class DrupalStack(core.Stack):
             self,
             "AlbSgCustomerVpc",
             group_description="AlbSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         alb_sg_customer.cfn_options.condition = customer_vpc_given_condition
         alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
@@ -429,7 +435,7 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            subnets=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PUBLIC).subnet_ids,
+            subnets=vpc_public_subnet_ids,
             type="application"
         )
         alb.cfn_options.condition = customer_vpc_not_given_condition
@@ -438,7 +444,7 @@ class DrupalStack(core.Stack):
             "AppAlbCustomer",
             scheme="internet-facing",
             security_groups=[ alb_sg_customer.ref ],
-            subnets=[customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string],
+            subnets=vpc_customer_public_subnet_ids,
             type="application"
         )
         alb_customer.cfn_options.condition = customer_vpc_given_condition
@@ -478,7 +484,7 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         http_target_group_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
         http_listener_customer = aws_elasticloadbalancingv2.CfnListener(
@@ -576,7 +582,7 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         https_target_group_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
         https_listener_customer = aws_elasticloadbalancingv2.CfnListener(
@@ -724,7 +730,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
@@ -753,7 +759,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+            vpc_zone_identifier=vpc_customer_private_subnet_ids
         )
         asg_customer.add_override(
             "Properties.TargetGroupARNs",
@@ -1119,7 +1125,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSgCustomer",
             group_description="EfsSg using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
         efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1147,38 +1153,24 @@ class DrupalStack(core.Stack):
         )
         efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
         efs_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_mount_target1 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget1",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids[0]
-        )
-        efs_mount_target1.cfn_options.condition = customer_vpc_not_given_condition
-        efs_mount_target2 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget2",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids[1]
-        )
-        efs_mount_target2.cfn_options.condition = customer_vpc_not_given_condition
-        efs_mount_target1_customer = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget1Customer",
-            file_system_id=efs_customer.ref,
-            security_groups=[ efs_sg_customer.ref ],
-            subnet_id=customer_vpc_private_subnet_id1.value_as_string
-        )
-        efs_mount_target1_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_mount_target2_customer = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget2Customer",
-            file_system_id=efs_customer.ref,
-            security_groups=[ efs_sg_customer.ref ],
-            subnet_id=customer_vpc_private_subnet_id2.value_as_string
-        )
-        efs_mount_target2_customer.cfn_options.condition = customer_vpc_given_condition
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target.cfn_options.condition = customer_vpc_not_given_condition
+        for key, subnet_id in enumerate(vpc_customer_private_subnet_ids, start=1):
+            efs_mount_target_customer = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsCustomerMountTarget" + str(key),
+                file_system_id=efs_customer.ref,
+                security_groups=[ efs_sg_customer.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target_customer.cfn_options.condition = customer_vpc_given_condition
 
         # cloudfront
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
@@ -1324,7 +1316,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSgCustomer",
             group_description="ElastiCacheSg using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         elasticache_sg_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
         elasticache_sg_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
@@ -1342,14 +1334,14 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_subnet_group_customer = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroupCustomer",
             description="ElastiCache subnet group with customer subnets",
-            subnet_ids=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+            subnet_ids=vpc_customer_private_subnet_ids
         )
         elasticache_subnet_group_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
         
