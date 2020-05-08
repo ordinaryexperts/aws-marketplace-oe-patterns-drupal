@@ -22,6 +22,7 @@ setuptools.setup(
 
     install_requires=[
         f"aws-cdk.aws-autoscaling=={CDK_VERSION}",
+        f"aws-cdk.aws-cloudfront=={CDK_VERSION}",
         f"aws-cdk.aws-codedeploy=={CDK_VERSION}",
         f"aws-cdk.aws-codepipeline-actions=={CDK_VERSION}",
         f"aws-cdk.aws-codepipeline=={CDK_VERSION}",

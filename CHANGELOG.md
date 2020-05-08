@@ -6,3 +6,5 @@
 * Initial CICD Pipeline
 * Do not use custom names for security groups
 * Upgrade CDK to 1.36.1
+* Add CloudFront support
+* Move to us-east-1

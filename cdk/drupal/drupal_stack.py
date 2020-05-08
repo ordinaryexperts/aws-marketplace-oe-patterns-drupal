@@ -1,6 +1,7 @@
 import json
 from aws_cdk import (
     aws_autoscaling,
+    aws_cloudfront,
     aws_codedeploy,
     aws_codepipeline,
     aws_codepipeline_actions,
@@ -19,7 +20,7 @@ from aws_cdk import (
 )
 
 AMI="ami-066ae22bcfcc62764"
-DB_SNAPSHOT="arn:aws:rds:us-west-1:992593896645:cluster-snapshot:oe-patterns-drupal-acarlton-snapshot-oe-patterns-drupal-acarlton-dbcluster-dr23p7cx4unn-13ix1kbgrwk17"
+DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -108,7 +109,7 @@ class DrupalStack(core.Stack):
         db_snapshot_identifier = None
         db_username = None
         db_password = None
-        db_snapshot_arn = self.node.try_get_context("oe-patterns:drupal:rds-db-cluster-snapshot-arn")
+        db_snapshot_arn = DB_SNAPSHOT
         db_snapshot_param = core.CfnParameter(
             self,
             "DBSnapshotIdentifier",
@@ -734,7 +735,6 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
         core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
@@ -753,4 +753,113 @@ class DrupalStack(core.Stack):
             description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
             value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
                                  elasticache_cluster.attr_configuration_endpoint_port)
+        )
+
+        # cloudfront
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnNotExists",
+            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Enable CloudFront CDN support."
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                comment=self.stack_name,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.load_balancer_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        "AWS::NoValue"
+                    ).to_string(),
+                    ssl_support_method= core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Fn.ref("AWS::NoValue")
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enable_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
         )
