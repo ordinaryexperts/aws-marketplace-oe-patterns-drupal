@@ -19,8 +19,8 @@ tests:
       CustomerVpcPublicSubnet2: ''
   customerVpc:
     parameters:
-      CustomerVpcId: ''
-      CustomerVpcPrivateSubnet1: ''
-      CustomerVpcPrivateSubnet2: ''
-      CustomerVpcPublicSubnet1: ''
-      CustomerVpcPublicSubnet2: ''
+      CustomerVpcId: vpc-00425deda4c835455
+      CustomerVpcPrivateSubnet1: subnet-030c94b9795c6cb96
+      CustomerVpcPrivateSubnet2: subnet-079290412ce63c4d5
+      CustomerVpcPublicSubnet1: subnet-0c2f5d4daa1792c8d
+      CustomerVpcPublicSubnet2: subnet-060c39a6ded9e89d7
