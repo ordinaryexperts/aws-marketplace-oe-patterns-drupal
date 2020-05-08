@@ -398,49 +398,49 @@ class DrupalStack(core.Stack):
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # ssm
-        ssm_drupal_database_name_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
             self,
-            "SsmDrupalDatabaseNameStringParameter",
+            "SsmDrupalDatabaseNameParameter",
             description="The name of the database for the Drupal application.",
-            parameter_name="/oe/patterns/drupal/database-name",
-            string_value="drupal", # TODO: from param?
-            type=aws_ssm.ParameterType.STRING
+            name="/{}/drupal/database-name".format(self.stack_name),
+            type="String",
+            value="drupal" # TODO: from param?
         )
         # cannot create SECURE_STRING parameters via cloudformation
-        ssm_drupal_database_password_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
             self,
-            "SsmDrupalDatabasePasswordSecuredStringParameter",
+            "SsmDrupalDatabasePasswordParameter",
             description="The database password for the Drupal application.",
-            parameter_name="/oe/patterns/drupal/database-password",
-            string_value="dbpassword", # TODO: from param?
+            name="/{}/drupal/database-password".format(self.stack_name),
             # type=aws_ssm.ParameterType.SECURE_STRING
-            type=aws_ssm.ParameterType.STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
         )
-        ssm_drupal_database_user_parameter = aws_ssm.StringParameter(
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
             self,
-            "SsmDrupalDatabaseUserStringParameter",
+            "SsmDrupalDatabaseUserParameter",
             description="The database user for the Drupal application.",
-            parameter_name="/oe/patterns/drupal/database-user",
-            string_value="dbadmin", # TODO: from param?
-            type=aws_ssm.ParameterType.STRING
+            name="/{}/drupal/database-user".format(self.stack_name),
+            type="String",
+            value="dbadmin" # TODO: from param?
         )
-        ssm_drupal_hash_salt_parameter = aws_ssm.StringParameter(
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
             self,
-            "SsmDrupalHashSaltStringParameter",
+            "SsmDrupalHashSaltParameter",
             description="The configured hash salt for the Drupal application.",
-            parameter_name="/oe/patterns/drupal/hash-salt",
+            name="/{}/drupal/hash-salt".format(self.stack_name),
+            type="String",
             # TODO: from param?
-            string_value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA",
-            type=aws_ssm.ParameterType.STRING
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
         )
-        ssm_drupal_config_sync_directory_parameter = aws_ssm.StringParameter(
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
             self,
-            "SsmDrupalSyncDirectoryStringParameter",
+            "SsmDrupalSyncDirectoryParameter",
             description="The configured sync directory for the Drupal application.",
-            parameter_name="/oe/patterns/drupal/config-sync-directory",
+            name="/{}/drupal/config-sync-directory".format(self.stack_name),
+            type="String",
             # TODO: from param?
-            string_value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync",
-            type=aws_ssm.ParameterType.STRING
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
         )
         ssm_parameter_store_policy = aws_iam.Policy(
             self,
@@ -454,14 +454,8 @@ class DrupalStack(core.Stack):
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
                     actions=[ "ssm:GetParameters" ],
-                    # TODO: specify parameters
                     resources=[
-                        ssm_drupal_database_name_parameter.parameter_arn,
-                        ssm_drupal_database_password_parameter.parameter_arn,
-                        ssm_drupal_database_user_parameter.parameter_arn,
-                        ssm_drupal_database_name_parameter.parameter_arn,
-                        ssm_drupal_hash_salt_parameter.parameter_arn,
-                        ssm_drupal_config_sync_directory_parameter.parameter_arn
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
                     ]
                 )
                 # TODO: add statement for KMS key decryption?

@@ -128,13 +128,13 @@ mount -t efs "${AppEfs}":/ /mnt/efs
 echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 
 # write application configuration values to env
-DB_NAME=$(aws ssm get-parameter --name /oe/patterns/drupal/database-name --query Parameter.Value --output text)
-DB_USER=$(aws ssm get-parameter --name /oe/patterns/drupal/database-user --query Parameter.Value --output text)
-DB_PASSWORD=$(aws ssm get-parameter --name /oe/patterns/drupal/database-password --query Parameter.Value --output text)
-HASH_SALT=$(aws ssm get-parameter --name /oe/patterns/drupal/hash-salt --query Parameter.Value --output text)
-CONFIG_SYNC_DIR=$(aws ssm get-parameter --name /oe/patterns/drupal/config-sync-directory --query Parameter.Value --output text)
+DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
+DB_USER=${SsmDrupalDatabaseUserParameter.Value}
+DB_PASSWORD=${SsmDrupalDatabasePasswordParameter.Value}
+HASH_SALT=${SsmDrupalHashSaltParameter.Value}
+CONFIG_SYNC_DIR=${SsmDrupalSyncDirectoryParameter.Value}
 
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
+echo export OE_PATTERNS_DRUPAL_DATABASE_NAME= >> /etc/profile.d/oe-patterns-drupal.sh
 echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
 # TODO: currently using regular string ssm parameter for password to allow for user input use case
 echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh
