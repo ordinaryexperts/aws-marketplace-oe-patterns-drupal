@@ -18,7 +18,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-020957f1bf92e5753"
+AMI="ami-0a863e107cefed1f4"
 DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
@@ -1354,7 +1354,6 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg.ref ]
         )
         core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", self.stack_name)
@@ -1368,7 +1367,6 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg_customer.ref ]
         )
         core.Tag.add(elasticache_cluster_customer, "oe:patterns:drupal:stack", self.stack_name)
