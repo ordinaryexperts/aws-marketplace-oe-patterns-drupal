@@ -278,7 +278,7 @@ class DrupalStack(core.Stack):
         )
         app_sg_customer.cfn_options.condition = customer_vpc_given_condition
 
-        db_sg= aws_ec2.CfnSecurityGroup(
+        db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
             group_description="DBSG using default VPC ID",
@@ -686,6 +686,8 @@ class DrupalStack(core.Stack):
         )
         with open('drupal/scripts/app_launch_config_user_data.sh') as f:
             app_launch_config_user_data = f.read()
+        with open('drupal/scripts/app_launch_config_user_data_customer.sh') as f:
+            app_launch_config_user_data_customer = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
@@ -709,7 +711,7 @@ class DrupalStack(core.Stack):
             security_groups=[ app_sg_customer.ref ],
             user_data=(
                 core.Fn.base64(
-                    core.Fn.sub(app_launch_config_user_data)
+                    core.Fn.sub(app_launch_config_user_data_customer)
                 )
             )
         )
