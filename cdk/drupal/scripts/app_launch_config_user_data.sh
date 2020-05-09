@@ -126,6 +126,8 @@ systemctl start amazon-cloudwatch-agent
 mkdir /mnt/efs
 mount -t efs "${AppEfs}":/ /mnt/efs
 echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
+mkdir -p /mnt/efs/drupal/files
+chown www-data /mnt/efs/drupal/files
 
 # write application configuration values to env
 DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
@@ -134,7 +136,7 @@ DB_PASSWORD=${SsmDrupalDatabasePasswordParameter.Value}
 HASH_SALT=${SsmDrupalHashSaltParameter.Value}
 CONFIG_SYNC_DIR=${SsmDrupalSyncDirectoryParameter.Value}
 
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME= >> /etc/profile.d/oe-patterns-drupal.sh
+echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
 echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
 # TODO: currently using regular string ssm parameter for password to allow for user input use case
 echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh

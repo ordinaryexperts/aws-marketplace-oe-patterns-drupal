@@ -40,7 +40,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
@@ -161,6 +161,12 @@ class DrupalStack(core.Stack):
             internet_facing=True,
             security_group=alb_sg,
             vpc=vpc
+        )
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.load_balancer_dns_name
         )
         # if there is no cert...
         http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
