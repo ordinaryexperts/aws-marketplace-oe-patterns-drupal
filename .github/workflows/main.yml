@@ -10,8 +10,8 @@ on:
 
 jobs:
   build:
-    container:
-      image: 'ubuntu:20.04'
+    runs-on: ubuntu-latest
+    container: 'ubuntu:focal'
     steps:
     - uses: actions/checkout@v2
 
