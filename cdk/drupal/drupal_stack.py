@@ -502,6 +502,14 @@ class DrupalStack(core.Stack):
             description="The DNS name of the application load balancer.",
             value=alb.attr_dns_name
         )
+        alb_dns_name_output.cfn_options.condition = customer_vpc_not_given_condition
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb_customer.attr_dns_name
+        )
+        alb_dns_name_output.cfn_options.condition = customer_vpc_given_condition
 
         # if no cert + no vpc given...
         http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
