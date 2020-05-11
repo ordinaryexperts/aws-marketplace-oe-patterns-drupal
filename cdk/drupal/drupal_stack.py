@@ -642,7 +642,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
