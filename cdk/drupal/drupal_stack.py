@@ -664,12 +664,12 @@ class DrupalStack(core.Stack):
                     acm_certificate_arn=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         cloudfront_certificate_arn_param.value_as_string,
-                        core.Fn.ref("AWS::NoValue")
+                        core.Aws.NO_VALUE
                     ).to_string(),
                     ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
-                        core.Fn.ref("AWS::NoValue")
+                        core.Aws.NO_VALUE
                     ).to_string()
                 )
             )
