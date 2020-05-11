@@ -3,7 +3,7 @@ name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
 on:
   push:
-    branches: [ master, develop, 'hotfix/*', 'release/*', 'feature/*' ]
+    branches: [ master, develop, 'hotfix/*', 'release/*' ]
     tags: [ '*' ]
   pull_request:
     branches: [ 'feature/*' ]
