@@ -1,4 +1,3 @@
-# Workflow to test Drupal pattern with taskcat
 name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
 on:
