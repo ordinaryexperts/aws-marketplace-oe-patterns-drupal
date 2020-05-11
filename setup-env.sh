@@ -14,7 +14,7 @@ apt-get -y -q -o=Dpkg::Use-Pty=0 install curl unzip vim wget
 # aws cli
 cd /tmp
 curl --silent --show-error https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip
-unzip awscliv2.zip
+unzip -q awscliv2.zip
 ./aws/install
 cd -
 
