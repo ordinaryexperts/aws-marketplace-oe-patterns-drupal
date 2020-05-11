@@ -338,7 +338,7 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
-        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
@@ -489,7 +489,7 @@ class DrupalStack(core.Stack):
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name=self.stack_name,
+            application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
 
@@ -505,7 +505,7 @@ class DrupalStack(core.Stack):
             "CodeDeployDeploymentGroup",
             application_name=code_deploy_application.application_name,
             auto_scaling_groups=[asg.ref],
-            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=code_deploy_role.role_arn
         )
@@ -637,8 +637,8 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
                     compress=False,
@@ -756,7 +756,7 @@ class DrupalStack(core.Stack):
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster_id_output = core.CfnOutput(
             self,
