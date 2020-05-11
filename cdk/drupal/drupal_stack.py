@@ -15,10 +15,11 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     core
 )
 
-AMI="ami-020957f1bf92e5753"
+AMI="ami-0a863e107cefed1f4"
 DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
@@ -39,7 +40,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
@@ -67,6 +68,7 @@ class DrupalStack(core.Stack):
             "Vpc",
             cidr="10.0.0.0/16"
         )
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         app_sg = aws_ec2.SecurityGroup(
             self,
             "AppSg",
@@ -85,7 +87,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -124,7 +126,8 @@ class DrupalStack(core.Stack):
                     exclude_punctuation=True,
                     generate_string_key="password",
                     secret_string_template=json.dumps({"username":"dbadmin"})
-                )
+                ),
+                secret_name="oe/patterns/drupal/database-password"
             )
             db_username = db_secret.secret_value_from_json("username").to_string()
             db_password = db_secret.secret_value_from_json("password").to_string()
@@ -158,6 +161,12 @@ class DrupalStack(core.Stack):
             internet_facing=True,
             security_group=alb_sg,
             vpc=vpc
+        )
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.load_balancer_dns_name
         )
         # if there is no cert...
         http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
@@ -215,6 +224,7 @@ class DrupalStack(core.Stack):
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
 
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -240,6 +250,31 @@ class DrupalStack(core.Stack):
         )
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+
+        # efs
+        efs_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsSg",
+            vpc=vpc
+        )
+        efs_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(2049)
+        )
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs"
+        )
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.security_group_id ],
+                subnet_id=subnet_id
+            )
+
+        # app
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -325,7 +360,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
@@ -368,8 +403,73 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
-        # CICD Pipeline
+        # ssm
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(self.stack_name),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(self.stack_name),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(self.stack_name),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
+        ssm_parameter_store_policy = aws_iam.Policy(
+            self,
+            "SsmParameterStorePolicy",
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:DescribeParameters" ],
+                    resources=[ "*" ]
+                ),
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:GetParameters" ],
+                    resources=[
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
+                    ]
+                )
+                # TODO: add statement for KMS key decryption?
+            ]
+        )
+        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
 
+        # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -420,8 +520,8 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string(),
-                                    source_artifact_s3_object_key_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string,
+                                    source_artifact_s3_object_key_param.value_as_string
                                 )
                             ]
                         ),
@@ -433,7 +533,7 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string
                                 )
                             ]
                         ),
@@ -485,6 +585,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -499,6 +600,7 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
+        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -530,8 +632,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -570,23 +672,87 @@ class DrupalStack(core.Stack):
             ]
         )
 
-        # EFS
-        efs_sg = aws_ec2.SecurityGroup(
+        # elasticache
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
-            "EfsSg",
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+        elasticache_sg = aws_ec2.SecurityGroup(
+            self,
+            "ElastiCacheSg",
             vpc=vpc
         )
-
-        efs_sg.add_ingress_rule(
+        elasticache_sg.add_ingress_rule(
             peer=app_sg,
-            connection=aws_ec2.Port.tcp(2049)
+            connection=aws_ec2.Port.tcp(11211)
         )
-
-        efs = aws_efs.FileSystem(
+        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
+        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
-            "AppEfs",
-            security_group=efs_sg,
-            vpc=vpc
+            "ElastiCacheSubnetGroup",
+            description="ElastiCache subnet group",
+            subnet_ids=vpc_private_subnet_ids
+        )
+        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheCluster",
+            az_mode="cross-az",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
+            cache_subnet_group_name=elasticache_subnet_group.ref,
+            engine="memcached",
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
+        )
+        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster_id_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterIdOutput",
+            condition=elasticache_enable_condition,
+            description="The Id of the ElastiCache cluster.",
+            value=elasticache_cluster.ref
+        )
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enable_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
         )
 
         # cloudfront
@@ -696,86 +862,4 @@ class DrupalStack(core.Stack):
             condition=cloudfront_enable_condition,
             description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
             value=cloudfront_distribution.attr_domain_name
-        )
-        # elasticache
-        elasticache_cluster_cache_node_type_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterCacheNodeTypeParam",
-            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
-            default="cache.t2.micro",
-            type="String"
-        )
-        elasticache_cluster_engine_version_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterEngineVersionParam",
-            # TODO: determine which versions are supported by the Drupal memcached module
-            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
-            default="1.5.16",
-            description="The memcached version of the cache cluster.",
-            type="String"
-        )
-        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterNumCacheNodesParam",
-            default=2,
-            description="The number of cache nodes in the memcached cluster.",
-            min_value=1,
-            max_value=20,
-            type="Number"
-        )
-        elasticache_enable_param = core.CfnParameter(
-            self,
-            "ElastiCacheEnableParam",
-            allowed_values=[ "true", "false" ],
-            default="true",
-        )
-        elasticache_enable_condition = core.CfnCondition(
-            self,
-            "ElastiCacheEnableCondition",
-            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
-        )
-        elasticache_sg = aws_ec2.SecurityGroup(
-            self,
-            "ElastiCacheSg",
-            vpc=vpc
-        )
-        elasticache_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(11211)
-        )
-        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
-        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
-            self,
-            "ElastiCacheSubnetGroup",
-            description="ElastiCache subnet group",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
-        )
-        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster = aws_elasticache.CfnCacheCluster(
-            self,
-            "ElastiCacheCluster",
-            az_mode="cross-az",
-            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
-            cache_subnet_group_name=elasticache_subnet_group.ref,
-            engine="memcached",
-            engine_version=elasticache_cluster_engine_version_param.value_as_string,
-            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
-        )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
-        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster_id_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterIdOutput",
-            condition=elasticache_enable_condition,
-            description="The Id of the ElastiCache cluster.",
-            value=elasticache_cluster.ref
-        )
-        elasticache_cluster_endpoint_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterEndpointOutput",
-            condition=elasticache_enable_condition,
-            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
-            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
-                                 elasticache_cluster.attr_configuration_endpoint_port)
         )
