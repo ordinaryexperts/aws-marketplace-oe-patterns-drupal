@@ -6,6 +6,7 @@ on:
     tags: [ '*' ]
   pull_request:
     branches: [ 'feature/*' ]
+    types: [edited, opened, synchronize, reopened]
 
 jobs:
   taskcat:
