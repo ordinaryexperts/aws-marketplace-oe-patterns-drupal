@@ -373,7 +373,7 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
-        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
@@ -408,7 +408,7 @@ class DrupalStack(core.Stack):
             self,
             "SsmDrupalDatabaseNameParameter",
             description="The name of the database for the Drupal application.",
-            name="/{}/drupal/database-name".format(self.stack_name),
+            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
             type="String",
             value="drupal" # TODO: from param?
         )
@@ -417,7 +417,7 @@ class DrupalStack(core.Stack):
             self,
             "SsmDrupalDatabasePasswordParameter",
             description="The database password for the Drupal application.",
-            name="/{}/drupal/database-password".format(self.stack_name),
+            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
             # type=aws_ssm.ParameterType.SECURE_STRING
             type="String",
             value="dbpassword" # TODO: from param?
@@ -426,7 +426,7 @@ class DrupalStack(core.Stack):
             self,
             "SsmDrupalDatabaseUserParameter",
             description="The database user for the Drupal application.",
-            name="/{}/drupal/database-user".format(self.stack_name),
+            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
             type="String",
             value="dbadmin" # TODO: from param?
         )
@@ -434,7 +434,7 @@ class DrupalStack(core.Stack):
             self,
             "SsmDrupalHashSaltParameter",
             description="The configured hash salt for the Drupal application.",
-            name="/{}/drupal/hash-salt".format(self.stack_name),
+            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
             type="String",
             # TODO: from param?
             value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
@@ -443,7 +443,7 @@ class DrupalStack(core.Stack):
             self,
             "SsmDrupalSyncDirectoryParameter",
             description="The configured sync directory for the Drupal application.",
-            name="/{}/drupal/config-sync-directory".format(self.stack_name),
+            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
             type="String",
             # TODO: from param?
             value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
@@ -461,7 +461,7 @@ class DrupalStack(core.Stack):
                     effect=aws_iam.Effect.ALLOW,
                     actions=[ "ssm:GetParameters" ],
                     resources=[
-                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME)
                     ]
                 )
                 # TODO: add statement for KMS key decryption?
@@ -590,7 +590,7 @@ class DrupalStack(core.Stack):
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name=self.stack_name,
+            application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
 
@@ -607,7 +607,7 @@ class DrupalStack(core.Stack):
             "CodeDeployDeploymentGroup",
             application_name=code_deploy_application.application_name,
             auto_scaling_groups=[asg.ref],
-            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=code_deploy_role.role_arn
         )
@@ -737,7 +737,7 @@ class DrupalStack(core.Stack):
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster_id_output = core.CfnOutput(
             self,
@@ -766,11 +766,6 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontCertificateArnExists",
             expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        )
-        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnNotExists",
-            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
         )
         cloudfront_enable_param = core.CfnParameter(
             self,
@@ -808,8 +803,8 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
+                # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
                     compress=False,
@@ -835,12 +830,12 @@ class DrupalStack(core.Stack):
                     acm_certificate_arn=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
+                        core.Aws.NO_VALUE
                     ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
+                    ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
-                        core.Fn.ref("AWS::NoValue")
+                        core.Aws.NO_VALUE
                     ).to_string()
                 )
             )
