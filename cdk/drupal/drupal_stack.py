@@ -15,6 +15,7 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     core
 )
 
@@ -40,7 +41,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
@@ -263,6 +264,7 @@ class DrupalStack(core.Stack):
             "Vpc",
             cidr="10.0.0.0/16"
         )
+
         vpc_customer = customer_vpc_id_param.value_as_string
         vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         vpc_public_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PUBLIC).subnet_ids
@@ -330,7 +332,7 @@ class DrupalStack(core.Stack):
             self,
             "DBCustomerSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=[customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string]
+            subnet_ids=vpc_customer_private_subnet_ids
         )
         db_customer_subnet_group.cfn_options.condition = customer_vpc_given_condition
 
@@ -371,7 +373,8 @@ class DrupalStack(core.Stack):
                     exclude_punctuation=True,
                     generate_string_key="password",
                     secret_string_template=json.dumps({"username":"dbadmin"})
-                )
+                ),
+                secret_name="oe/patterns/drupal/database-password"
             )
             db_username = db_secret.secret_value_from_json("username").to_string()
             db_password = db_secret.secret_value_from_json("password").to_string()
@@ -492,6 +495,13 @@ class DrupalStack(core.Stack):
             type="application"
         )
         alb_customer.cfn_options.condition = customer_vpc_given_condition
+
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.attr_dns_name
+        )
 
         # if no cert + no vpc given...
         http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
@@ -647,6 +657,7 @@ class DrupalStack(core.Stack):
         https_listener_customer.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -672,6 +683,8 @@ class DrupalStack(core.Stack):
         )
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+
+        # app
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -872,8 +885,73 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
-        # CICD Pipeline
+        # ssm
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(self.stack_name),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(self.stack_name),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(self.stack_name),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
+        ssm_parameter_store_policy = aws_iam.Policy(
+            self,
+            "SsmParameterStorePolicy",
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:DescribeParameters" ],
+                    resources=[ "*" ]
+                ),
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:GetParameters" ],
+                    resources=[
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
+                    ]
+                )
+                # TODO: add statement for KMS key decryption?
+            ]
+        )
+        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
 
+        # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -924,8 +1002,8 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string(),
-                                    source_artifact_s3_object_key_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string,
+                                    source_artifact_s3_object_key_param.value_as_string
                                 )
                             ]
                         ),
@@ -937,7 +1015,7 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string
                                 )
                             ]
                         ),
@@ -989,6 +1067,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -1003,6 +1082,7 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
+        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -1045,8 +1125,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -1222,7 +1302,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
@@ -1282,7 +1362,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistributionCustomer",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
