@@ -16,5 +16,5 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: run setup-env.sh
-      run: sudo bash setup-env.sh
+      run: bash setup-env.sh
       working-directory: ${{ github.workspace }}
