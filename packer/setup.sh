@@ -1,9 +1,10 @@
 #!/bin/bash -eux
 
 # wait for cloud-init to be done
-cloud-init status --wait
+$IN_DOCKER || cloud-init status --wait
 
 # apt upgrade
+export DEBIAN_FRONTEND=noninteractive
 apt-get -y update && apt-get -y upgrade
 
 # install helpful utilities
