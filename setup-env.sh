@@ -8,8 +8,8 @@ export TASKCAT_VERSION=0.9.17
 
 # system upgrades and tools
 export DEBIAN_FRONTEND=noninteractive
-apt-get -y -qq update && apt-get -y -qq upgrade
-apt-get -y -qq install curl unzip vim wget
+apt-get -y -q -o=Dpkg::Use-Pty=0 update && apt-get -y -q -o=Dpkg::Use-Pty=0 upgrade
+apt-get -y -q -o=Dpkg::Use-Pty=0 install curl unzip vim wget
 
 # aws cli
 cd /tmp
@@ -19,11 +19,11 @@ unzip awscliv2.zip
 cd -
 
 # taskcat
-apt-get -y -qq install python3 python3-pip
-pip3 install taskcat==$TASKCAT_VERSION
+apt-get -y -q -o=Dpkg::Use-Pty=0 install python3 python3-pip
+pip3 install -q taskcat==$TASKCAT_VERSION
 
 # cdk
-apt-get -y -qq install npm
+apt-get -y -q -o=Dpkg::Use-Pty=0 install npm
 npm install -g aws-cdk@$CDK_VERSION
 
 # packer
