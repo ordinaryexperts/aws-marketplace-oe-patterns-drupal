@@ -1,10 +1,6 @@
 # Workflow to test Drupal pattern with taskcat
 name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
-defaults:
-  run:
-    working-directory: ${{ github.workspace }}
-
 on:
   push:
     branches: [ master, develop, 'hotfix/*', 'release/*', 'feature/*' ]
