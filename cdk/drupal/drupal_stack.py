@@ -601,11 +601,6 @@ class DrupalStack(core.Stack):
             "CloudFrontCertificateArnExists",
             expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
         )
-        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnNotExists",
-            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
-        )
         cloudfront_enable_param = core.CfnParameter(
             self,
             "CloudFrontEnableParam",
@@ -669,9 +664,9 @@ class DrupalStack(core.Stack):
                     acm_certificate_arn=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
+                        core.Fn.ref("AWS::NoValue")
                     ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
+                    ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
                         core.Fn.ref("AWS::NoValue")
@@ -743,7 +738,6 @@ class DrupalStack(core.Stack):
             peer=app_sg,
             connection=aws_ec2.Port.tcp(11211)
         )
-        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
         elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroup",
