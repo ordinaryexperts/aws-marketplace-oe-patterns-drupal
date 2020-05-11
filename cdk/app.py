@@ -18,8 +18,7 @@ env_oe_patterns_dev_us_east_1 = core.Environment(account="992593896645", region=
 app = core.App()
 
 vpc_stack = VpcStack(app, "oe-patterns-vpc-{}".format(os.environ['USER']), env=env_oe_patterns_dev_us_east_1)
-DrupalStack(app, "oe-patterns-drupal-{}".format(os.environ['USER']),
-			env=env_oe_patterns_dev_us_east_1,
-			vpc_stack=vpc_stack.stack_name)
+drupal_stack = DrupalStack(app, "oe-patterns-drupal-{}".format(os.environ['USER']), env=env_oe_patterns_dev_us_east_1, vpc_stack=vpc_stack.stack_name)
+drupal_stack.add_dependency(vpc_stack)
 
 app.synth()

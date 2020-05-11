@@ -220,6 +220,14 @@ class VpcStack(core.Stack):
             subnet_id=vpc_private_subnet1.ref
         )
         vpc_private_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_default_route = aws_ec2.CfnRoute(
+            self,
+            "VpcPrivateSubnet1DefaultRoute",
+            route_table_id=vpc_private_subnet1_route_table.ref,
+            destination_cidr_block="0.0.0.0/0",
+            nat_gateway_id=vpc_public_subnet1_nat_gateway.ref
+        )
+        vpc_private_subnet1_default_route.cfn_options.condition=customer_vpc_not_given_condition
 
         vpc_private_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -250,6 +258,14 @@ class VpcStack(core.Stack):
             subnet_id=vpc_private_subnet2.ref
         )
         vpc_private_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_default_route = aws_ec2.CfnRoute(
+            self,
+            "VpcPrivateSubnet2DefaultRoute",
+            route_table_id=vpc_private_subnet2_route_table.ref,
+            destination_cidr_block="0.0.0.0/0",
+            nat_gateway_id=vpc_public_subnet2_nat_gateway.ref
+        )
+        vpc_private_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
 
         vpc_output = core.CfnOutput(
             self,
