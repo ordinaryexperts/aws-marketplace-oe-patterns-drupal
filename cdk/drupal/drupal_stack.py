@@ -26,7 +26,7 @@ TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
 
-    def __init__(self, scope: core.Construct, id: str, vpc, public_subnet1, public_subnet2, private_subnet1, private_subnet2, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, vpc_stack, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # TODO: Encryption
@@ -260,12 +260,11 @@ class DrupalStack(core.Stack):
             )
         )
 
-        vpc = vpc
-        vpc.cfn_options.condition = customer_vpc_not_given_condition
+        vpc = core.Fn.import_value("{}-vpc".format(vpc_stack))
 
         vpc_customer = customer_vpc_id_param.value_as_string
-        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
-        vpc_public_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PUBLIC).subnet_ids
+        vpc_private_subnet_ids = [ core.Fn.import_value("{}-private-subnet1".format(vpc_stack)), core.Fn.import_value("{}-private-subnet2".format(vpc_stack)) ]
+        vpc_public_subnet_ids = [ core.Fn.import_value("{}-public-subnet1".format(vpc_stack)), core.Fn.import_value("{}-public-subnet2".format(vpc_stack)) ]
         vpc_customer_private_subnet_ids = [ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
         vpc_customer_public_subnet_ids = [ customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string ]
 
@@ -273,7 +272,7 @@ class DrupalStack(core.Stack):
             self,
             "AppSg",
             group_description="AppSG using default VPC ID",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         app_sg.cfn_options.condition = customer_vpc_not_given_condition
         app_sg_customer = aws_ec2.CfnSecurityGroup(
@@ -288,7 +287,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSg",
             group_description="DBSG using default VPC ID",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         db_sg.cfn_options.condition = customer_vpc_not_given_condition
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -421,7 +420,7 @@ class DrupalStack(core.Stack):
             self,
             "AlbSg",
             group_description="AlbSG using default VPC ID",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         alb_sg.cfn_options.condition = customer_vpc_not_given_condition
         alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -517,7 +516,7 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         http_target_group.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
         http_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -590,7 +589,7 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         https_target_group.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
         https_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -1237,7 +1236,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSg",
             group_description="EfsSg using default VPC ID",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         efs_sg.cfn_options.condition = customer_vpc_not_given_condition
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1428,7 +1427,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSg",
             group_description="ElastiCacheSg using default VPC ID",
-            vpc_id=vpc.ref
+            vpc_id=vpc
         )
         elasticache_sg.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(

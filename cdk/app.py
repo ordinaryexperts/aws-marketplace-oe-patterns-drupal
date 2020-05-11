@@ -20,10 +20,6 @@ app = core.App()
 vpc_stack = VpcStack(app, "oe-patterns-vpc-{}".format(os.environ['USER']), env=env_oe_patterns_dev_us_east_1)
 DrupalStack(app, "oe-patterns-drupal-{}".format(os.environ['USER']),
 			env=env_oe_patterns_dev_us_east_1,
-			vpc=vpc_stack.vpc,
-			public_subnet1=vpc_stack.vpc_public_subnet1,
-			public_subnet2=vpc_stack.vpc_public_subnet2,
-			private_subnet1=vpc_stack.vpc_private_subnet1,
-			private_subnet2=vpc_stack.vpc_private_subnet2)
+			vpc_stack=vpc_stack.stack_name)
 
 app.synth()
