@@ -649,9 +649,9 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            desired_capacity=core.Fn.ref(asg_desired_capacity_param.logical_id),
-            max_size=core.Fn.ref(asg_max_size_param.logical_id),
-            min_size=core.Fn.ref(asg_min_size_param.logical_id),
+            desired_capacity=asg_desired_capacity_param.value.to_string(),
+            max_size=asg_max_size_param.value.to_string(),
+            min_size=asg_min_size_param.value.to_string(),
             vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
