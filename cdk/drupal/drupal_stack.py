@@ -423,6 +423,28 @@ class DrupalStack(core.Stack):
             vpc_id=vpc.vpc_id
         )
         alb_sg.cfn_options.condition = customer_vpc_not_given_condition
+        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_http_ingress.cfn_options.condition = customer_vpc_not_given_condition
+        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb_https_ingress.cfn_options.condition = customer_vpc_not_given_condition
         alb_sg_customer = aws_ec2.CfnSecurityGroup(
             self,
             "AlbSgCustomerVpc",
@@ -430,6 +452,28 @@ class DrupalStack(core.Stack):
             vpc_id=vpc_customer
         )
         alb_sg_customer.cfn_options.condition = customer_vpc_given_condition
+        alb_http_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngressCustomerVpc",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg_customer.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_http_ingress_customer.cfn_options.condition = customer_vpc_given_condition
+        alb_https_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngressCustomerVpc",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg_customer.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb_https_ingress_customer.cfn_options.condition = customer_vpc_given_condition
         alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
             self,
             "AppAlb",
@@ -552,7 +596,7 @@ class DrupalStack(core.Stack):
         https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
 
-        # # if cert and vpc given...
+        # if cert and vpc given...
         http_redirect_listener_customer = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListenerCustomer",
