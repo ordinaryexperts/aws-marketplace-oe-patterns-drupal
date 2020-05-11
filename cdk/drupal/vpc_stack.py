@@ -124,6 +124,20 @@ class VpcStack(core.Stack):
             gateway_id=vpc_igw.ref
         )
         vpc_public_subnet1_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_eip = aws_ec2.CfnEIP(
+            self,
+            "VpcPublicSubnet1EIP",
+            domain="vpc",
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(self.stack_name))]
+        )
+        vpc_public_subnet1_nat_gateway = aws_ec2.CfnNatGateway(
+            self,
+            "VpcPublicSubnet1NATGateway",
+            allocation_id=vpc_public_subnet1_eip.attr_allocation_id,
+            subnet_id=vpc_public_subnet1.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(self.stack_name))]
+        )
+        vpc_public_subnet1_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
 
         vpc_public_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -162,6 +176,20 @@ class VpcStack(core.Stack):
             gateway_id=vpc_igw.ref
         )
         vpc_public_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_eip = aws_ec2.CfnEIP(
+            self,
+            "VpcPublicSubnet2EIP",
+            domain="vpc",
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(self.stack_name))]
+        )
+        vpc_public_subnet2_nat_gateway = aws_ec2.CfnNatGateway(
+            self,
+            "VpcPublicSubnet2NATGateway",
+            allocation_id=vpc_public_subnet2_eip.attr_allocation_id,
+            subnet_id=vpc_public_subnet1.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(self.stack_name))]
+        )
+        vpc_public_subnet2_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
 
         vpc_private_subnet1 = aws_ec2.CfnSubnet(
             self,
