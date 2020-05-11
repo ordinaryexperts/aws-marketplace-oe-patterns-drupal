@@ -505,7 +505,7 @@ class DrupalStack(core.Stack):
         )
         alb_dns_name_output = core.CfnOutput(
             self,
-            "AlbDnsNameOutput",
+            "AlbDnsNameOutputCustomer",
             condition=customer_vpc_given_condition,
             description="The DNS name of the application load balancer.",
             value=alb_customer.attr_dns_name
@@ -1423,7 +1423,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistributionCustomerEndpointOutput",
             condition=cloudfront_enabled_customer_vpc_exists_condition,
             description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
+            value=cloudfront_distribution_customer.attr_domain_name
         )
         
         # elasticache
