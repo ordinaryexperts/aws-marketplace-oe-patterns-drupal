@@ -15,10 +15,11 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     core
 )
 
-AMI="ami-020957f1bf92e5753"
+AMI="ami-0a863e107cefed1f4"
 DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
@@ -39,7 +40,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
@@ -67,6 +68,7 @@ class DrupalStack(core.Stack):
             "Vpc",
             cidr="10.0.0.0/16"
         )
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
         app_sg = aws_ec2.SecurityGroup(
             self,
             "AppSg",
@@ -85,7 +87,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -124,7 +126,8 @@ class DrupalStack(core.Stack):
                     exclude_punctuation=True,
                     generate_string_key="password",
                     secret_string_template=json.dumps({"username":"dbadmin"})
-                )
+                ),
+                secret_name="oe/patterns/drupal/database-password"
             )
             db_username = db_secret.secret_value_from_json("username").to_string()
             db_password = db_secret.secret_value_from_json("password").to_string()
@@ -158,6 +161,12 @@ class DrupalStack(core.Stack):
             internet_facing=True,
             security_group=alb_sg,
             vpc=vpc
+        )
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.load_balancer_dns_name
         )
         # if there is no cert...
         http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
@@ -215,6 +224,7 @@ class DrupalStack(core.Stack):
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
 
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -241,6 +251,30 @@ class DrupalStack(core.Stack):
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
 
+        # efs
+        efs_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsSg",
+            vpc=vpc
+        )
+        efs_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(2049)
+        )
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs"
+        )
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.security_group_id ],
+                subnet_id=subnet_id
+            )
+
+        # app
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -618,7 +652,7 @@ class DrupalStack(core.Stack):
             desired_capacity=core.Fn.ref(asg_desired_capacity_param.logical_id),
             max_size=core.Fn.ref(asg_max_size_param.logical_id),
             min_size=core.Fn.ref(asg_min_size_param.logical_id),
-            vpc_zone_identifier=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
@@ -631,7 +665,7 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
-        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
@@ -661,8 +695,73 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
-        # CICD Pipeline
+        # ssm
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
+        ssm_parameter_store_policy = aws_iam.Policy(
+            self,
+            "SsmParameterStorePolicy",
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:DescribeParameters" ],
+                    resources=[ "*" ]
+                ),
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:GetParameters" ],
+                    resources=[
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME)
+                    ]
+                )
+                # TODO: add statement for KMS key decryption?
+            ]
+        )
+        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
 
+        # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -713,8 +812,8 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string(),
-                                    source_artifact_s3_object_key_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string,
+                                    source_artifact_s3_object_key_param.value_as_string
                                 )
                             ]
                         ),
@@ -726,7 +825,7 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string
                                 )
                             ]
                         ),
@@ -778,11 +877,12 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name=self.stack_name,
+            application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
 
@@ -792,13 +892,14 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
+        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
             "CodeDeployDeploymentGroup",
             application_name=code_deploy_application.application_name,
             auto_scaling_groups=[asg.ref],
-            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=code_deploy_role.role_arn
         )
@@ -823,8 +924,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -863,133 +964,6 @@ class DrupalStack(core.Stack):
             ]
         )
 
-        # EFS
-        efs_sg = aws_ec2.SecurityGroup(
-            self,
-            "EfsSg",
-            vpc=vpc
-        )
-
-        efs_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(2049)
-        )
-
-        efs = aws_efs.FileSystem(
-            self,
-            "AppEfs",
-            security_group=efs_sg,
-            vpc=vpc
-        )
-
-        # cloudfront
-        cloudfront_certificate_arn_param = core.CfnParameter(
-            self,
-            "CloudFrontCertificateArn",
-            default="",
-            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
-        )
-        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        )
-        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnNotExists",
-            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
-        )
-        cloudfront_enable_param = core.CfnParameter(
-            self,
-            "CloudFrontEnableParam",
-            allowed_values=[ "true", "false" ],
-            default="true",
-            description="Enable CloudFront CDN support."
-        )
-        cloudfront_enable_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnableCondition",
-            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-        )
-        cloudfront_origin_access_policy_param = core.CfnParameter(
-            self,
-            "CloudFrontOriginAccessPolicyParam",
-            allowed_values = [ "http-only", "https-only", "match-viewer" ],
-            default="match-viewer",
-            description="CloudFront access policy for communicating with content origin."
-        )
-        cloudfront_price_class_param = core.CfnParameter(
-            self,
-            "CloudFrontPriceClassParam",
-            # possible to use a map to make the values more human readable
-            allowed_values = [
-                "PriceClass_All",
-                "PriceClass_200",
-                "PriceClass_100"
-            ],
-            default="PriceClass_All",
-            description="Price class to use for CloudFront CDN."
-        )
-        cloudfront_distribution = aws_cloudfront.CfnDistribution(
-            self,
-            "CloudFrontDistribution",
-            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
-                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
-                    default_ttl=86400,
-                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
-                    ),
-                    min_ttl=0,
-                    max_ttl=31536000,
-                    target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
-                ),
-                enabled=True,
-                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.load_balancer_dns_name,
-                    id="alb",
-                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-                    )
-                )],
-                price_class=cloudfront_price_class_param.value_as_string,
-                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
-                    ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Fn.ref("AWS::NoValue")
-                    ).to_string()
-                )
-            )
-        )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
-        )
-        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
-        cloudfront_distribution_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionEndpointOutput",
-            condition=cloudfront_enable_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
-        )
         # elasticache
         elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
@@ -1041,7 +1015,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
-            subnet_ids=vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+            subnet_ids=vpc_private_subnet_ids
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
@@ -1055,7 +1029,7 @@ class DrupalStack(core.Stack):
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", self.stack_name)
+        core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster_id_output = core.CfnOutput(
             self,
@@ -1071,4 +1045,108 @@ class DrupalStack(core.Stack):
             description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
             value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
                                  elasticache_cluster.attr_configuration_endpoint_port)
+        )
+
+        # cloudfront
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Enable CloudFront CDN support."
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                comment=core.Aws.STACK_NAME,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.load_balancer_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        core.Aws.NO_VALUE
+                    ).to_string(),
+                    ssl_support_method=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Aws.NO_VALUE
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enable_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
         )
