@@ -16,10 +16,11 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     core
 )
 
-AMI="ami-020957f1bf92e5753"
+AMI="ami-0a863e107cefed1f4"
 DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
@@ -41,7 +42,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
@@ -262,6 +263,12 @@ class DrupalStack(core.Stack):
         vpc = vpc
         vpc.cfn_options.condition = customer_vpc_not_given_condition
 
+        vpc_customer = customer_vpc_id_param.value_as_string
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        vpc_public_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PUBLIC).subnet_ids
+        vpc_customer_private_subnet_ids = [ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+        vpc_customer_public_subnet_ids = [ customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string ]
+
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
@@ -273,11 +280,11 @@ class DrupalStack(core.Stack):
             self,
             "AppSgCustomerVpc",
             group_description="AppSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         app_sg_customer.cfn_options.condition = customer_vpc_given_condition
 
-        db_sg= aws_ec2.CfnSecurityGroup(
+        db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
             group_description="DBSG using default VPC ID",
@@ -298,7 +305,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSgCustomerVpc",
             group_description="DBSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         db_sg_customer.cfn_options.condition = customer_vpc_given_condition
         db_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -316,14 +323,14 @@ class DrupalStack(core.Stack):
             self,
             "DBSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=[ private_subnet1.ref, private_subnet2.ref ]
+            subnet_ids=vpc_private_subnet_ids
         )
         db_subnet_group.cfn_options.condition = customer_vpc_not_given_condition
         db_customer_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DBCustomerSubnetGroup",
             db_subnet_group_description="test",
-            subnet_ids=[customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string]
+            subnet_ids=vpc_customer_private_subnet_ids
         )
         db_customer_subnet_group.cfn_options.condition = customer_vpc_given_condition
 
@@ -364,7 +371,8 @@ class DrupalStack(core.Stack):
                     exclude_punctuation=True,
                     generate_string_key="password",
                     secret_string_template=json.dumps({"username":"dbadmin"})
-                )
+                ),
+                secret_name="oe/patterns/drupal/database-password"
             )
             db_username = db_secret.secret_value_from_json("username").to_string()
             db_password = db_secret.secret_value_from_json("password").to_string()
@@ -416,19 +424,62 @@ class DrupalStack(core.Stack):
             vpc_id=vpc.ref
         )
         alb_sg.cfn_options.condition = customer_vpc_not_given_condition
+        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_http_ingress.cfn_options.condition = customer_vpc_not_given_condition
+        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb_https_ingress.cfn_options.condition = customer_vpc_not_given_condition
         alb_sg_customer = aws_ec2.CfnSecurityGroup(
             self,
             "AlbSgCustomerVpc",
             group_description="AlbSG using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         alb_sg_customer.cfn_options.condition = customer_vpc_given_condition
+        alb_http_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngressCustomerVpc",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg_customer.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_http_ingress_customer.cfn_options.condition = customer_vpc_given_condition
+        alb_https_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngressCustomerVpc",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg_customer.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb_https_ingress_customer.cfn_options.condition = customer_vpc_given_condition
         alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
             self,
             "AppAlb",
             scheme="internet-facing",
-            security_groups=[ alb_sg.ref ],
-            subnets=[ public_subnet1.ref, public_subnet2.ref],
+            subnets=vpc_public_subnet_ids,
             type="application"
         )
         alb.cfn_options.condition = customer_vpc_not_given_condition
@@ -437,10 +488,25 @@ class DrupalStack(core.Stack):
             "AppAlbCustomer",
             scheme="internet-facing",
             security_groups=[ alb_sg_customer.ref ],
-            subnets=[customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string],
+            subnets=vpc_customer_public_subnet_ids,
             type="application"
         )
         alb_customer.cfn_options.condition = customer_vpc_given_condition
+
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            condition=customer_vpc_not_given_condition,
+            description="The DNS name of the application load balancer.",
+            value=alb.attr_dns_name
+        )
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutputCustomer",
+            condition=customer_vpc_given_condition,
+            description="The DNS name of the application load balancer.",
+            value=alb_customer.attr_dns_name
+        )
 
         # if no cert + no vpc given...
         http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
@@ -477,7 +543,7 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         http_target_group_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
         http_listener_customer = aws_elasticloadbalancingv2.CfnListener(
@@ -545,7 +611,7 @@ class DrupalStack(core.Stack):
         https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
 
-        # # if cert and vpc given...
+        # if cert and vpc given...
         http_redirect_listener_customer = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListenerCustomer",
@@ -575,7 +641,7 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         https_target_group_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
         https_listener_customer = aws_elasticloadbalancingv2.CfnListener(
@@ -596,6 +662,7 @@ class DrupalStack(core.Stack):
         https_listener_customer.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -621,6 +688,8 @@ class DrupalStack(core.Stack):
         )
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+
+        # app
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -685,6 +754,8 @@ class DrupalStack(core.Stack):
         )
         with open('drupal/scripts/app_launch_config_user_data.sh') as f:
             app_launch_config_user_data = f.read()
+        with open('drupal/scripts/app_launch_config_user_data_customer.sh') as f:
+            app_launch_config_user_data_customer = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
@@ -708,7 +779,7 @@ class DrupalStack(core.Stack):
             security_groups=[ app_sg_customer.ref ],
             user_data=(
                 core.Fn.base64(
-                    core.Fn.sub(app_launch_config_user_data)
+                    core.Fn.sub(app_launch_config_user_data_customer)
                 )
             )
         )
@@ -721,7 +792,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=[ private_subnet1.ref, private_subnet2.ref ]
+            vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
@@ -750,7 +821,7 @@ class DrupalStack(core.Stack):
             desired_capacity="1",
             max_size="2",
             min_size="1",
-            vpc_zone_identifier=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+            vpc_zone_identifier=vpc_customer_private_subnet_ids
         )
         asg_customer.add_override(
             "Properties.TargetGroupARNs",
@@ -819,8 +890,73 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
-        # CICD Pipeline
+        # ssm
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(self.stack_name),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(self.stack_name),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(self.stack_name),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(self.stack_name),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
+        ssm_parameter_store_policy = aws_iam.Policy(
+            self,
+            "SsmParameterStorePolicy",
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:DescribeParameters" ],
+                    resources=[ "*" ]
+                ),
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[ "ssm:GetParameters" ],
+                    resources=[
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
+                    ]
+                )
+                # TODO: add statement for KMS key decryption?
+            ]
+        )
+        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
 
+        # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
             self,
@@ -871,8 +1007,8 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string(),
-                                    source_artifact_s3_object_key_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string,
+                                    source_artifact_s3_object_key_param.value_as_string
                                 )
                             ]
                         ),
@@ -884,7 +1020,7 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}".format(
                                     core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value.to_string()
+                                    source_artifact_s3_bucket_param.value_as_string
                                 )
                             ]
                         ),
@@ -936,6 +1072,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -950,6 +1087,7 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
+        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -992,8 +1130,8 @@ class DrupalStack(core.Stack):
                                 version='1'
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -1116,7 +1254,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSgCustomer",
             group_description="EfsSg using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
         efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1144,38 +1282,24 @@ class DrupalStack(core.Stack):
         )
         efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
         efs_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_mount_target1 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget1",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=[ private_subnet1.ref, private_subnet2.ref ][0]
-        )
-        efs_mount_target1.cfn_options.condition = customer_vpc_not_given_condition
-        efs_mount_target2 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget2",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=[ private_subnet1.ref, private_subnet2.ref ][1]
-        )
-        efs_mount_target2.cfn_options.condition = customer_vpc_not_given_condition
-        efs_mount_target1_customer = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget1Customer",
-            file_system_id=efs_customer.ref,
-            security_groups=[ efs_sg_customer.ref ],
-            subnet_id=customer_vpc_private_subnet_id1.value_as_string
-        )
-        efs_mount_target1_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_mount_target2_customer = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget2Customer",
-            file_system_id=efs_customer.ref,
-            security_groups=[ efs_sg_customer.ref ],
-            subnet_id=customer_vpc_private_subnet_id2.value_as_string
-        )
-        efs_mount_target2_customer.cfn_options.condition = customer_vpc_given_condition
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target.cfn_options.condition = customer_vpc_not_given_condition
+        for key, subnet_id in enumerate(vpc_customer_private_subnet_ids, start=1):
+            efs_mount_target_customer = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsCustomerMountTarget" + str(key),
+                file_system_id=efs_customer.ref,
+                security_groups=[ efs_sg_customer.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target_customer.cfn_options.condition = customer_vpc_given_condition
 
         # cloudfront
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
@@ -1183,7 +1307,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
@@ -1243,7 +1367,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistributionCustomer",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "dev.patterns.ordinaryexperts.com" ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
                 comment=self.stack_name,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
@@ -1296,7 +1420,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistributionCustomerEndpointOutput",
             condition=cloudfront_enabled_customer_vpc_exists_condition,
             description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
+            value=cloudfront_distribution_customer.attr_domain_name
         )
         
         # elasticache
@@ -1321,7 +1445,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSgCustomer",
             group_description="ElastiCacheSg using customer VPC ID",
-            vpc_id=customer_vpc_id_param.value_as_string
+            vpc_id=vpc_customer
         )
         elasticache_sg_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
         elasticache_sg_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
@@ -1339,14 +1463,14 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
-            subnet_ids=[ private_subnet1.ref, private_subnet2.ref ]
+            subnet_ids=vpc_private_subnet_ids
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_subnet_group_customer = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroupCustomer",
             description="ElastiCache subnet group with customer subnets",
-            subnet_ids=[ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
+            subnet_ids=vpc_customer_private_subnet_ids
         )
         elasticache_subnet_group_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
         
@@ -1359,7 +1483,6 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg.ref ]
         )
         core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", self.stack_name)
@@ -1373,7 +1496,6 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            preferred_availability_zones=core.Stack.of(self).availability_zones,
             vpc_security_group_ids=[ elasticache_sg_customer.ref ]
         )
         core.Tag.add(elasticache_cluster_customer, "oe:patterns:drupal:stack", self.stack_name)

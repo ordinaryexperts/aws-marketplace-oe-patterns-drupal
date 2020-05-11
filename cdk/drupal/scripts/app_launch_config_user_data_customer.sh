@@ -122,53 +122,33 @@ EOF
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
-# efs
-mkdir /mnt/efs
-mount -t efs "${AppEfs}":/ /mnt/efs
-echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
-mkdir -p /mnt/efs/drupal/files
-chown www-data /mnt/efs/drupal/files
-
-# write application configuration values to env
-DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
-DB_USER=${SsmDrupalDatabaseUserParameter.Value}
-DB_PASSWORD=${SsmDrupalDatabasePasswordParameter.Value}
-HASH_SALT=${SsmDrupalHashSaltParameter.Value}
-CONFIG_SYNC_DIR=${SsmDrupalSyncDirectoryParameter.Value}
-
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/profile.d/oe-patterns-drupal.sh
-
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/apache2/envvars
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/apache2/envvars
-
-
-mkdir -p /opt/oe/patterns/drupal
-cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
+# Drupal; TODO: remove after CodePipline integration
+aws s3 cp s3://github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p/aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz .
+tar xvfz develop.tar.gz
+mv -T drupal /var/www/drupal
+mkdir /var/www/drupal/sites/default/files
+chgrp www-data /var/www/drupal/sites/default/files
+chmod 775 /var/www/drupal/sites/default/files
+mkdir -p /opt/drupal
+cat <<"EOF" > /opt/drupal/settings.php
 <?php
 
-$settings['hash_salt'] = getenv('OE_PATTERNS_DRUPAL_HASH_SALT');
+$settings['hash_salt'] = 'Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA';
 
 $databases['default']['default'] = array (
-  'database' => getenv('OE_PATTERNS_DRUPAL_DATABASE_NAME'),
-  'username' => getenv('OE_PATTERNS_DRUPAL_DATABASE_USER'),
-  'password' => getenv('OE_PATTERNS_DRUPAL_DATABASE_PASSWORD'),
+  'database' => 'drupal',
+  'username' => 'dbadmin',
+  'password' => 'dbpassword',
   'prefix' => '',
-  'host' => '${DBCluster.Endpoint.Address}',
-  'port' => '${DBCluster.Endpoint.Port}',
+  'host' => '${DBCustomerCluster.Endpoint.Address}',
+  'port' => '${DBCustomerCluster.Endpoint.Port}',
   'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
   'driver' => 'mysql',
 );
-$settings['config_sync_directory'] = getenv('OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY');
+$settings['config_sync_directory'] = 'sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync';
 EOF
+
+/var/www/drupal/post-deploy.sh
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -177,4 +157,4 @@ openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
   -subj '/CN=localhost'
 systemctl enable apache2 && systemctl start apache2
 
-cfn-signal --exit-code $? --stack ${AWS::StackName} --resource AppAsg --region ${AWS::Region}
+cfn-signal --exit-code $? --stack ${AWS::StackName} --resource AppAsgCustomer --region ${AWS::Region}
