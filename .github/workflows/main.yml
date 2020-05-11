@@ -1,6 +1,10 @@
 # Workflow to test Drupal pattern with taskcat
 name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
+defaults:
+  run:
+    working-directory: ${{ github.workspace }}
+
 on:
   push:
     branches: [ master, develop, 'hotfix/*', 'release/*', 'feature/*' ]
@@ -16,10 +20,10 @@ jobs:
     - uses: actions/checkout@v2
     - name: setup
       run: bash setup-env.sh
-      working-directory: ${{ github.workspace }}
+    - name: dependencies
+      run: "cd cdk && pip3 install -r requirements.txt"
     - name: taskcat
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
       run: "cd cdk && cdk synth > ../test/template.yaml && cd ../test && taskcat test run"
-      working-directory: ${{ github.workspace }}
