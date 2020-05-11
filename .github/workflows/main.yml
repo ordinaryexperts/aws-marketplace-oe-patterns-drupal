@@ -17,16 +17,6 @@ jobs:
         run: make build
       - name: test
         run: make test
-    # container: 'ubuntu:focal'
-    # steps:
-    # - uses: actions/checkout@v2
-    # - name: setup
-    #   run: bash setup-env.sh
-    # - name: dependencies
-    #   run: "cd cdk && pip3 install -r requirements.txt"
-    # - name: taskcat
-    #   env:
-    #     AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
-    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
-    #     USER: taskcat
-    #   run: "cd cdk && cdk synth > ../test/template.yaml && cd ../test && taskcat test run"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_S3_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
