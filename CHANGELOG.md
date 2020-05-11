@@ -8,3 +8,4 @@
 * Upgrade CDK to 1.36.1
 * Add CloudFront support
 * Move to us-east-1
+* Add support for customer VPC configurations
