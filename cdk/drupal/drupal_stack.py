@@ -341,7 +341,7 @@ class DrupalStack(core.Stack):
         # autoscaling
         app_instance_type_param = core.CfnParameter(
             self,
-            "AppLaunchConfigInstanceTypeParam",
+            "AppLaunchConfigInstanceType",
             allowed_values=[
                 # TODO: finalize list of supported instance types
                 "a1.2xlarge",
@@ -608,26 +608,26 @@ class DrupalStack(core.Stack):
         )
         asg_desired_capacity_param = core.CfnParameter(
             self,
-            "AppAsgDesiredCapacityParam",
+            "AppAsgDesiredCapacity",
             default=1,
             description="The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain.",
-            min_value=1,
+            min_value=0,
             type="Number"
         )
         asg_max_size_param = core.CfnParameter(
             self,
-            "AppAsgMaxSizeParam",
+            "AppAsgMaxSize",
             default=2,
             description="The maximum size of the Auto Scaling group.",
-            min_value=2,
+            min_value=0,
             type="Number"
         )
         asg_min_size_param = core.CfnParameter(
             self,
-            "AppAsgMinSizeParam",
+            "AppAsgMinSize",
             default=1,
             description="The minimum size of the Auto Scaling group.",
-            min_value=1,
+            min_value=0,
             type="Number"
         )
         with open('drupal/scripts/app_launch_config_user_data.sh') as f:
