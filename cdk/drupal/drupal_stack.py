@@ -187,6 +187,343 @@ class DrupalStack(core.Stack):
             expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
         )
 
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
+
+        app_instance_type_param = core.CfnParameter(
+            self,
+            "AppLaunchConfigInstanceType",
+            allowed_values=[
+                # TODO: finalize list of supported instance types
+                "a1.2xlarge",
+                "a1.4xlarge",
+                "a1.large",
+                "a1.medium",
+                "a1.metal",
+                "a1.xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c5.12xlarge",
+                "c5.18xlarge",
+                "c5.24xlarge",
+                "c5.2xlarge",
+                "c5.4xlarge",
+                "c5.9xlarge",
+                "c5.large",
+                "c5.metal",
+                "c5.xlarge",
+                "c5d.12xlarge",
+                "c5d.18xlarge",
+                "c5d.24xlarge",
+                "c5d.2xlarge",
+                "c5d.4xlarge",
+                "c5d.9xlarge",
+                "c5d.large",
+                "c5d.metal",
+                "c5d.xlarge",
+                "c5n.18xlarge",
+                "c5n.2xlarge",
+                "c5n.4xlarge",
+                "c5n.9xlarge",
+                "c5n.large",
+                "c5n.metal",
+                "c5n.xlarge",
+                "cc2.8xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "d2.xlarge",
+                "f1.16xlarge",
+                "f1.2xlarge",
+                "f1.4xlarge",
+                "g2.2xlarge",
+                "g2.8xlarge",
+                "g3.16xlarge",
+                "g3.4xlarge",
+                "g3.8xlarge",
+                "g3s.xlarge",
+                "g4dn.12xlarge",
+                "g4dn.16xlarge",
+                "g4dn.2xlarge",
+                "g4dn.4xlarge",
+                "g4dn.8xlarge",
+                "g4dn.xlarge",
+                "h1.16xlarge",
+                "h1.2xlarge",
+                "h1.4xlarge",
+                "h1.8xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "i2.xlarge",
+                "i3.16xlarge",
+                "i3.2xlarge",
+                "i3.4xlarge",
+                "i3.8xlarge",
+                "i3.large",
+                "i3.metal",
+                "i3.xlarge",
+                "i3en.12xlarge",
+                "i3en.24xlarge",
+                "i3en.2xlarge",
+                "i3en.3xlarge",
+                "i3en.6xlarge",
+                "i3en.large",
+                "i3en.metal",
+                "i3en.xlarge",
+                "inf1.24xlarge",
+                "inf1.2xlarge",
+                "inf1.6xlarge",
+                "inf1.xlarge",
+                "m1.large",
+                "m1.medium",
+                "m1.small",
+                "m1.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m2.xlarge",
+                "m3.2xlarge",
+                "m3.large",
+                "m3.medium",
+                "m3.xlarge",
+                "m4.10xlarge",
+                "m4.16xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m5.12xlarge",
+                "m5.16xlarge",
+                "m5.24xlarge",
+                "m5.2xlarge",
+                "m5.4xlarge",
+                "m5.8xlarge",
+                "m5.large",
+                "m5.metal",
+                "m5.xlarge",
+                "m5a.12xlarge",
+                "m5a.16xlarge",
+                "m5a.24xlarge",
+                "m5a.2xlarge",
+                "m5a.4xlarge",
+                "m5a.8xlarge",
+                "m5a.large",
+                "m5a.xlarge",
+                "m5ad.12xlarge",
+                "m5ad.24xlarge",
+                "m5ad.2xlarge",
+                "m5ad.4xlarge",
+                "m5ad.large",
+                "m5ad.xlarge",
+                "m5d.12xlarge",
+                "m5d.16xlarge",
+                "m5d.24xlarge",
+                "m5d.2xlarge",
+                "m5d.4xlarge",
+                "m5d.8xlarge",
+                "m5d.large",
+                "m5d.metal",
+                "m5d.xlarge",
+                "m5dn.12xlarge",
+                "m5dn.16xlarge",
+                "m5dn.24xlarge",
+                "m5dn.2xlarge",
+                "m5dn.4xlarge",
+                "m5dn.8xlarge",
+                "m5dn.large",
+                "m5dn.xlarge",
+                "m5n.12xlarge",
+                "m5n.16xlarge",
+                "m5n.24xlarge",
+                "m5n.2xlarge",
+                "m5n.4xlarge",
+                "m5n.8xlarge",
+                "m5n.large",
+                "m5n.xlarge",
+                "p2.16xlarge",
+                "p2.8xlarge",
+                "p2.xlarge",
+                "p3.16xlarge",
+                "p3.2xlarge",
+                "p3.8xlarge",
+                "p3dn.24xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r4.16xlarge",
+                "r4.2xlarge",
+                "r4.4xlarge",
+                "r4.8xlarge",
+                "r4.large",
+                "r4.xlarge",
+                "r5.12xlarge",
+                "r5.16xlarge",
+                "r5.24xlarge",
+                "r5.2xlarge",
+                "r5.4xlarge",
+                "r5.8xlarge",
+                "r5.large",
+                "r5.metal",
+                "r5.xlarge",
+                "r5a.12xlarge",
+                "r5a.16xlarge",
+                "r5a.24xlarge",
+                "r5a.2xlarge",
+                "r5a.4xlarge",
+                "r5a.8xlarge",
+                "r5a.large",
+                "r5a.xlarge",
+                "r5ad.12xlarge",
+                "r5ad.24xlarge",
+                "r5ad.2xlarge",
+                "r5ad.4xlarge",
+                "r5ad.large",
+                "r5ad.xlarge",
+                "r5d.12xlarge",
+                "r5d.16xlarge",
+                "r5d.24xlarge",
+                "r5d.2xlarge",
+                "r5d.4xlarge",
+                "r5d.8xlarge",
+                "r5d.large",
+                "r5d.metal",
+                "r5d.xlarge",
+                "r5dn.12xlarge",
+                "r5dn.16xlarge",
+                "r5dn.24xlarge",
+                "r5dn.2xlarge",
+                "r5dn.4xlarge",
+                "r5dn.8xlarge",
+                "r5dn.large",
+                "r5dn.xlarge",
+                "r5n.12xlarge",
+                "r5n.16xlarge",
+                "r5n.24xlarge",
+                "r5n.2xlarge",
+                "r5n.4xlarge",
+                "r5n.8xlarge",
+                "r5n.large",
+                "r5n.xlarge",
+                "t1.micro",
+                "t2.2xlarge",
+                "t2.large",
+                "t2.medium",
+                "t2.micro",
+                "t2.nano",
+                "t2.small",
+                "t2.xlarge",
+                "t3.2xlarge",
+                "t3.large",
+                "t3.medium",
+                "t3.micro",
+                "t3.nano",
+                "t3.small",
+                "t3.xlarge",
+                "t3a.2xlarge",
+                "t3a.large",
+                "t3a.medium",
+                "t3a.micro",
+                "t3a.nano",
+                "t3a.small",
+                "t3a.xlarge",
+                "x1.16xlarge",
+                "x1.32xlarge",
+                "x1e.16xlarge",
+                "x1e.2xlarge",
+                "x1e.32xlarge",
+                "x1e.4xlarge",
+                "x1e.8xlarge",
+                "x1e.xlarge",
+                "z1d.12xlarge",
+                "z1d.2xlarge",
+                "z1d.3xlarge",
+                "z1d.6xlarge",
+                "z1d.large",
+                "z1d.metal",
+                "z1d.xlarge"
+            ],
+            default="t3.micro",
+            description="The EC2 instance type for the Drupal server autoscaling group"
+        )
+        asg_desired_capacity_param = core.CfnParameter(
+            self,
+            "AppAsgDesiredCapacity",
+            default=1,
+            description="The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain.",
+            min_value=0,
+            type="Number"
+        )
+        asg_max_size_param = core.CfnParameter(
+            self,
+            "AppAsgMaxSize",
+            default=2,
+            description="The maximum size of the Auto Scaling group.",
+            min_value=0,
+            type="Number"
+        )
+        asg_min_size_param = core.CfnParameter(
+            self,
+            "AppAsgMinSize",
+            default=1,
+            description="The minimum size of the Auto Scaling group.",
+            min_value=0,
+            type="Number"
+        )
+
         # no cert + no vpc given
         cert_arn_and_customer_vpc_does_not_exist_condition = core.CfnCondition(
             self,
@@ -261,10 +598,10 @@ class DrupalStack(core.Stack):
         )
 
         vpc = core.Fn.import_value("{}-vpc".format(vpc_stack))
-
-        vpc_customer = customer_vpc_id_param.value_as_string
         vpc_private_subnet_ids = [ core.Fn.import_value("{}-private-subnet1".format(vpc_stack)), core.Fn.import_value("{}-private-subnet2".format(vpc_stack)) ]
         vpc_public_subnet_ids = [ core.Fn.import_value("{}-public-subnet1".format(vpc_stack)), core.Fn.import_value("{}-public-subnet2".format(vpc_stack)) ]
+        
+        vpc_customer = customer_vpc_id_param.value_as_string
         vpc_customer_private_subnet_ids = [ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
         vpc_customer_public_subnet_ids = [ customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string ]
 
@@ -688,6 +1025,75 @@ class DrupalStack(core.Stack):
         error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
 
+        # efs
+        efs_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "EfsSg",
+            group_description="EfsSg using default VPC ID",
+            vpc_id=vpc.vpc_id
+        )
+        efs_sg.cfn_options.condition = customer_vpc_not_given_condition
+        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EfsSgIngress",
+            from_port=2049,
+            group_id=efs_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=2049
+        )
+        efs_sg_ingress.cfn_options.condition = customer_vpc_not_given_condition
+        efs_sg_customer = aws_ec2.CfnSecurityGroup(
+            self,
+            "EfsSgCustomer",
+            group_description="EfsSg using customer VPC ID",
+            vpc_id=vpc_customer
+        )
+        efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
+        efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EfsSgIngressCustomer",
+            from_port=2049,
+            group_id=efs_sg_customer.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg_customer.ref,
+            to_port=2049
+        )
+        efs_sg_customer_ingress.cfn_options.condition = customer_vpc_given_condition
+
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs",
+            encrypted=None
+        )
+        efs.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfs".format(self.stack_name)}])
+        efs.cfn_options.condition = customer_vpc_not_given_condition
+        efs_customer = aws_efs.CfnFileSystem(
+            self,
+            "AppEfsCustomer",
+            encrypted=None
+        )
+        efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
+        efs_customer.cfn_options.condition = customer_vpc_given_condition
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target.cfn_options.condition = customer_vpc_not_given_condition
+        for key, subnet_id in enumerate(vpc_customer_private_subnet_ids, start=1):
+            efs_mount_target_customer = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsCustomerMountTarget" + str(key),
+                file_system_id=efs_customer.ref,
+                security_groups=[ efs_sg_customer.ref ],
+                subnet_id=subnet_id
+            )
+            efs_mount_target_customer.cfn_options.condition = customer_vpc_given_condition
+
         # app
         app_instance_role = aws_iam.Role(
             self,
@@ -751,6 +1157,8 @@ class DrupalStack(core.Stack):
             "AppInstanceProfile",
             roles=[app_instance_role.role_name]
         )
+
+        # autoscaling
         with open('drupal/scripts/app_launch_config_user_data.sh') as f:
             app_launch_config_user_data = f.read()
         with open('drupal/scripts/app_launch_config_user_data_customer.sh') as f:
@@ -759,7 +1167,7 @@ class DrupalStack(core.Stack):
             self,
             "AppLaunchConfig",
             image_id=AMI, # TODO: Put into CFN Mapping
-            instance_type="t3.micro", # TODO: Parameterize
+            instance_type=app_instance_type_param.value_as_string,
             iam_instance_profile=instance_profile.ref,
             security_groups=[ app_sg.ref ],
             user_data=(
@@ -787,10 +1195,9 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            # TODO: Parameterize desired_capacity, max_size, min_size
-            desired_capacity="1",
-            max_size="2",
-            min_size="1",
+            desired_capacity=asg_desired_capacity_param.value.to_string(),
+            max_size=asg_max_size_param.value.to_string(),
+            min_size=asg_min_size_param.value.to_string(),
             vpc_zone_identifier=vpc_private_subnet_ids
         )
         # https://github.com/aws/aws-cdk/issues/3615
@@ -804,7 +1211,7 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
-        core.Tag.add(asg, "Name", "{}/AppAsg".format(self.stack_name))
+        core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
         asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
@@ -890,50 +1297,6 @@ class DrupalStack(core.Stack):
         sg_https_ingress_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
 
         # ssm
-        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseNameParameter",
-            description="The name of the database for the Drupal application.",
-            name="/{}/drupal/database-name".format(self.stack_name),
-            type="String",
-            value="drupal" # TODO: from param?
-        )
-        # cannot create SECURE_STRING parameters via cloudformation
-        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabasePasswordParameter",
-            description="The database password for the Drupal application.",
-            name="/{}/drupal/database-password".format(self.stack_name),
-            # type=aws_ssm.ParameterType.SECURE_STRING
-            type="String",
-            value="dbpassword" # TODO: from param?
-        )
-        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseUserParameter",
-            description="The database user for the Drupal application.",
-            name="/{}/drupal/database-user".format(self.stack_name),
-            type="String",
-            value="dbadmin" # TODO: from param?
-        )
-        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalHashSaltParameter",
-            description="The configured hash salt for the Drupal application.",
-            name="/{}/drupal/hash-salt".format(self.stack_name),
-            type="String",
-            # TODO: from param?
-            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
-        )
-        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalSyncDirectoryParameter",
-            description="The configured sync directory for the Drupal application.",
-            name="/{}/drupal/config-sync-directory".format(self.stack_name),
-            type="String",
-            # TODO: from param?
-            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
-        )
         ssm_parameter_store_policy = aws_iam.Policy(
             self,
             "SsmParameterStorePolicy",
@@ -947,7 +1310,7 @@ class DrupalStack(core.Stack):
                     effect=aws_iam.Effect.ALLOW,
                     actions=[ "ssm:GetParameters" ],
                     resources=[
-                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(self.region, self.account, self.stack_name)
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME)
                     ]
                 )
                 # TODO: add statement for KMS key decryption?
@@ -1076,7 +1439,7 @@ class DrupalStack(core.Stack):
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name=self.stack_name,
+            application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
 
@@ -1093,7 +1456,7 @@ class DrupalStack(core.Stack):
             "CodeDeployDeploymentGroup",
             application_name=code_deploy_application.application_name,
             auto_scaling_groups=[asg.ref],
-            deployment_group_name="{}-app".format(self.stack_name),
+            deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=code_deploy_role.role_arn
         )
@@ -1231,203 +1594,12 @@ class DrupalStack(core.Stack):
         )
         pipeline_customer.cfn_options.condition = customer_vpc_given_condition
 
-        # EFS
-        efs_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "EfsSg",
-            group_description="EfsSg using default VPC ID",
-            vpc_id=vpc
-        )
-        efs_sg.cfn_options.condition = customer_vpc_not_given_condition
-        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngress",
-            from_port=2049,
-            group_id=efs_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=2049
-        )
-        efs_sg_ingress.cfn_options.condition = customer_vpc_not_given_condition
-        efs_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "EfsSgCustomer",
-            group_description="EfsSg using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngressCustomer",
-            from_port=2049,
-            group_id=efs_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg_customer.ref,
-            to_port=2049
-        )
-        efs_sg_customer_ingress.cfn_options.condition = customer_vpc_given_condition
-
-        efs = aws_efs.CfnFileSystem(
-            self,
-            "AppEfs",
-            encrypted=None
-        )
-        efs.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfs".format(self.stack_name)}])
-        efs.cfn_options.condition = customer_vpc_not_given_condition
-        efs_customer = aws_efs.CfnFileSystem(
-            self,
-            "AppEfsCustomer",
-            encrypted=None
-        )
-        efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
-        efs_customer.cfn_options.condition = customer_vpc_given_condition
-        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
-            efs_mount_target = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsMountTarget" + str(key),
-                file_system_id=efs.ref,
-                security_groups=[ efs_sg.ref ],
-                subnet_id=subnet_id
-            )
-            efs_mount_target.cfn_options.condition = customer_vpc_not_given_condition
-        for key, subnet_id in enumerate(vpc_customer_private_subnet_ids, start=1):
-            efs_mount_target_customer = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsCustomerMountTarget" + str(key),
-                file_system_id=efs_customer.ref,
-                security_groups=[ efs_sg_customer.ref ],
-                subnet_id=subnet_id
-            )
-            efs_mount_target_customer.cfn_options.condition = customer_vpc_given_condition
-
-        # cloudfront
-        cloudfront_distribution = aws_cloudfront.CfnDistribution(
-            self,
-            "CloudFrontDistribution",
-            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
-                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
-                    default_ttl=86400,
-                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
-                    ),
-                    min_ttl=0,
-                    max_ttl=31536000,
-                    target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
-                ),
-                enabled=True,
-                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.attr_dns_name,
-                    id="alb",
-                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-                    )
-                )],
-                price_class=cloudfront_price_class_param.value_as_string,
-                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
-                    ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Fn.ref("AWS::NoValue")
-                    ).to_string()
-                )
-            )
-        )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
-        )
-        cloudfront_distribution.cfn_options.condition = cloudfront_enabled_customer_vpc_does_not_exist_condition
-        cloudfront_distribution_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionEndpointOutput",
-            condition=cloudfront_enabled_customer_vpc_does_not_exist_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
-        )
-        cloudfront_distribution_customer = aws_cloudfront.CfnDistribution(
-            self,
-            "CloudFrontDistributionCustomer",
-            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
-                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
-                    default_ttl=86400,
-                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
-                    ),
-                    min_ttl=0,
-                    max_ttl=31536000,
-                    target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
-                ),
-                enabled=True,
-                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb_customer.attr_dns_name,
-                    id="alb",
-                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-                    )
-                )],
-                price_class=cloudfront_price_class_param.value_as_string,
-                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
-                    ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Fn.ref("AWS::NoValue")
-                    ).to_string()
-                )
-            )
-        )
-        cloudfront_distribution_customer.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
-        )
-        cloudfront_distribution_customer.cfn_options.condition = cloudfront_enabled_customer_vpc_exists_condition
-        cloudfront_distribution_customer_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionCustomerEndpointOutput",
-            condition=cloudfront_enabled_customer_vpc_exists_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution_customer.attr_domain_name
-        )
-        
         # elasticache
         elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ElastiCacheSg",
             group_description="ElastiCacheSg using default VPC ID",
-            vpc_id=vpc
+            vpc_id=vpc.vpc_id
         )
         elasticache_sg.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1528,4 +1700,126 @@ class DrupalStack(core.Stack):
             description="The endpoint of the cluster with customer VPC for connection. Configure in Drupal's settings.php.",
             value="{}:{}".format(elasticache_cluster_customer.attr_configuration_endpoint_address,
                                  elasticache_cluster_customer.attr_configuration_endpoint_port)
+        )
+
+        # cloudfront
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                comment=core.Aws.STACK_NAME,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.attr_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        core.Aws.NO_VALUE
+                    ).to_string(),
+                    ssl_support_method=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Aws.NO_VALUE
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enabled_customer_vpc_does_not_exist_condition
+        cloudfront_distribution_customer = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistributionCustomer",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
+                comment=self.stack_name,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb_customer.attr_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        "AWS::NoValue"
+                    ).to_string(),
+                    ssl_support_method= core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Fn.ref("AWS::NoValue")
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution_customer.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution_customer.cfn_options.condition = cloudfront_enabled_customer_vpc_exists_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enabled_customer_vpc_does_not_exist_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
+        )
+        cloudfront_distribution_customer_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionCustomerEndpointOutput",
+            condition=cloudfront_enabled_customer_vpc_exists_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution_customer.attr_domain_name
         )
