@@ -105,32 +105,50 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
-        db_secret = None
-        db_snapshot_identifier = None
-        db_username = None
-        db_password = None
-        db_snapshot_arn = DB_SNAPSHOT
-        db_snapshot_param = core.CfnParameter(
+        db_snapshot_identifier_param = core.CfnParameter(
             self,
             "DBSnapshotIdentifier",
-            default=db_snapshot_arn
+            default="",
+            description="An RDS database cluster snapshot ARN from which to restore. If this parameter is specified, you MUST manually edit the secret values to specify the snapshot credentials for the application."
         )
-        if db_snapshot_arn:
-            db_snapshot_identifier = db_snapshot_param.value_as_string
-        else:
-            db_secret = aws_secretsmanager.Secret(
-                self,
-                "secret",
-                generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                    exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
-                    exclude_punctuation=True,
-                    generate_string_key="password",
-                    secret_string_template=json.dumps({"username":"dbadmin"})
-                ),
-                secret_name="oe/patterns/drupal/database-password"
-            )
-            db_username = db_secret.secret_value_from_json("username").to_string()
-            db_password = db_secret.secret_value_from_json("password").to_string()
+        db_snapshot_identifier_exists_condition = core.CfnCondition(
+            self,
+            "DBSnapshotIdentifierExistsCondition",
+            expression=core.Fn.condition_equals(db_snapshot_identifier_param.value, "")
+        )
+        secret_name_param = core.CfnParameter(
+            self,
+            "SecretName",
+            default="",
+            description="The name of an existing SecretsManager secret used to access the database credentials and store other configuration.",
+            type="String"
+        )
+        secret_name_exists_condition = core.CfnCondition(
+            self,
+            "SecretNameExistsCondition",
+            expression=core.Fn.condition_equals(secret_name_param.value, "")
+        )
+        secret_name_not_exists_condition = core.CfnCondition(
+            self,
+            "SecretNameNotExistsCondition",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_name_param.value, ""))
+        )
+        secret = aws_secretsmanager.CfnSecret(
+            self,
+            "Secret",
+            generate_secret_string=aws_secretsmanager.CfnSecret.GenerateSecretStringProperty(
+                exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
+                exclude_punctuation=True,
+                generate_string_key="password",
+                secret_string_template=json.dumps({"username":"dbadmin"})
+            ),
+            # TODO: add encryption key
+            # kms_key_id="",
+            name="{}/drupal/secret".format(core.Aws.STACK_NAME)
+        )
+        # TODO: unable to get conditional secret working because the DBCluster username and password depend on the
+        # interpolated value in the Fn.condition_if statements
+        # secret.cfn_options.condition = secret_name_not_exists_condition
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
@@ -138,17 +156,45 @@ class DrupalStack(core.Stack):
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
             engine_mode="serverless",
-            master_username=db_username,
-            master_user_password=db_password,
+            master_username=core.Fn.condition_if(
+                db_snapshot_identifier_exists_condition.logical_id,
+                core.Aws.NO_VALUE,
+                core.Fn.condition_if(
+                    secret_name_exists_condition.logical_id,
+                    core.Fn.sub("{{resolve:secretsmanager:${SecretName}:SecretString:username}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
+                ).to_string(),
+            ).to_string(),
+            master_user_password=core.Fn.condition_if(
+                db_snapshot_identifier_exists_condition.logical_id,
+                core.Aws.NO_VALUE,
+                core.Fn.condition_if(
+                    secret_name_exists_condition.logical_id,
+                    core.Fn.sub("{{resolve:secretsmanager:${SecretName}:SecretString:password}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
+                ).to_string(),
+            ).to_string(),
             scaling_configuration={
                 "auto_pause": True,
                 "min_capacity": 1,
                 "max_capacity": 2,
                 "seconds_until_auto_pause": 30
             },
-            snapshot_identifier=db_snapshot_identifier,
+            snapshot_identifier=core.Fn.condition_if(
+                db_snapshot_identifier_exists_condition.logical_id,
+                db_snapshot_identifier_param.value_as_string,
+                core.Aws.NO_VALUE
+            ).to_string(),
             storage_encrypted=True,
             vpc_security_group_ids=[ db_sg.security_group_id ]
+        )
+        db_cluster.add_depends_on(secret)
+        secret_db_cluster_attachment = aws_secretsmanager.CfnSecretTargetAttachment(
+            self,
+            "SecretDbClusterTargetAttachment",
+            secret_id=secret.ref,
+            target_id=db_cluster.ref,
+            target_type="AWS::RDS::DBCluster"
         )
         alb_sg = aws_ec2.SecurityGroup(
             self,
@@ -1010,7 +1056,7 @@ class DrupalStack(core.Stack):
             peer=app_sg,
             connection=aws_ec2.Port.tcp(11211)
         )
-        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
+        # elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
         elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroup",
