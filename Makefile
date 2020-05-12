@@ -15,7 +15,7 @@ deploy:
 	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-43--codedeploy-integration.tar.gz
 
 destroy:
-	docker-compose run -w /code/cdk --rm drupal cdk destroy
+	docker-compose run -w /code/cdk --rm drupal cdk destroy '*'
 
 diff:
 	docker-compose run -w /code/cdk --rm drupal cdk diff
