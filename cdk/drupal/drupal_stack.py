@@ -15,6 +15,7 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_sns_subscriptions,
     aws_ssm,
     core
 )
@@ -46,6 +47,11 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactS3ObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
+        )
+        notification_email_param = core.CfnParameter(
+            self,
+            "NotificationEmailParam",
+            default=""
         )
 
         certificate_arn_param = core.CfnParameter(
@@ -228,6 +234,9 @@ class DrupalStack(core.Stack):
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
+        )
+        notification_topic.add_subscription(
+            aws_sns_subscriptions.EmailSubscription(notification_email_param.value_as_string)
         )
         system_log_group = aws_logs.CfnLogGroup(
             self,
@@ -901,8 +910,19 @@ class DrupalStack(core.Stack):
             auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=code_deploy_role.role_arn
+            service_role_arn=code_deploy_role.role_arn,
+            trigger_configurations=[]
         )
+        code_deploy_deployment_group.add_override("Properties.TriggerConfigurations",[
+            {
+                "TriggerEvents": [
+                    "DeploymentSuccess",
+                    "DeploymentRollback"
+                ],
+                "TriggerName": "DeploymentNotification",
+                "TriggerTargetArn": notification_topic.topic_arn
+            }
+        ])
 
         pipeline = aws_codepipeline.CfnPipeline(
             self,
