@@ -234,7 +234,7 @@ class DrupalStack(core.Stack):
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
 
-        # notifications        
+        # notifications
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
