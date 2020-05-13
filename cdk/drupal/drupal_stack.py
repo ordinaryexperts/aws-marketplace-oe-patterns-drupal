@@ -50,7 +50,7 @@ class DrupalStack(core.Stack):
         )
         notification_email_param = core.CfnParameter(
             self,
-            "NotificationEmailParam",
+            "NotificationEmail",
             default=""
         )
 
