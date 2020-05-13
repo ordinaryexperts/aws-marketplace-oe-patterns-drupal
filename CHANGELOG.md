@@ -9,4 +9,4 @@
 * Add CloudFront support
 * Move to us-east-1
 * Add support for customer VPC configurations
-* Custom OE VPC options
+* Custom OE VPC if customer VPC not given
