@@ -129,6 +129,26 @@ echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 mkdir -p /mnt/efs/drupal/files
 chown www-data /mnt/efs/drupal/files
 
+mkdir -p /opt/oe/patterns/drupal
+
+SECRET_ARN=${SecretArn}
+SECRET=${Secret}
+
+if [ -z "$SECRET_ARN" ]
+then
+    SECRET_ARN=$SECRET
+fi
+echo $SECRET_ARN >> /opt/oe/patterns/drupal/secret-arn.txt
+
+SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)
+echo $SECRET_NAME >> /opt/oe/patterns/drupal/secret-name.txt
+
+aws ssm get-parameter \
+    --name "/aws/reference/secretsmanager/$SECRET_NAME" \
+    --with-decryption \
+    --query Parameter.Value \
+| jq -r . >> /opt/oe/patterns/drupal/secret.json
+
 # write application configuration values to env
 DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
 DB_USER=${SsmDrupalDatabaseUserParameter.Value}
@@ -150,8 +170,6 @@ echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/apache2/en
 echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/apache2/envvars
 echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/apache2/envvars
 
-
-mkdir -p /opt/oe/patterns/drupal
 cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
 <?php
 
