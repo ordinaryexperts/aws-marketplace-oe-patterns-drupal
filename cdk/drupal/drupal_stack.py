@@ -114,7 +114,7 @@ class DrupalStack(core.Stack):
         db_snapshot_identifier_exists_condition = core.CfnCondition(
             self,
             "DBSnapshotIdentifierExistsCondition",
-            expression=core.Fn.condition_equals(db_snapshot_identifier_param.value, "")
+            expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
         secret_name_param = core.CfnParameter(
             self,
@@ -126,12 +126,12 @@ class DrupalStack(core.Stack):
         secret_name_exists_condition = core.CfnCondition(
             self,
             "SecretNameExistsCondition",
-            expression=core.Fn.condition_equals(secret_name_param.value, "")
+            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_name_param.value, ""))
         )
         secret_name_not_exists_condition = core.CfnCondition(
             self,
             "SecretNameNotExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_name_param.value, ""))
+            expression=core.Fn.condition_equals(secret_name_param.value, "")
         )
         secret = aws_secretsmanager.CfnSecret(
             self,
