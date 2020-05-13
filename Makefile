@@ -43,14 +43,14 @@ synth:
 	--path-metadata false \
 	--asset-metadata false
 
-synth-drupal-stack:
-	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-drupal-{} \
+synth-drupal:
+	docker-compose run -w /code/cdk --rm drupal cdk synth -e oe-patterns-drupal-${USER} \
 	--version-reporting false \
 	--path-metadata false \
 	--asset-metadata false
 
-synth-vpc-stack:
-	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-vpc-{} \
+synth-vpc:
+	docker-compose run -w /code/cdk --rm drupal cdk synth -e oe-patterns-vpc-${USER} \
 	--version-reporting false \
 	--path-metadata false \
 	--asset-metadata false
