@@ -15,7 +15,6 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
-    aws_sns_subscriptions,
     aws_ssm,
     core
 )
@@ -68,6 +67,11 @@ class DrupalStack(core.Stack):
             self,
             "CertificateArnNotExists",
             expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+        )
+        notification_email_exists_condition = core.CfnCondition(
+            self,
+            "NotificationEmailExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
         vpc = aws_ec2.Vpc(
             self,
@@ -230,14 +234,20 @@ class DrupalStack(core.Stack):
         )
         https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
 
-        # notifications
+        # notifications        
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
         )
-        notification_topic.add_subscription(
-            aws_sns_subscriptions.EmailSubscription(notification_email_param.value_as_string)
+        notification_subscription = aws_sns.CfnSubscription(
+            self,
+            "NotificationSubscription",
+            protocol="email",
+            topic_arn=notification_topic.topic_arn,
+            endpoint=notification_email_param.value_as_string
         )
+        notification_subscription.cfn_options.condition = notification_email_exists_condition
+
         system_log_group = aws_logs.CfnLogGroup(
             self,
             "DrupalSystemLogGroup",
