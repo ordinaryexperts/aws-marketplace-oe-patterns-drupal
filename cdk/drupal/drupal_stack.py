@@ -47,6 +47,11 @@ class DrupalStack(core.Stack):
             "SourceArtifactS3ObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
         )
+        notification_email_param = core.CfnParameter(
+            self,
+            "NotificationEmail",
+            default=""
+        )
 
         certificate_arn_param = core.CfnParameter(
             self,
@@ -62,6 +67,11 @@ class DrupalStack(core.Stack):
             self,
             "CertificateArnNotExists",
             expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+        )
+        notification_email_exists_condition = core.CfnCondition(
+            self,
+            "NotificationEmailExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
         vpc = aws_ec2.Vpc(
             self,
@@ -229,6 +239,15 @@ class DrupalStack(core.Stack):
             self,
             "NotificationTopic"
         )
+        notification_subscription = aws_sns.CfnSubscription(
+            self,
+            "NotificationSubscription",
+            protocol="email",
+            topic_arn=notification_topic.topic_arn,
+            endpoint=notification_email_param.value_as_string
+        )
+        notification_subscription.cfn_options.condition = notification_email_exists_condition
+
         system_log_group = aws_logs.CfnLogGroup(
             self,
             "DrupalSystemLogGroup",
@@ -901,8 +920,19 @@ class DrupalStack(core.Stack):
             auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=code_deploy_role.role_arn
+            service_role_arn=code_deploy_role.role_arn,
+            trigger_configurations=[]
         )
+        code_deploy_deployment_group.add_override("Properties.TriggerConfigurations",[
+            {
+                "TriggerEvents": [
+                    "DeploymentSuccess",
+                    "DeploymentRollback"
+                ],
+                "TriggerName": "DeploymentNotification",
+                "TriggerTargetArn": notification_topic.topic_arn
+            }
+        ])
 
         pipeline = aws_codepipeline.CfnPipeline(
             self,

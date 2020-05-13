@@ -35,6 +35,7 @@ setuptools.setup(
         f"aws-cdk.aws-s3=={CDK_VERSION}",
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",
         f"aws-cdk.aws-sns=={CDK_VERSION}",
+        f"aws-cdk.aws-sns-subscriptions=={CDK_VERSION}",
         f"aws-cdk.aws-ssm=={CDK_VERSION}",
         f"aws-cdk.core=={CDK_VERSION}"
     ],
