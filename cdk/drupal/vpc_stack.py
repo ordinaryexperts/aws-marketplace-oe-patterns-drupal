@@ -339,7 +339,7 @@ class VpcStack(core.Stack):
             export_name="{}-public-subnet2".format(self.stack_name),
             value=vpc_public_subnet2.ref
         )
-        public_subnet1_output = core.CfnOutput(
+        public_subnet2_output = core.CfnOutput(
             self,
             "PublicSubnet2OutputCustomer",
             condition=customer_vpc_given_condition,

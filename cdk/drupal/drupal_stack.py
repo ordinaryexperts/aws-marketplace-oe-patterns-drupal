@@ -1030,7 +1030,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSg",
             group_description="EfsSg using default VPC ID",
-            vpc_id=vpc.vpc_id
+            vpc_id=vpc
         )
         efs_sg.cfn_options.condition = customer_vpc_not_given_condition
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1599,7 +1599,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSg",
             group_description="ElastiCacheSg using default VPC ID",
-            vpc_id=vpc.vpc_id
+            vpc_id=vpc
         )
         elasticache_sg.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
