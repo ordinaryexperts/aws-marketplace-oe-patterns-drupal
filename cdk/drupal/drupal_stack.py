@@ -815,6 +815,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAlb",
             scheme="internet-facing",
+            security_groups=[ alb_sg.ref ],
             subnets=vpc_public_subnet_ids,
             type="application"
         )
