@@ -4,6 +4,9 @@ bash:
 build:
 	docker-compose build
 
+clean:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh
+
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \

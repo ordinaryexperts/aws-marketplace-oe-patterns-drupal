@@ -11,3 +11,4 @@
 * Notifications for deployments
 * Elasticache and Cloudfront disabled by default
 * Autoscaling alarms triggered by CPU utilization
+* Adding cleanup script
