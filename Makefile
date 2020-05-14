@@ -19,7 +19,7 @@ deploy:
 	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7
 
 destroy:
-	docker-compose run -w /code/cdk --rm drupal cdk destroy '*'
+	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
 diff:
 	docker-compose run -w /code/cdk --rm drupal cdk diff
@@ -39,18 +39,6 @@ rebuild:
 
 synth:
 	docker-compose run -w /code/cdk --rm drupal cdk synth \
-	--version-reporting false \
-	--path-metadata false \
-	--asset-metadata false
-
-synth-drupal-stack:
-	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-drupal-{} \
-	--version-reporting false \
-	--path-metadata false \
-	--asset-metadata false
-
-synth-vpc-stack:
-	docker-compose run -w /code/cdk --rm drupal cdk synth oe-patterns-vpc-{} \
 	--version-reporting false \
 	--path-metadata false \
 	--asset-metadata false

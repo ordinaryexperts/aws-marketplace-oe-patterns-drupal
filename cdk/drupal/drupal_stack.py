@@ -303,25 +303,66 @@ class DrupalStack(core.Stack):
         )
         vpc_private_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
 
-        app_sg = aws_ec2.SecurityGroup(
+        app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
-            vpc=vpc
+            group_description="App SG"
         )
-        db_sg = aws_ec2.SecurityGroup(
+        app_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
-            vpc=vpc
+            group_description="Database SG"
         )
-        db_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(3306)
+        db_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
         )
-        db_subnet_group = aws_rds.CfnDBSubnetGroup(
+        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "DBSgIngress",
+            from_port=3306,
+            group_id=db_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=3306
+        )
+        db_subnet_group = core.CfnResource(
             self,
             "DBSubnetGroup",
-            db_subnet_group_description="test",
-            subnet_ids=vpc_private_subnet_ids
+            type="AWS::RDS::DBSubnetGroup",
+            properties={
+                "DBSubnetGroupDescription": "test",
+                "SubnetIds":  {
+                    "Fn::If": [
+                        customer_vpc_not_given_condition.logical_id,
+                        [
+                            vpc_private_subnet1.ref,
+                            vpc_private_subnet2.ref
+                        ],
+                        [
+                            customer_vpc_private_subnet_id1.value.to_string(),
+                            customer_vpc_private_subnet_id2.value.to_string()
+                            
+                        ]
+                    ]
+                }
+            }
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -382,81 +423,166 @@ class DrupalStack(core.Stack):
             },
             snapshot_identifier=db_snapshot_identifier,
             storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg.security_group_id ]
+            vpc_security_group_ids=[ db_sg.ref ]
         )
-        alb_sg = aws_ec2.SecurityGroup(
+        alb_sg = aws_ec2.CfnSecurityGroup(
             self,
-            "AlbSg",
-            vpc=vpc
+            "ALBSg",
+            group_description="ALB SG"
         )
-        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+        alb_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
             self,
             "AppAlb",
-            internet_facing=True,
-            security_group=alb_sg,
-            vpc=vpc
+            scheme="internet-facing",
+            security_groups=[ alb_sg.ref ],
+            type="application"
+        )
+        alb.add_override(
+            "Properties.Subnets",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    [
+                        vpc_private_subnet1.ref,
+                        vpc_private_subnet2.ref
+                    ],
+                    [
+                        customer_vpc_private_subnet_id1.value.to_string(),
+                        customer_vpc_private_subnet_id2.value.to_string()
+                    ]
+                ]
+            }
         )
         alb_dns_name_output = core.CfnOutput(
             self,
             "AlbDnsNameOutput",
             description="The DNS name of the application load balancer.",
-            value=alb.load_balancer_dns_name
+            value=alb.attr_dns_name
         )
         # if there is no cert...
-        http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+        http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpTargetGroup",
-            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            health_check_enabled=None,
+            health_check_interval_seconds=None,
             port=80,
-            vpc=vpc
+            protocol="HTTP",
+            target_type="instance"
         )
-        http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
-        http_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        http_target_group.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpListener",
-            default_target_groups=[http_target_group],
-            load_balancer=alb,
-            open=True,
-            port=80
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=80,
+            protocol="HTTP"
         )
-        http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener.add_override(
+            "Properties.DefaultActions.0.TargetGroupArn", http_target_group.ref
+        )
+        http_listener.add_override("Properties.DefaultActions.0.Type", "forward")
+        http_listener.cfn_options.condition = certificate_arn_does_not_exist_condition
 
         # if there is a cert...
-        http_redirect_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        http_redirect_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListener",
-            load_balancer=alb,
-            open=True,
-            port=80
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=80,
+            protocol="HTTP"
         )
-        http_redirect_listener.add_redirect_response(
-            "HttpRedirectResponse",
-            host="#{host}",
-            path="/#{path}",
-            port="443",
-            protocol="HTTPS",
-            query="#{query}",
-            status_code="HTTP_301"
+        http_redirect_listener.add_override(
+            "Properties.DefaultActions.0.RedirectConfig", 
+            {
+                "Host": "#{host}",
+                "Path": "/#{path}",
+                "Port": "443",
+                "Protocol": "HTTPS",
+                "Query": "#{query}",
+                "StatusCode": "HTTP_301"
+            }
         )
-        http_redirect_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
-        https_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+        http_redirect_listener.add_override("Properties.DefaultActions.0.Type", "redirect")
+        http_redirect_listener.cfn_options.condition = certificate_arn_exists_condition
+        https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpsTargetGroup",
-            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            health_check_enabled=None,
+            health_check_interval_seconds=None,
             port=443,
-            vpc=vpc
+            protocol="HTTPS",
+            target_type="instance"
         )
-        https_target_group.node.default_child.cfn_options.condition = certificate_arn_exists_condition
-        https_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        https_target_group.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        https_target_group.cfn_options.condition = certificate_arn_exists_condition
+        https_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpsListener",
-            certificates=[aws_elasticloadbalancingv2.ListenerCertificate(certificate_arn_param.value_as_string)],
-            default_target_groups=[https_target_group],
-            load_balancer=alb,
-            open=True,
-            port=443
+            certificates=[],
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=443,
+            protocol="HTTPS"
         )
-        https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_listener.add_override(
+            "Properties.DefaultActions.0.TargetGroupArn", https_target_group.ref
+        )
+        https_listener.add_override(
+            "Properties.Certificates.0.CertificateArn", certificate_arn_param.value_as_string
+        )
+        https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
+        https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
         notification_topic = aws_sns.Topic(
@@ -495,27 +621,48 @@ class DrupalStack(core.Stack):
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
 
         # efs
-        efs_sg = aws_ec2.SecurityGroup(
+        efs_sg = aws_ec2.CfnSecurityGroup(
             self,
             "EfsSg",
-            vpc=vpc
+            group_description="EFS SG"
         )
-        efs_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(2049)
+        efs_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EFSSgIngress",
+            from_port=2049,
+            group_id=db_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=2049
         )
         efs = aws_efs.CfnFileSystem(
             self,
             "AppEfs"
         )
-        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
-            efs_mount_target = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsMountTarget" + str(key),
-                file_system_id=efs.ref,
-                security_groups=[ efs_sg.security_group_id ],
-                subnet_id=subnet_id
-            )
+        efs_mount_target1 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget1",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id="TODO"
+        )
+        efs_mount_target2 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget2",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id="TODO"
+        )
 
         # app
         app_instance_role = aws_iam.Role(
@@ -881,7 +1028,7 @@ class DrupalStack(core.Stack):
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type=app_instance_type_param.value_as_string,
             iam_instance_profile=instance_profile.ref,
-            security_groups=[app_sg.security_group_name],
+            security_groups=[app_sg.ref],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(app_launch_config_user_data)
@@ -894,17 +1041,32 @@ class DrupalStack(core.Stack):
             launch_configuration_name=launch_config.ref,
             desired_capacity=asg_desired_capacity_param.value.to_string(),
             max_size=asg_max_size_param.value.to_string(),
-            min_size=asg_min_size_param.value.to_string(),
-            vpc_zone_identifier=vpc_private_subnet_ids
+            min_size=asg_min_size_param.value.to_string()
         )
         # https://github.com/aws/aws-cdk/issues/3615
+        asg.add_override(
+            "Properties.VpcZoneIdentifier",
+            {
+                "Fn::If": [
+                    customer_vpc_given_condition.logical_id,
+                    [
+                        vpc_private_subnet1.ref,
+                        vpc_private_subnet2.ref
+                    ],
+                    [
+                        customer_vpc_private_subnet_id1.value.to_string(),
+                        customer_vpc_private_subnet_id2.value.to_string()
+                    ]
+                ]
+            }
+        )
         asg.add_override(
             "Properties.TargetGroupARNs",
             {
                 "Fn::If": [
                     certificate_arn_exists_condition.logical_id,
-                    [https_target_group.target_group_arn],
-                    [http_target_group.target_group_arn]
+                    [https_target_group.ref],
+                    [http_target_group.ref]
                 ]
             }
         )
@@ -920,9 +1082,9 @@ class DrupalStack(core.Stack):
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=app_sg.security_group_id,
+            group_id=app_sg.ref,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.security_group_id,
+            source_security_group_id=alb_sg.ref,
             to_port=80
         )
         sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
@@ -931,9 +1093,9 @@ class DrupalStack(core.Stack):
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=app_sg.security_group_id,
+            group_id=app_sg.ref,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.security_group_id,
+            source_security_group_id=alb_sg.ref,
             to_port=443
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
@@ -1255,21 +1417,52 @@ class DrupalStack(core.Stack):
             "ElastiCacheEnableCondition",
             expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
         )
-        elasticache_sg = aws_ec2.SecurityGroup(
+        elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ElastiCacheSg",
-            vpc=vpc
+            group_description="App SG"
         )
-        elasticache_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(11211)
+        elasticache_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
         )
-        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
-        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
+        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "ElasticacheSgIngress",
+            from_port=11211,
+            group_id=elasticache_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=11211
+        )
+        elasticache_sg.cfn_options.condition = elasticache_enable_condition
+        elasticache_subnet_group = core.CfnResource(
             self,
             "ElastiCacheSubnetGroup",
-            description="ElastiCache subnet group",
-            subnet_ids=vpc_private_subnet_ids
+            type="AWS::RDS::DBSubnetGroup",
+            properties={
+                "Description": "test",
+                "SubnetIds":  {
+                    "Fn::If": [
+                        customer_vpc_not_given_condition.logical_id,
+                        [
+                            vpc_private_subnet1.ref,
+                            vpc_private_subnet2.ref
+                        ],
+                        [
+                            customer_vpc_private_subnet_id1.value.to_string(),
+                            customer_vpc_private_subnet_id2.value.to_string()
+                            
+                        ]
+                    ]
+                }
+            }
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
@@ -1281,7 +1474,7 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
+            vpc_security_group_ids=[ elasticache_sg.ref ]
         )
         core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
@@ -1365,7 +1558,7 @@ class DrupalStack(core.Stack):
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.load_balancer_dns_name,
+                    domain_name=alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
