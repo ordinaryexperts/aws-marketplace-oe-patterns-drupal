@@ -2,6 +2,7 @@ import json
 from aws_cdk import (
     aws_autoscaling,
     aws_cloudfront,
+    aws_cloudwatch,
     aws_codedeploy,
     aws_codepipeline,
     aws_codepipeline_actions,
@@ -856,6 +857,60 @@ class DrupalStack(core.Stack):
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
         asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
         asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
+            self,
+            "WebServerScaleUpPolicy",
+            adjustment_type="ChangeInCapacity",
+            auto_scaling_group_name=asg.ref,
+            cooldown="60",
+            scaling_adjustment=1
+        )
+        asg_web_server_scale_down_policy = aws_autoscaling.CfnScalingPolicy(
+            self,
+            "WebServerScaleDownPolicy",
+            adjustment_type="ChangeInCapacity",
+            auto_scaling_group_name=asg.ref,
+            cooldown="60",
+            scaling_adjustment=-1
+        )
+
+        # cloudwatch alarms
+        cpu_alarm_high = aws_cloudwatch.CfnAlarm(
+            self,
+            "CPUAlarmHigh",
+            comparison_operator="GreaterThanThreshold",
+            evaluation_periods=2,
+            actions_enabled=None,
+            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.topic_arn ],
+            alarm_description="Scale-up if CPU > 90% for 10mins",
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
+            metric_name="CPUUtilization",
+            namespace="AWS/EC2",
+            period=300,
+            statistic="Average",
+            threshold=90
+        )
+        cpu_alarm_low = aws_cloudwatch.CfnAlarm(
+            self,
+            "CPUAlarmLow",
+            comparison_operator="LessThanThreshold",
+            evaluation_periods=2,
+            actions_enabled=None,
+            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.topic_arn ],
+            alarm_description="Scale-down if CPU < 70% for 10mins",
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
+            metric_name="CPUUtilization",
+            namespace="AWS/EC2",
+            period=300,
+            statistic="Average",
+            threshold=70
+        )
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -1189,7 +1244,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheEnableParam",
             allowed_values=[ "true", "false" ],
-            default="true",
+            default="false",
         )
         elasticache_enable_condition = core.CfnCondition(
             self,
@@ -1290,7 +1345,7 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontEnableParam",
             allowed_values=[ "true", "false" ],
-            default="true",
+            default="false",
             description="Enable CloudFront CDN support."
         )
         cloudfront_enable_condition = core.CfnCondition(
