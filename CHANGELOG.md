@@ -10,3 +10,4 @@
 * Move to us-east-1
 * Notifications for deployments
 * Elasticache and Cloudfront disabled by default
+* Autoscaling alarms triggered by CPU utilization
