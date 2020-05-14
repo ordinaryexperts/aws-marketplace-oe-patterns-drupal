@@ -653,14 +653,34 @@ class DrupalStack(core.Stack):
             "AppEfsMountTarget1",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id="TODO"
+            subnet_id="" # will be overridden just below
+        )
+        efs_mount_target1.add_override(
+            "Properties.SubnetId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc_private_subnet1.ref,
+                    customer_vpc_private_subnet_id1.value.to_string()
+                ]
+            }
         )
         efs_mount_target2 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget2",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id="TODO"
+            subnet_id="" # will be overridden just below
+        )
+        efs_mount_target2.add_override(
+            "Properties.SubnetId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc_private_subnet2.ref,
+                    customer_vpc_private_subnet_id2.value.to_string()
+                ]
+            }
         )
 
         # app
