@@ -1,5 +1,4 @@
 import json
-import random
 from aws_cdk import (
     aws_autoscaling,
     aws_cloudfront,
@@ -26,7 +25,7 @@ TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
 
-    def __init__(self, scope: core.Construct, id: str, vpc_stack, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # TODO: Encryption
@@ -38,7 +37,6 @@ class DrupalStack(core.Stack):
             block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
 
-        # CfnParameters & Conditions
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -48,6 +46,11 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactS3ObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
+        )
+        notification_email_param = core.CfnParameter(
+            self,
+            "NotificationEmail",
+            default=""
         )
 
         certificate_arn_param = core.CfnParameter(
@@ -65,173 +68,296 @@ class DrupalStack(core.Stack):
             "CertificateArnNotExists",
             expression=core.Fn.condition_equals(certificate_arn_param.value, "")
         )
+        notification_email_exists_condition = core.CfnCondition(
+            self,
+            "NotificationEmailExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
+        )
+        vpc = aws_ec2.Vpc(
+            self,
+            "Vpc",
+            cidr="10.0.0.0/16"
+        )
+        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
+        app_sg = aws_ec2.SecurityGroup(
+            self,
+            "AppSg",
+            vpc=vpc
+        )
+        db_sg = aws_ec2.SecurityGroup(
+            self,
+            "DBSg",
+            vpc=vpc
+        )
+        db_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(3306)
+        )
+        db_subnet_group = aws_rds.CfnDBSubnetGroup(
+            self,
+            "DBSubnetGroup",
+            db_subnet_group_description="test",
+            subnet_ids=vpc_private_subnet_ids
+        )
+        db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
+            self,
+            "DBClusterParameterGroup",
+            description="test",
+            family="aurora5.6",
+            parameters={
+                "character_set_client": "utf8",
+                "character_set_connection": "utf8",
+                "character_set_database": "utf8",
+                "character_set_filesystem": "utf8",
+                "character_set_results": "utf8",
+                "character_set_server": "utf8",
+                "collation_connection": "utf8_general_ci",
+                "collation_server": "utf8_general_ci"
+            }
+        )
+        db_secret = None
+        db_snapshot_identifier = None
+        db_username = None
+        db_password = None
+        db_snapshot_arn = DB_SNAPSHOT
+        db_snapshot_param = core.CfnParameter(
+            self,
+            "DBSnapshotIdentifier",
+            default=db_snapshot_arn
+        )
+        if db_snapshot_arn:
+            db_snapshot_identifier = db_snapshot_param.value_as_string
+        else:
+            db_secret = aws_secretsmanager.Secret(
+                self,
+                "secret",
+                generate_secret_string=aws_secretsmanager.SecretStringGenerator(
+                    exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
+                    exclude_punctuation=True,
+                    generate_string_key="password",
+                    secret_string_template=json.dumps({"username":"dbadmin"})
+                ),
+                secret_name="oe/patterns/drupal/database-password"
+            )
+            db_username = db_secret.secret_value_from_json("username").to_string()
+            db_password = db_secret.secret_value_from_json("password").to_string()
+        db_cluster = aws_rds.CfnDBCluster(
+            self,
+            "DBCluster",
+            engine="aurora",
+            db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
+            db_subnet_group_name=db_subnet_group.ref,
+            engine_mode="serverless",
+            master_username=db_username,
+            master_user_password=db_password,
+            scaling_configuration={
+                "auto_pause": True,
+                "min_capacity": 1,
+                "max_capacity": 2,
+                "seconds_until_auto_pause": 30
+            },
+            snapshot_identifier=db_snapshot_identifier,
+            storage_encrypted=True,
+            vpc_security_group_ids=[ db_sg.security_group_id ]
+        )
+        alb_sg = aws_ec2.SecurityGroup(
+            self,
+            "AlbSg",
+            vpc=vpc
+        )
+        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+            self,
+            "AppAlb",
+            internet_facing=True,
+            security_group=alb_sg,
+            vpc=vpc
+        )
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.load_balancer_dns_name
+        )
+        # if there is no cert...
+        http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+            self,
+            "AsgHttpTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=80,
+            vpc=vpc
+        )
+        http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener = aws_elasticloadbalancingv2.ApplicationListener(
+            self,
+            "HttpListener",
+            default_target_groups=[http_target_group],
+            load_balancer=alb,
+            open=True,
+            port=80
+        )
+        http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
 
-        customer_vpc_id_param = core.CfnParameter(
+        # if there is a cert...
+        http_redirect_listener = aws_elasticloadbalancingv2.ApplicationListener(
             self,
-            "CustomerVpcId",
-            default=""
+            "HttpRedirectListener",
+            load_balancer=alb,
+            open=True,
+            port=80
         )
-        customer_vpc_public_subnet_id1 = core.CfnParameter(
-            self,
-            "CustomerVpcPublicSubnet1",
-            default=""
+        http_redirect_listener.add_redirect_response(
+            "HttpRedirectResponse",
+            host="#{host}",
+            path="/#{path}",
+            port="443",
+            protocol="HTTPS",
+            query="#{query}",
+            status_code="HTTP_301"
         )
-        customer_vpc_public_subnet_id2 = core.CfnParameter(
+        http_redirect_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
             self,
-            "CustomerVpcPublicSubnet2",
-            default=""
+            "AsgHttpsTargetGroup",
+            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            port=443,
+            vpc=vpc
         )
-        customer_vpc_private_subnet_id1 = core.CfnParameter(
+        https_target_group.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_listener = aws_elasticloadbalancingv2.ApplicationListener(
             self,
-            "CustomerVpcPrivateSubnet1",
-            default=""
+            "HttpsListener",
+            certificates=[aws_elasticloadbalancingv2.ListenerCertificate(certificate_arn_param.value_as_string)],
+            default_target_groups=[https_target_group],
+            load_balancer=alb,
+            open=True,
+            port=443
         )
-        customer_vpc_private_subnet_id2 = core.CfnParameter(
+        https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+
+        # notifications
+        notification_topic = aws_sns.Topic(
             self,
-            "CustomerVpcPrivateSubnet2",
-            default=""
+            "NotificationTopic"
         )
-        customer_vpc_given_condition = core.CfnCondition(
+        notification_subscription = aws_sns.CfnSubscription(
             self,
-            "CustomerVpcGiven",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, ""))
+            "NotificationSubscription",
+            protocol="email",
+            topic_arn=notification_topic.topic_arn,
+            endpoint=notification_email_param.value_as_string
         )
-        customer_vpc_not_given_condition = core.CfnCondition(
+        notification_subscription.cfn_options.condition = notification_email_exists_condition
+
+        system_log_group = aws_logs.CfnLogGroup(
             self,
-            "CustomerVpcNotGiven",
-            expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
+            "DrupalSystemLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalAccessLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group = aws_logs.CfnLogGroup(
+            self,
+            "DrupalErrorLogGroup",
+            retention_in_days=TWO_YEARS_IN_DAYS
+        )
+        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+
+        # efs
+        efs_sg = aws_ec2.SecurityGroup(
+            self,
+            "EfsSg",
+            vpc=vpc
+        )
+        efs_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(2049)
+        )
+        efs = aws_efs.CfnFileSystem(
+            self,
+            "AppEfs"
+        )
+        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
+            efs_mount_target = aws_efs.CfnMountTarget(
+                self,
+                "AppEfsMountTarget" + str(key),
+                file_system_id=efs.ref,
+                security_groups=[ efs_sg.security_group_id ],
+                subnet_id=subnet_id
+            )
+
+        # app
+        app_instance_role = aws_iam.Role(
+            self,
+            "AppInstanceRole",
+            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
+            inline_policies={
+                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'logs:CreateLogStream',
+                                'logs:DescribeLogStreams',
+                                'logs:PutLogEvents'
+                            ],
+                            resources=[
+                                access_log_group.attr_arn,
+                                error_log_group.attr_arn,
+                                system_log_group.attr_arn
+                            ]
+                        )
+                    ]
+                ),
+                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'ec2:DescribeVolumes',
+                                'ec2:DescribeTags',
+                                'cloudwatch:GetMetricStatistics',
+                                'cloudwatch:ListMetrics',
+                                'cloudwatch:PutMetricData'
+                            ],
+                            resources=['*']
+                        )
+                    ]
+                ),
+                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:Get*',
+                                's3:Head*'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/*".format(
+                                    core.Aws.PARTITION,
+                                    artifact_bucket.bucket_name
+                                )
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
+        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+        instance_profile = aws_iam.CfnInstanceProfile(
+            self,
+            "AppInstanceProfile",
+            roles=[app_instance_role.role_name]
         )
 
-        cloudfront_certificate_arn_param = core.CfnParameter(
-            self,
-            "CloudFrontCertificateArn",
-            default="",
-            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
-        )
-        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        )
-        cloudfront_certificate_arn_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnNotExists",
-            expression=core.Fn.condition_equals(cloudfront_certificate_arn_param.value, "")
-        )
-        cloudfront_enable_param = core.CfnParameter(
-            self,
-            "CloudFrontEnableParam",
-            allowed_values=[ "true", "false" ],
-            default="true",
-            description="Enable CloudFront CDN support."
-        )
-        cloudfront_enable_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnableCondition",
-            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-        )
-        cloudfront_origin_access_policy_param = core.CfnParameter(
-            self,
-            "CloudFrontOriginAccessPolicyParam",
-            allowed_values = [ "http-only", "https-only", "match-viewer" ],
-            default="match-viewer",
-            description="CloudFront access policy for communicating with content origin."
-        )
-        cloudfront_price_class_param = core.CfnParameter(
-            self,
-            "CloudFrontPriceClassParam",
-            # possible to use a map to make the values more human readable
-            allowed_values = [
-                "PriceClass_All",
-                "PriceClass_200",
-                "PriceClass_100"
-            ],
-            default="PriceClass_All",
-            description="Price class to use for CloudFront CDN."
-        )
-
-        elasticache_cluster_cache_node_type_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterCacheNodeTypeParam",
-            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
-            default="cache.t2.micro",
-            type="String"
-        )
-        elasticache_cluster_engine_version_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterEngineVersionParam",
-            # TODO: determine which versions are supported by the Drupal memcached module
-            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
-            default="1.5.16",
-            description="The memcached version of the cache cluster.",
-            type="String"
-        )
-        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterNumCacheNodesParam",
-            default=2,
-            description="The number of cache nodes in the memcached cluster.",
-            min_value=1,
-            max_value=20,
-            type="Number"
-        )
-        elasticache_enable_param = core.CfnParameter(
-            self,
-            "ElastiCacheEnableParam",
-            allowed_values=[ "true", "false" ],
-            default="true",
-        )
-        elasticache_enable_condition = core.CfnCondition(
-            self,
-            "ElastiCacheEnableCondition",
-            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
-        )
-
-        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseNameParameter",
-            description="The name of the database for the Drupal application.",
-            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
-            type="String",
-            value="drupal" # TODO: from param?
-        )
-        # cannot create SECURE_STRING parameters via cloudformation
-        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabasePasswordParameter",
-            description="The database password for the Drupal application.",
-            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
-            # type=aws_ssm.ParameterType.SECURE_STRING
-            type="String",
-            value="dbpassword" # TODO: from param?
-        )
-        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseUserParameter",
-            description="The database user for the Drupal application.",
-            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
-            type="String",
-            value="dbadmin" # TODO: from param?
-        )
-        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalHashSaltParameter",
-            description="The configured hash salt for the Drupal application.",
-            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
-            type="String",
-            # TODO: from param?
-            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
-        )
-        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalSyncDirectoryParameter",
-            description="The configured sync directory for the Drupal application.",
-            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
-            type="String",
-            # TODO: from param?
-            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
-        )
-
+        # autoscaling
         app_instance_type_param = core.CfnParameter(
             self,
             "AppLaunchConfigInstanceType",
@@ -523,675 +649,21 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-
-        # no cert + no vpc given
-        cert_arn_and_customer_vpc_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CertArnAndCustomerVpcDoesNotExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
-                core.Fn.condition_equals(certificate_arn_param.value, "")
-            )
-        )
-        # no cert + vpc given
-        cert_arn_does_not_exist_customer_vpc_does_exist_condition = core.CfnCondition(
-            self,
-            "CertArnDoesNotExistCustomerVpcDoesExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
-                core.Fn.condition_equals(certificate_arn_param.value, "")
-            )
-        )
-        # cert + no vpc given
-        cert_arn_does_exist_customer_vpc_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CertArnDoesExistCustomerVpcDoesNotExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
-                core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
-            )
-        )
-        # cert + vpc given
-        cert_arn_and_customer_vpc_does_exist_condition = core.CfnCondition(
-            self,
-            "CertArnAndCustomerVpcDoesExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
-                core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
-            )
-        )
-        # cloudfront enable + no vpc
-        cloudfront_enabled_customer_vpc_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnabledCustomerVpcDoesNotExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
-                core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-            )
-        )
-        # cloudfront enable + vpc
-        cloudfront_enabled_customer_vpc_exists_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnabledCustomerVpcExistsCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
-                core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-            )
-        )
-        # elasticache enable + no vpc
-        elasticache_enabled_customer_vpc_does_not_exist_condition = core.CfnCondition(
-            self,
-            "ElasticacheEnabledCustomerVpcDoesNotExistCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_equals(customer_vpc_id_param.value, ""),
-                core.Fn.condition_equals(elasticache_enable_param.value, "true")
-            )
-        )
-        # elasticache enable + vpc
-        elasticache_enabled_customer_vpc_exists_condition = core.CfnCondition(
-            self,
-            "ElasticacheEnabledCustomerVpcExistsCondition",
-            expression=core.Fn.condition_and(
-                core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, "")),
-                core.Fn.condition_equals(elasticache_enable_param.value, "true")
-            )
-        )
-
-        vpc = core.Fn.import_value("{}-vpc".format(vpc_stack))
-        vpc_private_subnet_ids = [ core.Fn.import_value("{}-private-subnet1".format(vpc_stack)), core.Fn.import_value("{}-private-subnet2".format(vpc_stack)) ]
-        vpc_public_subnet_ids = [ core.Fn.import_value("{}-public-subnet1".format(vpc_stack)), core.Fn.import_value("{}-public-subnet2".format(vpc_stack)) ]
-        
-        vpc_customer = customer_vpc_id_param.value_as_string
-        vpc_customer_private_subnet_ids = [ customer_vpc_private_subnet_id1.value_as_string, customer_vpc_private_subnet_id2.value_as_string ]
-        vpc_customer_public_subnet_ids = [ customer_vpc_public_subnet_id1.value_as_string, customer_vpc_public_subnet_id2.value_as_string ]
-
-        app_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "AppSg",
-            group_description="AppSG using default VPC ID",
-            vpc_id=vpc
-        )
-        app_sg.cfn_options.condition = customer_vpc_not_given_condition
-        app_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "AppSgCustomerVpc",
-            group_description="AppSG using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        app_sg_customer.cfn_options.condition = customer_vpc_given_condition
-
-        db_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "DBSg",
-            group_description="DBSG using default VPC ID",
-            vpc_id=vpc
-        )
-        db_sg.cfn_options.condition = customer_vpc_not_given_condition
-        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "DBSgIngress",
-            from_port=3306,
-            group_id=db_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=3306
-        )
-        db_sg_ingress.cfn_options.condition = customer_vpc_not_given_condition
-        db_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "DBSgCustomerVpc",
-            group_description="DBSG using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        db_sg_customer.cfn_options.condition = customer_vpc_given_condition
-        db_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "DBSgCustomerIngress",
-            from_port=3306,
-            group_id=db_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg_customer.ref,
-            to_port=3306
-        )
-        db_sg_customer_ingress.cfn_options.condition = customer_vpc_given_condition
-
-        db_subnet_group = aws_rds.CfnDBSubnetGroup(
-            self,
-            "DBSubnetGroup",
-            db_subnet_group_description="test",
-            subnet_ids=vpc_private_subnet_ids
-        )
-        db_subnet_group.cfn_options.condition = customer_vpc_not_given_condition
-        db_customer_subnet_group = aws_rds.CfnDBSubnetGroup(
-            self,
-            "DBCustomerSubnetGroup",
-            db_subnet_group_description="test",
-            subnet_ids=vpc_customer_private_subnet_ids
-        )
-        db_customer_subnet_group.cfn_options.condition = customer_vpc_given_condition
-
-        db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
-            self,
-            "DBClusterParameterGroup",
-            description="test",
-            family="aurora5.6",
-            parameters={
-                "character_set_client": "utf8",
-                "character_set_connection": "utf8",
-                "character_set_database": "utf8",
-                "character_set_filesystem": "utf8",
-                "character_set_results": "utf8",
-                "character_set_server": "utf8",
-                "collation_connection": "utf8_general_ci",
-                "collation_server": "utf8_general_ci"
-            }
-        )
-        db_secret = None
-        db_snapshot_identifier = None
-        db_username = None
-        db_password = None
-        db_snapshot_arn = DB_SNAPSHOT
-        db_snapshot_param = core.CfnParameter(
-            self,
-            "DBSnapshotIdentifier",
-            default=db_snapshot_arn
-        )
-        if db_snapshot_arn:
-            db_snapshot_identifier = db_snapshot_param.value_as_string
-        else:
-            db_secret = aws_secretsmanager.Secret(
-                self,
-                "secret",
-                generate_secret_string=aws_secretsmanager.SecretStringGenerator(
-                    exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
-                    exclude_punctuation=True,
-                    generate_string_key="password",
-                    secret_string_template=json.dumps({"username":"dbadmin"})
-                ),
-                secret_name="oe/patterns/drupal/database-password"
-            )
-            db_username = db_secret.secret_value_from_json("username").to_string()
-            db_password = db_secret.secret_value_from_json("password").to_string()
-        db_cluster = aws_rds.CfnDBCluster(
-            self,
-            "DBCluster",
-            engine="aurora",
-            db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
-            db_subnet_group_name=db_subnet_group.ref,
-            engine_mode="serverless",
-            master_username=db_username,
-            master_user_password=db_password,
-            scaling_configuration={
-                "auto_pause": True,
-                "min_capacity": 1,
-                "max_capacity": 2,
-                "seconds_until_auto_pause": 30
-            },
-            snapshot_identifier=db_snapshot_identifier,
-            storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg.ref ]
-        )
-        db_cluster.cfn_options.condition = customer_vpc_not_given_condition
-
-        db_customer_cluster = aws_rds.CfnDBCluster(
-            self,
-            "DBCustomerCluster",
-            engine="aurora",
-            db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
-            db_subnet_group_name=db_customer_subnet_group.ref,
-            engine_mode="serverless",
-            master_username=db_username,
-            master_user_password=db_password,
-            scaling_configuration={
-                "auto_pause": True,
-                "min_capacity": 1,
-                "max_capacity": 2,
-                "seconds_until_auto_pause": 30
-            },
-            snapshot_identifier=db_snapshot_identifier,
-            storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg_customer.ref ]
-        )
-        db_customer_cluster.cfn_options.condition = customer_vpc_given_condition
-        alb_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "AlbSg",
-            group_description="AlbSG using default VPC ID",
-            vpc_id=vpc
-        )
-        alb_sg.cfn_options.condition = customer_vpc_not_given_condition
-        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpIngress",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 80",
-            from_port=80,
-            group_id=alb_sg.ref,
-            ip_protocol="tcp",
-            to_port=80
-        )
-        alb_http_ingress.cfn_options.condition = customer_vpc_not_given_condition
-        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpsIngress",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 443",
-            from_port=443,
-            group_id=alb_sg.ref,
-            ip_protocol="tcp",
-            to_port=443
-        )
-        alb_https_ingress.cfn_options.condition = customer_vpc_not_given_condition
-        alb_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "AlbSgCustomerVpc",
-            group_description="AlbSG using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        alb_sg_customer.cfn_options.condition = customer_vpc_given_condition
-        alb_http_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpIngressCustomerVpc",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 80",
-            from_port=80,
-            group_id=alb_sg_customer.ref,
-            ip_protocol="tcp",
-            to_port=80
-        )
-        alb_http_ingress_customer.cfn_options.condition = customer_vpc_given_condition
-        alb_https_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpsIngressCustomerVpc",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 443",
-            from_port=443,
-            group_id=alb_sg_customer.ref,
-            ip_protocol="tcp",
-            to_port=443
-        )
-        alb_https_ingress_customer.cfn_options.condition = customer_vpc_given_condition
-        alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
-            self,
-            "AppAlb",
-            scheme="internet-facing",
-            security_groups=[ alb_sg.ref ],
-            subnets=vpc_public_subnet_ids,
-            type="application"
-        )
-        alb.cfn_options.condition = customer_vpc_not_given_condition
-        alb_customer = aws_elasticloadbalancingv2.CfnLoadBalancer(
-            self,
-            "AppAlbCustomer",
-            scheme="internet-facing",
-            security_groups=[ alb_sg_customer.ref ],
-            subnets=vpc_customer_public_subnet_ids,
-            type="application"
-        )
-        alb_customer.cfn_options.condition = customer_vpc_given_condition
-
-        alb_dns_name_output = core.CfnOutput(
-            self,
-            "AlbDnsNameOutput",
-            condition=customer_vpc_not_given_condition,
-            description="The DNS name of the application load balancer.",
-            value=alb.attr_dns_name
-        )
-        alb_dns_name_output = core.CfnOutput(
-            self,
-            "AlbDnsNameOutputCustomer",
-            condition=customer_vpc_given_condition,
-            description="The DNS name of the application load balancer.",
-            value=alb_customer.attr_dns_name
-        )
-
-        # if no cert + no vpc given...
-        http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgHttpTargetGroup",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
-            port=80,
-            protocol="HTTP",
-            target_type="instance",
-            vpc_id=vpc
-        )
-        http_target_group.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
-        http_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpListener",
-            default_actions=[],
-            load_balancer_arn=alb.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_listener.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", http_target_group.ref
-        )
-        http_listener.add_override("Properties.DefaultActions.0.Type", "forward")
-        http_listener.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
-
-        # if no cert but vpc given...
-        http_target_group_customer = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgCustomerHttpTargetGroup",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
-            port=80,
-            protocol="HTTP",
-            target_type="instance",
-            vpc_id=vpc_customer
-        )
-        http_target_group_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
-        http_listener_customer = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpListenerCustomer",
-            default_actions=[],
-            load_balancer_arn=alb_customer.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_listener_customer.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", http_target_group_customer.ref
-        )
-        http_listener_customer.add_override("Properties.DefaultActions.0.Type", "forward")
-        http_listener_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
-
-        # if cert but no vpc given...
-        http_redirect_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpRedirectListener",
-            default_actions=[],
-            load_balancer_arn=alb.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_redirect_listener.add_override(
-            "Properties.DefaultActions.0.RedirectConfig", 
-            {
-                "Host": "#{host}",
-                "Path": "/#{path}",
-                "Port": "443",
-                "Protocol": "HTTPS",
-                "Query": "#{query}",
-                "StatusCode": "HTTP_301"
-            }
-        )
-        http_redirect_listener.add_override("Properties.DefaultActions.0.Type", "redirect")
-        http_redirect_listener.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
-        https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgHttpsTargetGroup",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
-            port=443,
-            protocol="HTTPS",
-            target_type="instance",
-            vpc_id=vpc
-        )
-        https_target_group.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
-        https_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpsListener",
-            certificates=[],
-            default_actions=[],
-            load_balancer_arn=alb.ref,
-            port=443,
-            protocol="HTTPS"
-        )
-        https_listener.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", https_target_group.ref
-        )
-        https_listener.add_override(
-            "Properties.Certificates.0.CertificateArn", certificate_arn_param.value_as_string
-        )
-        https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
-        https_listener.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
-
-        # if cert and vpc given...
-        http_redirect_listener_customer = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpRedirectListenerCustomer",
-            default_actions=[],
-            load_balancer_arn=alb_customer.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_redirect_listener_customer.add_override(
-            "Properties.DefaultActions.0.RedirectConfig", 
-            {
-                "Host": "#{host}",
-                "Path": "/#{path}",
-                "Port": "443",
-                "Protocol": "HTTPS",
-                "Query": "#{query}",
-                "StatusCode": "HTTP_301"
-            }
-        )
-        http_redirect_listener_customer.add_override("Properties.DefaultActions.0.Type", "redirect")
-        http_redirect_listener_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
-        https_target_group_customer = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgHttpsTargetGroupCustomer",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
-            port=443,
-            protocol="HTTPS",
-            target_type="instance",
-            vpc_id=vpc_customer
-        )
-        https_target_group_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
-        https_listener_customer = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpsListenerCustomer",
-            certificates=[],
-            default_actions=[],
-            load_balancer_arn=alb_customer.ref,
-            port=443,
-            protocol="HTTPS"
-        )
-        https_listener_customer.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", https_target_group_customer.ref
-        )
-        https_listener_customer.add_override(
-            "Properties.Certificates.0.CertificateArn", certificate_arn_param.value_as_string
-        )
-        https_listener_customer.add_override("Properties.DefaultActions.0.Type", "forward")
-        https_listener_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
-
-        # notifications
-        notification_topic = aws_sns.Topic(
-            self,
-            "NotificationTopic"
-        )
-        system_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalSystemLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        access_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalAccessLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        error_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalErrorLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-
-        # efs
-        efs_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "EfsSg",
-            group_description="EfsSg using default VPC ID",
-            vpc_id=vpc
-        )
-        efs_sg.cfn_options.condition = customer_vpc_not_given_condition
-        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngress",
-            from_port=2049,
-            group_id=efs_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=2049
-        )
-        efs_sg_ingress.cfn_options.condition = customer_vpc_not_given_condition
-        efs_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "EfsSgCustomer",
-            group_description="EfsSg using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        efs_sg_customer.cfn_options.condition = customer_vpc_given_condition
-        efs_sg_customer_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngressCustomer",
-            from_port=2049,
-            group_id=efs_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg_customer.ref,
-            to_port=2049
-        )
-        efs_sg_customer_ingress.cfn_options.condition = customer_vpc_given_condition
-
-        efs = aws_efs.CfnFileSystem(
-            self,
-            "AppEfs",
-            encrypted=None
-        )
-        efs.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfs".format(self.stack_name)}])
-        efs.cfn_options.condition = customer_vpc_not_given_condition
-        efs_customer = aws_efs.CfnFileSystem(
-            self,
-            "AppEfsCustomer",
-            encrypted=None
-        )
-        efs_customer.add_override("Properties.FileSystemTags", [{"Key":"Name", "Value":"{}/AppEfsCustomer".format(self.stack_name)}])
-        efs_customer.cfn_options.condition = customer_vpc_given_condition
-        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
-            efs_mount_target = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsMountTarget" + str(key),
-                file_system_id=efs.ref,
-                security_groups=[ efs_sg.ref ],
-                subnet_id=subnet_id
-            )
-            efs_mount_target.cfn_options.condition = customer_vpc_not_given_condition
-        for key, subnet_id in enumerate(vpc_customer_private_subnet_ids, start=1):
-            efs_mount_target_customer = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsCustomerMountTarget" + str(key),
-                file_system_id=efs_customer.ref,
-                security_groups=[ efs_sg_customer.ref ],
-                subnet_id=subnet_id
-            )
-            efs_mount_target_customer.cfn_options.condition = customer_vpc_given_condition
-
-        # app
-        app_instance_role = aws_iam.Role(
-            self,
-            "AppInstanceRole",
-            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
-            inline_policies={
-                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                'logs:CreateLogStream',
-                                'logs:DescribeLogStreams',
-                                'logs:PutLogEvents'
-                            ],
-                            resources=[
-                                access_log_group.attr_arn,
-                                error_log_group.attr_arn,
-                                system_log_group.attr_arn
-                            ]
-                        )
-                    ]
-                ),
-                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                'ec2:DescribeVolumes',
-                                'ec2:DescribeTags',
-                                'cloudwatch:GetMetricStatistics',
-                                'cloudwatch:ListMetrics',
-                                'cloudwatch:PutMetricData'
-                            ],
-                            resources=['*']
-                        )
-                    ]
-                ),
-                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                's3:Get*',
-                                's3:Head*'
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    artifact_bucket.bucket_name
-                                )
-                            ]
-                        )
-                    ]
-                )
-            }
-        )
-        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        instance_profile = aws_iam.CfnInstanceProfile(
-            self,
-            "AppInstanceProfile",
-            roles=[app_instance_role.role_name]
-        )
-
-        # autoscaling
         with open('drupal/scripts/app_launch_config_user_data.sh') as f:
             app_launch_config_user_data = f.read()
-        with open('drupal/scripts/app_launch_config_user_data_customer.sh') as f:
-            app_launch_config_user_data_customer = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type=app_instance_type_param.value_as_string,
             iam_instance_profile=instance_profile.ref,
-            security_groups=[ app_sg.ref ],
+            security_groups=[app_sg.security_group_name],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(app_launch_config_user_data)
                 )
             )
         )
-        launch_config.cfn_options.condition = customer_vpc_not_given_condition
-        launch_config_customer = aws_autoscaling.CfnLaunchConfiguration(
-            self,
-            "AppLaunchConfigCustomer",
-            image_id=AMI, # TODO: Put into CFN Mapping
-            instance_type="t3.micro", # TODO: Parameterize
-            iam_instance_profile=instance_profile.ref,
-            security_groups=[ app_sg_customer.ref ],
-            user_data=(
-                core.Fn.base64(
-                    core.Fn.sub(app_launch_config_user_data_customer)
-                )
-            )
-        )
-        launch_config_customer.cfn_options.condition = customer_vpc_given_condition
         asg = aws_autoscaling.CfnAutoScalingGroup(
             self,
             "AppAsg",
@@ -1207,8 +679,8 @@ class DrupalStack(core.Stack):
             {
                 "Fn::If": [
                     certificate_arn_exists_condition.logical_id,
-                    [https_target_group.ref],
-                    [http_target_group.ref]
+                    [https_target_group.target_group_arn],
+                    [http_target_group.target_group_arn]
                 ]
             }
         )
@@ -1219,85 +691,74 @@ class DrupalStack(core.Stack):
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
         asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
         asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
-        asg.cfn_options.condition = customer_vpc_not_given_condition
-        asg_customer = aws_autoscaling.CfnAutoScalingGroup(
-            self,
-            "AppAsgCustomer",
-            launch_configuration_name=launch_config_customer.ref,
-            # TODO: Parameterize desired_capacity, max_size, min_size
-            desired_capacity="1",
-            max_size="2",
-            min_size="1",
-            vpc_zone_identifier=vpc_customer_private_subnet_ids
-        )
-        asg_customer.add_override(
-            "Properties.TargetGroupARNs",
-            {
-                "Fn::If": [
-                    certificate_arn_exists_condition.logical_id,
-                    [https_target_group_customer.ref],
-                    [http_target_group_customer.ref]
-                ]
-            }
-        )
-        core.Tag.add(asg_customer, "Name", "{}/AppAsg".format(self.stack_name))
-        asg_customer.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
-        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
-        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
-        asg_customer.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
-        asg_customer.add_override("CreationPolicy.ResourceSignal.Count", 1)
-        asg_customer.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
-        asg_customer.cfn_options.condition = customer_vpc_given_condition
 
-        # no cert + no vpc
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=app_sg.ref,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.ref,
+            source_security_group_id=alb_sg.security_group_id,
             to_port=80
         )
-        sg_http_ingress.cfn_options.condition = cert_arn_and_customer_vpc_does_not_exist_condition
+        sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
 
-        # no cert + vpc
-        sg_http_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AppSgHttpIngressCustomer",
-            from_port=80,
-            group_id=app_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=alb_sg_customer.ref,
-            to_port=80
-        )
-        sg_http_ingress_customer.cfn_options.condition = cert_arn_does_not_exist_customer_vpc_does_exist_condition
-
-        # cert + no vpc
         sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=app_sg.ref,
+            group_id=app_sg.security_group_id,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.ref,
+            source_security_group_id=alb_sg.security_group_id,
             to_port=443
         )
-        sg_https_ingress.cfn_options.condition = cert_arn_does_exist_customer_vpc_does_not_exist_condition
-
-        # cert + vpc
-        sg_https_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AppSgHttpsIngressCustomer",
-            from_port=443,
-            group_id=app_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=alb_sg_customer.ref,
-            to_port=443
-        )
-        sg_https_ingress_customer.cfn_options.condition = cert_arn_and_customer_vpc_does_exist_condition
+        sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # ssm
+        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseNameParameter",
+            description="The name of the database for the Drupal application.",
+            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
+            type="String",
+            value="drupal" # TODO: from param?
+        )
+        # cannot create SECURE_STRING parameters via cloudformation
+        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabasePasswordParameter",
+            description="The database password for the Drupal application.",
+            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
+            # type=aws_ssm.ParameterType.SECURE_STRING
+            type="String",
+            value="dbpassword" # TODO: from param?
+        )
+        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalDatabaseUserParameter",
+            description="The database user for the Drupal application.",
+            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
+            type="String",
+            value="dbadmin" # TODO: from param?
+        )
+        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalHashSaltParameter",
+            description="The configured hash salt for the Drupal application.",
+            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
+        )
+        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
+            self,
+            "SsmDrupalSyncDirectoryParameter",
+            description="The configured sync directory for the Drupal application.",
+            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
+            type="String",
+            # TODO: from param?
+            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
+        )
         ssm_parameter_store_policy = aws_iam.Policy(
             self,
             "SsmParameterStorePolicy",
@@ -1459,19 +920,19 @@ class DrupalStack(core.Stack):
             auto_scaling_groups=[asg.ref],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=code_deploy_role.role_arn
+            service_role_arn=code_deploy_role.role_arn,
+            trigger_configurations=[]
         )
-        code_deploy_deployment_group.cfn_options.condition = customer_vpc_not_given_condition
-        code_deploy_deployment_group_customer = aws_codedeploy.CfnDeploymentGroup(
-            self,
-            "CodeDeployDeploymentGroupCustomer",
-            application_name=code_deploy_application.application_name,
-            auto_scaling_groups=[asg_customer.ref],
-            deployment_group_name="{}-app".format(self.stack_name),
-            deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=code_deploy_role.role_arn
-        )
-        code_deploy_deployment_group_customer.cfn_options.condition = customer_vpc_given_condition
+        code_deploy_deployment_group.add_override("Properties.TriggerConfigurations",[
+            {
+                "TriggerEvents": [
+                    "DeploymentSuccess",
+                    "DeploymentRollback"
+                ],
+                "TriggerName": "DeploymentNotification",
+                "TriggerTargetArn": notification_topic.topic_arn
+            }
+        ])
 
         pipeline = aws_codepipeline.CfnPipeline(
             self,
@@ -1532,120 +993,61 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        pipeline.cfn_options.condition = customer_vpc_not_given_condition
-
-        pipeline_customer = aws_codepipeline.CfnPipeline(
-            self,
-            "PipelineCustomer",
-            artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-                location=artifact_bucket.bucket_name,
-                type='S3'
-            ),
-            role_arn=pipeline_role.role_arn,
-            stages=[
-                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
-                    name="Source",
-                    actions=[
-                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
-                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-                                category='Source',
-                                owner='AWS',
-                                provider='S3',
-                                version='1'
-                            ),
-                            configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value.to_string(),
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value.to_string()
-                            },
-                            output_artifacts=[
-                                aws_codepipeline.CfnPipeline.OutputArtifactProperty(
-                                    name="build"
-                                )
-                            ],
-                            name="SourceAction",
-                            role_arn=source_stage_role.role_arn
-                        )
-                    ]
-                ),
-                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
-                    name="Deploy",
-                    actions=[
-                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
-                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-                                category='Deploy',
-                                owner='AWS',
-                                provider='CodeDeploy',
-                                version='1'
-                            ),
-                            configuration={
-                                'ApplicationName': code_deploy_application.ref,
-                                'DeploymentGroupName': code_deploy_deployment_group_customer.ref,
-                            },
-                            input_artifacts=[
-                                aws_codepipeline.CfnPipeline.InputArtifactProperty(
-                                    name="build"
-                                )
-                            ],
-                            name="DeployAction",
-                            role_arn=deploy_stage_role.role_arn
-                        )
-                    ]
-                )
-            ]
-        )
-        pipeline_customer.cfn_options.condition = customer_vpc_given_condition
 
         # elasticache
-        elasticache_sg = aws_ec2.CfnSecurityGroup(
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+        elasticache_sg = aws_ec2.SecurityGroup(
             self,
             "ElastiCacheSg",
-            group_description="ElastiCacheSg using default VPC ID",
-            vpc_id=vpc
+            vpc=vpc
         )
-        elasticache_sg.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
-        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "ElastiCacheSgIngress",
-            from_port=11211,
-            group_id=elasticache_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=11211
+        elasticache_sg.add_ingress_rule(
+            peer=app_sg,
+            connection=aws_ec2.Port.tcp(11211)
         )
-        elasticache_sg_ingress.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
-        elasticache_sg_customer = aws_ec2.CfnSecurityGroup(
-            self,
-            "ElastiCacheSgCustomer",
-            group_description="ElastiCacheSg using customer VPC ID",
-            vpc_id=vpc_customer
-        )
-        elasticache_sg_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
-        elasticache_sg_ingress_customer = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "ElastiCacheSgIngressCustomer",
-            from_port=11211,
-            group_id=elasticache_sg_customer.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg_customer.ref,
-            to_port=11211
-        )
-        elasticache_sg_ingress_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
-        
+        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
         elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
             self,
             "ElastiCacheSubnetGroup",
             description="ElastiCache subnet group",
             subnet_ids=vpc_private_subnet_ids
         )
-        elasticache_subnet_group.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
-        elasticache_subnet_group_customer = aws_elasticache.CfnSubnetGroup(
-            self,
-            "ElastiCacheSubnetGroupCustomer",
-            description="ElastiCache subnet group with customer subnets",
-            subnet_ids=vpc_customer_private_subnet_ids
-        )
-        elasticache_subnet_group_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
-        
+        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
             self,
             "ElastiCacheCluster",
@@ -1655,55 +1057,69 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg.ref ]
+            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
         )
-        core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", self.stack_name)
-        elasticache_cluster.cfn_options.condition = elasticache_enabled_customer_vpc_does_not_exist_condition
-        elasticache_cluster_customer = aws_elasticache.CfnCacheCluster(
-            self,
-            "ElastiCacheClusterCustomer",
-            az_mode="cross-az",
-            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
-            cache_subnet_group_name=elasticache_subnet_group_customer.ref,
-            engine="memcached",
-            engine_version=elasticache_cluster_engine_version_param.value_as_string,
-            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg_customer.ref ]
-        )
-        core.Tag.add(elasticache_cluster_customer, "oe:patterns:drupal:stack", self.stack_name)
-        elasticache_cluster_customer.cfn_options.condition = elasticache_enabled_customer_vpc_exists_condition
+        core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
+        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster_id_output = core.CfnOutput(
             self,
             "ElastiCacheClusterIdOutput",
-            condition=elasticache_enabled_customer_vpc_does_not_exist_condition,
+            condition=elasticache_enable_condition,
             description="The Id of the ElastiCache cluster.",
             value=elasticache_cluster.ref
         )
         elasticache_cluster_endpoint_output = core.CfnOutput(
             self,
             "ElastiCacheClusterEndpointOutput",
-            condition=elasticache_enabled_customer_vpc_does_not_exist_condition,
+            condition=elasticache_enable_condition,
             description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
             value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
                                  elasticache_cluster.attr_configuration_endpoint_port)
         )
-        elasticache_cluster_customer_id_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterCustomerIdOutput",
-            condition=elasticache_enabled_customer_vpc_exists_condition,
-            description="The Id of the ElastiCache cluster with customer VPC.",
-            value=elasticache_cluster_customer.ref
-        )
-        elasticache_cluster_customer_endpoint_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterCustomerEndpointOutput",
-            condition=elasticache_enabled_customer_vpc_exists_condition,
-            description="The endpoint of the cluster with customer VPC for connection. Configure in Drupal's settings.php.",
-            value="{}:{}".format(elasticache_cluster_customer.attr_configuration_endpoint_address,
-                                 elasticache_cluster_customer.attr_configuration_endpoint_port)
-        )
 
         # cloudfront
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnableParam",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Enable CloudFront CDN support."
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
             "CloudFrontDistribution",
@@ -1725,7 +1141,7 @@ class DrupalStack(core.Stack):
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.attr_dns_name,
+                    domain_name=alb.load_balancer_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
@@ -1756,71 +1172,11 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
-        cloudfront_distribution.cfn_options.condition = cloudfront_enabled_customer_vpc_does_not_exist_condition
-        cloudfront_distribution_customer = aws_cloudfront.CfnDistribution(
-            self,
-            "CloudFrontDistributionCustomer",
-            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(self.stack_name) ],
-                comment=self.stack_name,
-                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
-                    default_ttl=86400,
-                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
-                    ),
-                    min_ttl=0,
-                    max_ttl=31536000,
-                    target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
-                ),
-                enabled=True,
-                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb_customer.attr_dns_name,
-                    id="alb",
-                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-                    )
-                )],
-                price_class=cloudfront_price_class_param.value_as_string,
-                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        "AWS::NoValue"
-                    ).to_string(),
-                    ssl_support_method= core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Fn.ref("AWS::NoValue")
-                    ).to_string()
-                )
-            )
-        )
-        cloudfront_distribution_customer.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
-        )
-        cloudfront_distribution_customer.cfn_options.condition = cloudfront_enabled_customer_vpc_exists_condition
+        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
         cloudfront_distribution_endpoint_output = core.CfnOutput(
             self,
             "CloudFrontDistributionEndpointOutput",
-            condition=cloudfront_enabled_customer_vpc_does_not_exist_condition,
+            condition=cloudfront_enable_condition,
             description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
             value=cloudfront_distribution.attr_domain_name
-        )
-        cloudfront_distribution_customer_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionCustomerEndpointOutput",
-            condition=cloudfront_enabled_customer_vpc_exists_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution_customer.attr_domain_name
         )
