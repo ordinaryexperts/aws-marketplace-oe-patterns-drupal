@@ -718,14 +718,16 @@ class DrupalStack(core.Stack):
             actions_enabled=None,
             alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.topic_arn ],
             alarm_description="Scale-up if CPU > 90% for 10mins",
-            dimensions=[],
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
             metric_name="CPUUtilization",
             namespace="AWS/EC2",
             period=300,
             statistic="Average",
             threshold=90
         )
-        cpu_alarm_high.add_override("Properties.Dimensions", [ { "Name": "AutoScalingGroupName", "Value": asg.ref } ])
         cpu_alarm_low = aws_cloudwatch.CfnAlarm(
             self,
             "CPUAlarmLow",
@@ -734,14 +736,16 @@ class DrupalStack(core.Stack):
             actions_enabled=None,
             alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.topic_arn ],
             alarm_description="Scale-down if CPU < 70% for 10mins",
-            dimensions=[],
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
             metric_name="CPUUtilization",
             namespace="AWS/EC2",
             period=300,
             statistic="Average",
             threshold=70
         )
-        cpu_alarm_low.add_override("Properties.Dimensions", [ { "Name": "AutoScalingGroupName", "Value": asg.ref } ])
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
