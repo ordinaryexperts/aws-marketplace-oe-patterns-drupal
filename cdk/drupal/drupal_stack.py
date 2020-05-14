@@ -116,26 +116,26 @@ class DrupalStack(core.Stack):
             "DBSnapshotIdentifierExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
-        secret_arn_param = core.CfnParameter(
+        db_secret_arn_param = core.CfnParameter(
             self,
-            "SecretArn",
+            "DBSecretArn",
             default="",
             description="The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.",
             type="String"
         )
-        secret_arn_exists_condition = core.CfnCondition(
+        db_secret_arn_exists_condition = core.CfnCondition(
             self,
-            "SecretArnExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
+            "DBSecretArnExistsCondition",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(db_secret_arn_param.value, ""))
         )
-        secret_arn_not_exists_condition = core.CfnCondition(
+        db_secret_arn_not_exists_condition = core.CfnCondition(
             self,
-            "SecretArnNotExistsCondition",
-            expression=core.Fn.condition_equals(secret_arn_param.value, "")
+            "DBSecretArnNotExistsCondition",
+            expression=core.Fn.condition_equals(db_secret_arn_param.value, "")
         )
-        secret = aws_secretsmanager.CfnSecret(
+        db_secret = aws_secretsmanager.CfnSecret(
             self,
-            "Secret",
+            "DBSecret",
             generate_secret_string=aws_secretsmanager.CfnSecret.GenerateSecretStringProperty(
                 exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
                 exclude_punctuation=True,
@@ -146,9 +146,9 @@ class DrupalStack(core.Stack):
             # kms_key_id="",
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
-        secret_policy = aws_iam.Policy(
+        db_secret_policy = aws_iam.Policy(
             self,
-            "SecretPolicy",
+            "DBSecretPolicy",
             statements=[
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
@@ -156,10 +156,10 @@ class DrupalStack(core.Stack):
                         "secretsmanager:GetSecretValue"
                     ],
                     resources=[
-                        secret.ref,
+                        db_secret.ref,
                         core.Fn.condition_if(
-                            secret_arn_exists_condition.logical_id,
-                            secret_arn_param.value_as_string,
+                            db_secret_arn_exists_condition.logical_id,
+                            db_secret_arn_param.value_as_string,
                             core.Aws.NO_VALUE
                         ).to_string()
                     ]
@@ -187,18 +187,18 @@ class DrupalStack(core.Stack):
                 db_snapshot_identifier_exists_condition.logical_id,
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
-                    secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
+                    db_secret_arn_exists_condition.logical_id,
+                    core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:username}}")
                 ).to_string(),
             ).to_string(),
             master_user_password=core.Fn.condition_if(
                 db_snapshot_identifier_exists_condition.logical_id,
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
-                    secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
+                    db_secret_arn_exists_condition.logical_id,
+                    core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:password}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:password}}"),
                 ).to_string(),
             ).to_string(),
             scaling_configuration={
@@ -215,11 +215,11 @@ class DrupalStack(core.Stack):
             storage_encrypted=True,
             vpc_security_group_ids=[ db_sg.security_group_id ]
         )
-        db_cluster.add_depends_on(secret)
-        secret_db_cluster_attachment = aws_secretsmanager.CfnSecretTargetAttachment(
+        db_cluster.add_depends_on(db_secret)
+        db_secret_db_cluster_attachment = aws_secretsmanager.CfnSecretTargetAttachment(
             self,
-            "SecretDbClusterTargetAttachment",
-            secret_id=secret.ref,
+            "DBSecretDbClusterTargetAttachment",
+            secret_id=db_secret.ref,
             target_id=db_cluster.ref,
             target_type="AWS::RDS::DBCluster"
         )
@@ -405,7 +405,7 @@ class DrupalStack(core.Stack):
             }
         )
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        app_instance_role.attach_inline_policy(secret_policy)
+        app_instance_role.attach_inline_policy(db_secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
@@ -746,6 +746,7 @@ class DrupalStack(core.Stack):
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
         asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
         asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        asg.add_depends_on(db_cluster)
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -777,24 +778,6 @@ class DrupalStack(core.Stack):
             name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
             type="String",
             value="drupal" # TODO: from param?
-        )
-        # cannot create SECURE_STRING parameters via cloudformation
-        ssm_drupal_database_password_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabasePasswordParameter",
-            description="The database password for the Drupal application.",
-            name="/{}/drupal/database-password".format(core.Aws.STACK_NAME),
-            # type=aws_ssm.ParameterType.SECURE_STRING
-            type="String",
-            value="dbpassword" # TODO: from param?
-        )
-        ssm_drupal_database_user_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseUserParameter",
-            description="The database user for the Drupal application.",
-            name="/{}/drupal/database-user".format(core.Aws.STACK_NAME),
-            type="String",
-            value="dbadmin" # TODO: from param?
         )
         ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
             self,

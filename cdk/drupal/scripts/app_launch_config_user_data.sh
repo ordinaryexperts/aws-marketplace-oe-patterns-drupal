@@ -132,8 +132,8 @@ chown www-data /mnt/efs/drupal/files
 mkdir -p /opt/oe/patterns/drupal
 
 # secretsmanager
-SECRET_ARN=${SecretArn}
-SECRET=${Secret}
+SECRET_ARN=${DBSecretArn}
+SECRET=${DBSecret}
 
 if [ -z "$SECRET_ARN" ]
 then
