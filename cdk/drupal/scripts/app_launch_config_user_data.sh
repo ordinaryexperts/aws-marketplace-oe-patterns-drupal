@@ -131,6 +131,7 @@ chown www-data /mnt/efs/drupal/files
 
 mkdir -p /opt/oe/patterns/drupal
 
+# secretsmanager
 SECRET_ARN=${SecretArn}
 SECRET=${Secret}
 
@@ -149,44 +150,25 @@ aws ssm get-parameter \
     --query Parameter.Value \
 | jq -r . >> /opt/oe/patterns/drupal/secret.json
 
-# write application configuration values to env
-DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
-DB_USER=${SsmDrupalDatabaseUserParameter.Value}
-DB_PASSWORD=${SsmDrupalDatabasePasswordParameter.Value}
-HASH_SALT=${SsmDrupalHashSaltParameter.Value}
-CONFIG_SYNC_DIR=${SsmDrupalSyncDirectoryParameter.Value}
+# ssm parameters
+aws ssm get-parameters-by-path --path "/${AWS::StackName}/drupal" --recursive --query "Parameters[*]" > /opt/oe/patterns/drupal/ssm-parameters-raw.json
 
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/profile.d/oe-patterns-drupal.sh
-
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/apache2/envvars
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/apache2/envvars
-
-cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
+cat <<"EOF" > /opt/oe/patterns/drupal/transform-ssm-parameters.php
 <?php
 
-$settings['hash_salt'] = getenv('OE_PATTERNS_DRUPAL_HASH_SALT');
+$array = json_decode(file_get_contents('ssm-parameters-raw.json'));
 
-$databases['default']['default'] = array (
-  'database' => getenv('OE_PATTERNS_DRUPAL_DATABASE_NAME'),
-  'username' => getenv('OE_PATTERNS_DRUPAL_DATABASE_USER'),
-  'password' => getenv('OE_PATTERNS_DRUPAL_DATABASE_PASSWORD'),
-  'prefix' => '',
-  'host' => '${DBCluster.Endpoint.Address}',
-  'port' => '${DBCluster.Endpoint.Port}',
-  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
-  'driver' => 'mysql',
-);
-$settings['config_sync_directory'] = getenv('OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY');
+$array = array_reduce($array, function($carry, $item) {
+    $key = str_replace("/${AWS::StackName}/drupal/", "", $item->Name);
+    $carry[$key] = $item;
+    return $carry;
+  }, array());
+
+echo json_encode($array);
 EOF
+cd /opt/oe/patterns/drupal
+php ./transform-ssm-parameters.php > ssm-parameters.json
+cd -
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \

@@ -825,8 +825,12 @@ class DrupalStack(core.Stack):
                 ),
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
-                    actions=[ "ssm:GetParameters" ],
+                    actions=[
+                        "ssm:GetParameters",
+                        "ssm:GetParametersByPath"
+                    ],
                     resources=[
+                        "arn:aws:ssm:{}:{}:parameter/{}/drupal".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME),
                         "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME)
                     ]
                 )
