@@ -19,8 +19,7 @@ deploy:
 	--parameters CustomerVpcPrivateSubnet1=subnet-030c94b9795c6cb96 \
 	--parameters CustomerVpcPrivateSubnet2=subnet-079290412ce63c4d5 \
 	--parameters CustomerVpcPublicSubnet1=subnet-0c2f5d4daa1792c8d \
-	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7 \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-68--secrets-management-and-database-init.tar.gz
+	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
