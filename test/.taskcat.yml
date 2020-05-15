@@ -10,3 +10,19 @@ tests:
   https:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
+  elasticacheEnabled:
+    parameters:
+      ElastiCacheEnableParam: true
+  cloudfrontEnabled:
+    parameters:
+      CloudFrontEnableParam: true
+  allResourcesProvisionedHttp:
+    parameters:
+      CertificateArn: ''
+      CloudFrontEnableParam: true
+      ElastiCacheEnableParam: true
+  allResourcesProvisionedHttps:
+    parameters:
+      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
+      CloudFrontEnableParam: true
+      ElastiCacheEnableParam: true
