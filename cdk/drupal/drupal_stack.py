@@ -1262,7 +1262,7 @@ class DrupalStack(core.Stack):
         )
         elasticache_enable_param = core.CfnParameter(
             self,
-            "ElastiCacheEnableParam",
+            "ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
         )
@@ -1363,7 +1363,7 @@ class DrupalStack(core.Stack):
         )
         cloudfront_enable_param = core.CfnParameter(
             self,
-            "CloudFrontEnableParam",
+            "CloudFrontEnable",
             allowed_values=[ "true", "false" ],
             default="false",
             description="Enable CloudFront CDN support."
