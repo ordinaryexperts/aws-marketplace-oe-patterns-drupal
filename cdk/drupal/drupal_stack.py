@@ -21,7 +21,6 @@ from aws_cdk import (
 )
 
 AMI="ami-0ca74418ad03a79c8"
-DB_SNAPSHOT="arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -46,7 +45,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-68--secrets-management-and-database-init.tar.gz"
         )
         notification_email_param = core.CfnParameter(
             self,
