@@ -11,3 +11,5 @@
 * Notifications for deployments
 * Elasticache and Cloudfront disabled by default
 * Autoscaling alarms triggered by CPU utilization
+* Add support for customer VPC configurations
+* Custom OE VPC if customer VPC not given
