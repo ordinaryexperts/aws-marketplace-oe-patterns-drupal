@@ -2,6 +2,7 @@ import json
 from aws_cdk import (
     aws_autoscaling,
     aws_cloudfront,
+    aws_cloudwatch,
     aws_codedeploy,
     aws_codepipeline,
     aws_codepipeline_actions,
@@ -73,31 +74,294 @@ class DrupalStack(core.Stack):
             "NotificationEmailExists",
             expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
-        vpc = aws_ec2.Vpc(
+
+        # VPC
+        customer_vpc_id_param = core.CfnParameter(
+            self,
+            "CustomerVpcId",
+            default=""
+        )
+        customer_vpc_public_subnet_id1 = core.CfnParameter(
+            self,
+            "CustomerVpcPublicSubnet1",
+            default=""
+        )
+        customer_vpc_public_subnet_id2 = core.CfnParameter(
+            self,
+            "CustomerVpcPublicSubnet2",
+            default=""
+        )
+        customer_vpc_private_subnet_id1 = core.CfnParameter(
+            self,
+            "CustomerVpcPrivateSubnet1",
+            default=""
+        )
+        customer_vpc_private_subnet_id2 = core.CfnParameter(
+            self,
+            "CustomerVpcPrivateSubnet2",
+            default=""
+        )
+        customer_vpc_given_condition = core.CfnCondition(
+            self,
+            "CustomerVpcGiven",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, ""))
+        )
+        customer_vpc_not_given_condition = core.CfnCondition(
+            self,
+            "CustomerVpcNotGiven",
+            expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
+        )
+        vpc = aws_ec2.CfnVPC(
             self,
             "Vpc",
-            cidr="10.0.0.0/16"
+            cidr_block="10.0.0.0/16",
+            enable_dns_hostnames=True,
+            enable_dns_support=True,
+            instance_tenancy="default",
+            tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
         )
-        vpc_private_subnet_ids = vpc.select_subnets(subnet_type=aws_ec2.SubnetType.PRIVATE).subnet_ids
-        app_sg = aws_ec2.SecurityGroup(
+        vpc.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_igw = aws_ec2.CfnInternetGateway(
+            self,
+            "VpcInternetGateway",
+            tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
+        )
+        vpc_igw.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_igw_attachment = aws_ec2.CfnVPCGatewayAttachment(
+            self,
+            "VpcIGWAttachment",
+            vpc_id=vpc.ref,
+            internet_gateway_id=vpc_igw.ref
+        )
+        vpc_igw_attachment.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_public_route_table = aws_ec2.CfnRouteTable(
+            self,
+            "VpcPublicRouteTable",
+            vpc_id=vpc.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicRouteTable".format(core.Aws.STACK_NAME))]
+        )
+        vpc_public_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_default_route = aws_ec2.CfnRoute(
+            self,
+            "VpcPublicDefaultRoute",
+            route_table_id=vpc_public_route_table.ref,
+            destination_cidr_block="0.0.0.0/0",
+            gateway_id=vpc_igw.ref
+        )
+        vpc_public_default_route.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_public_subnet1 = aws_ec2.CfnSubnet(
+            self,
+            "VpcPublicSubnet1",
+            cidr_block="10.0.0.0/18",
+            vpc_id=vpc.ref,
+            assign_ipv6_address_on_creation=None,
+            availability_zone=core.Fn.select(0, core.Fn.get_azs()),
+            map_public_ip_on_launch=True,
+            tags=[
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME)),
+                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
+                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+            ]
+        )
+        vpc_public_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
+            self,
+            "VpcPublicSubnet1RouteTableAssociation",
+            route_table_id=vpc_public_route_table.ref,
+            subnet_id=vpc_public_subnet1.ref
+        )
+        vpc_public_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_eip = aws_ec2.CfnEIP(
+            self,
+            "VpcPublicSubnet1EIP",
+            domain="vpc"
+        )
+        vpc_public_subnet1_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_nat_gateway = aws_ec2.CfnNatGateway(
+            self,
+            "VpcPublicSubnet1NATGateway",
+            allocation_id=vpc_public_subnet1_eip.attr_allocation_id,
+            subnet_id=vpc_public_subnet1.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))]
+        )
+        vpc_public_subnet1_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_public_subnet2 = aws_ec2.CfnSubnet(
+            self,
+            "VpcPublicSubnet2",
+            cidr_block="10.0.64.0/18",
+            vpc_id=vpc.ref,
+            assign_ipv6_address_on_creation=None,
+            availability_zone=core.Fn.select(1, core.Fn.get_azs()),
+            map_public_ip_on_launch=True,
+            tags=[
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME)),
+                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
+                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+            ]
+        )
+        vpc_public_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
+            self,
+            "VpcPublicSubnet2RouteTableAssociation",
+            route_table_id=vpc_public_route_table.ref,
+            subnet_id=vpc_public_subnet2.ref
+        )
+        vpc_public_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_eip = aws_ec2.CfnEIP(
+            self,
+            "VpcPublicSubnet2EIP",
+            domain="vpc"
+        )
+        vpc_public_subnet2_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_nat_gateway = aws_ec2.CfnNatGateway(
+            self,
+            "VpcPublicSubnet2NATGateway",
+            allocation_id=vpc_public_subnet2_eip.attr_allocation_id,
+            subnet_id=vpc_public_subnet1.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))]
+        )
+        vpc_public_subnet2_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_private_subnet1 = aws_ec2.CfnSubnet(
+            self,
+            "VpcPrivateSubnet1",
+            cidr_block="10.0.128.0/18",
+            vpc_id=vpc.ref,
+            assign_ipv6_address_on_creation=None,
+            availability_zone=core.Fn.select(0, core.Fn.get_azs()),
+            map_public_ip_on_launch=False,
+            tags=[
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME)),
+                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
+                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+            ]
+        )
+        vpc_private_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table = aws_ec2.CfnRouteTable(
+            self,
+            "VpcPrivateSubnet1RouteTable",
+            vpc_id=vpc.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))]
+        )
+        vpc_private_subnet1_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
+            self,
+            "VpcPrivateSubnet1RouteTableAssociation",
+            route_table_id=vpc_private_subnet1_route_table.ref,
+            subnet_id=vpc_private_subnet1.ref
+        )
+        vpc_private_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_default_route = aws_ec2.CfnRoute(
+            self,
+            "VpcPrivateSubnet1DefaultRoute",
+            route_table_id=vpc_private_subnet1_route_table.ref,
+            destination_cidr_block="0.0.0.0/0",
+            nat_gateway_id=vpc_public_subnet1_nat_gateway.ref
+        )
+        vpc_private_subnet1_default_route.cfn_options.condition=customer_vpc_not_given_condition
+
+        vpc_private_subnet2 = aws_ec2.CfnSubnet(
+            self,
+            "VpcPrivateSubnet2",
+            cidr_block="10.0.192.0/18",
+            vpc_id=vpc.ref,
+            assign_ipv6_address_on_creation=None,
+            availability_zone=core.Fn.select(1, core.Fn.get_azs()),
+            map_public_ip_on_launch=False,
+            tags=[
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME)),
+                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
+                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+            ]
+        )
+        vpc_private_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table = aws_ec2.CfnRouteTable(
+            self,
+            "VpcPrivateSubnet2RouteTable",
+            vpc_id=vpc.ref,
+            tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))]
+        )
+        vpc_private_subnet2_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
+            self,
+            "VpcPrivateSubnet2RouteTableAssociation",
+            route_table_id=vpc_private_subnet2_route_table.ref,
+            subnet_id=vpc_private_subnet2.ref
+        )
+        vpc_private_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_default_route = aws_ec2.CfnRoute(
+            self,
+            "VpcPrivateSubnet2DefaultRoute",
+            route_table_id=vpc_private_subnet2_route_table.ref,
+            destination_cidr_block="0.0.0.0/0",
+            nat_gateway_id=vpc_public_subnet2_nat_gateway.ref
+        )
+        vpc_private_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
+
+        app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
-            vpc=vpc
+            group_description="App SG"
         )
-        db_sg = aws_ec2.SecurityGroup(
+        app_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
-            vpc=vpc
+            group_description="Database SG"
         )
-        db_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(3306)
+        db_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
         )
-        db_subnet_group = aws_rds.CfnDBSubnetGroup(
+        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "DBSgIngress",
+            from_port=3306,
+            group_id=db_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=3306
+        )
+        db_subnet_group = core.CfnResource(
             self,
             "DBSubnetGroup",
-            db_subnet_group_description="test",
-            subnet_ids=vpc_private_subnet_ids
+            type="AWS::RDS::DBSubnetGroup",
+            properties={
+                "DBSubnetGroupDescription": "test",
+                "SubnetIds":  {
+                    "Fn::If": [
+                        customer_vpc_not_given_condition.logical_id,
+                        [
+                            vpc_private_subnet1.ref,
+                            vpc_private_subnet2.ref
+                        ],
+                        [
+                            customer_vpc_private_subnet_id1.value.to_string(),
+                            customer_vpc_private_subnet_id2.value.to_string()
+                            
+                        ]
+                    ]
+                }
+            }
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -158,81 +422,166 @@ class DrupalStack(core.Stack):
             },
             snapshot_identifier=db_snapshot_identifier,
             storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg.security_group_id ]
+            vpc_security_group_ids=[ db_sg.ref ]
         )
-        alb_sg = aws_ec2.SecurityGroup(
+        alb_sg = aws_ec2.CfnSecurityGroup(
             self,
-            "AlbSg",
-            vpc=vpc
+            "ALBSg",
+            group_description="ALB SG"
         )
-        alb = aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+        alb_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 80",
+            from_port=80,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=80
+        )
+        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "AlbSgHttpsIngress",
+            cidr_ip="0.0.0.0/0",
+            description="Allow from anyone on port 443",
+            from_port=443,
+            group_id=alb_sg.ref,
+            ip_protocol="tcp",
+            to_port=443
+        )
+        alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
             self,
             "AppAlb",
-            internet_facing=True,
-            security_group=alb_sg,
-            vpc=vpc
+            scheme="internet-facing",
+            security_groups=[ alb_sg.ref ],
+            type="application"
+        )
+        alb.add_override(
+            "Properties.Subnets",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    [
+                        vpc_public_subnet1.ref,
+                        vpc_public_subnet2.ref
+                    ],
+                    [
+                        customer_vpc_public_subnet_id1.value.to_string(),
+                        customer_vpc_public_subnet_id2.value.to_string()
+                    ]
+                ]
+            }
         )
         alb_dns_name_output = core.CfnOutput(
             self,
             "AlbDnsNameOutput",
             description="The DNS name of the application load balancer.",
-            value=alb.load_balancer_dns_name
+            value=alb.attr_dns_name
         )
         # if there is no cert...
-        http_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+        http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpTargetGroup",
-            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            health_check_enabled=None,
+            health_check_interval_seconds=None,
             port=80,
-            vpc=vpc
+            protocol="HTTP",
+            target_type="instance"
         )
-        http_target_group.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
-        http_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        http_target_group.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpListener",
-            default_target_groups=[http_target_group],
-            load_balancer=alb,
-            open=True,
-            port=80
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=80,
+            protocol="HTTP"
         )
-        http_listener.node.default_child.cfn_options.condition = certificate_arn_does_not_exist_condition
+        http_listener.add_override(
+            "Properties.DefaultActions.0.TargetGroupArn", http_target_group.ref
+        )
+        http_listener.add_override("Properties.DefaultActions.0.Type", "forward")
+        http_listener.cfn_options.condition = certificate_arn_does_not_exist_condition
 
         # if there is a cert...
-        http_redirect_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        http_redirect_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListener",
-            load_balancer=alb,
-            open=True,
-            port=80
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=80,
+            protocol="HTTP"
         )
-        http_redirect_listener.add_redirect_response(
-            "HttpRedirectResponse",
-            host="#{host}",
-            path="/#{path}",
-            port="443",
-            protocol="HTTPS",
-            query="#{query}",
-            status_code="HTTP_301"
+        http_redirect_listener.add_override(
+            "Properties.DefaultActions.0.RedirectConfig", 
+            {
+                "Host": "#{host}",
+                "Path": "/#{path}",
+                "Port": "443",
+                "Protocol": "HTTPS",
+                "Query": "#{query}",
+                "StatusCode": "HTTP_301"
+            }
         )
-        http_redirect_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
-        https_target_group = aws_elasticloadbalancingv2.ApplicationTargetGroup(
+        http_redirect_listener.add_override("Properties.DefaultActions.0.Type", "redirect")
+        http_redirect_listener.cfn_options.condition = certificate_arn_exists_condition
+        https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpsTargetGroup",
-            target_type=aws_elasticloadbalancingv2.TargetType.INSTANCE,
+            health_check_enabled=None,
+            health_check_interval_seconds=None,
             port=443,
-            vpc=vpc
+            protocol="HTTPS",
+            target_type="instance"
         )
-        https_target_group.node.default_child.cfn_options.condition = certificate_arn_exists_condition
-        https_listener = aws_elasticloadbalancingv2.ApplicationListener(
+        https_target_group.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        https_target_group.cfn_options.condition = certificate_arn_exists_condition
+        https_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpsListener",
-            certificates=[aws_elasticloadbalancingv2.ListenerCertificate(certificate_arn_param.value_as_string)],
-            default_target_groups=[https_target_group],
-            load_balancer=alb,
-            open=True,
-            port=443
+            certificates=[],
+            default_actions=[],
+            load_balancer_arn=alb.ref,
+            port=443,
+            protocol="HTTPS"
         )
-        https_listener.node.default_child.cfn_options.condition = certificate_arn_exists_condition
+        https_listener.add_override(
+            "Properties.DefaultActions.0.TargetGroupArn", https_target_group.ref
+        )
+        https_listener.add_override(
+            "Properties.Certificates.0.CertificateArn", certificate_arn_param.value_as_string
+        )
+        https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
+        https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
         notification_topic = aws_sns.Topic(
@@ -271,27 +620,68 @@ class DrupalStack(core.Stack):
         error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
 
         # efs
-        efs_sg = aws_ec2.SecurityGroup(
+        efs_sg = aws_ec2.CfnSecurityGroup(
             self,
             "EfsSg",
-            vpc=vpc
+            group_description="EFS SG"
         )
-        efs_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(2049)
+        efs_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "EFSSgIngress",
+            from_port=2049,
+            group_id=db_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=2049
         )
         efs = aws_efs.CfnFileSystem(
             self,
             "AppEfs"
         )
-        for key, subnet_id in enumerate(vpc_private_subnet_ids, start=1):
-            efs_mount_target = aws_efs.CfnMountTarget(
-                self,
-                "AppEfsMountTarget" + str(key),
-                file_system_id=efs.ref,
-                security_groups=[ efs_sg.security_group_id ],
-                subnet_id=subnet_id
-            )
+        efs_mount_target1 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget1",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id="" # will be overridden just below
+        )
+        efs_mount_target1.add_override(
+            "Properties.SubnetId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc_private_subnet1.ref,
+                    customer_vpc_private_subnet_id1.value.to_string()
+                ]
+            }
+        )
+        efs_mount_target2 = aws_efs.CfnMountTarget(
+            self,
+            "AppEfsMountTarget2",
+            file_system_id=efs.ref,
+            security_groups=[ efs_sg.ref ],
+            subnet_id="" # will be overridden just below
+        )
+        efs_mount_target2.add_override(
+            "Properties.SubnetId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc_private_subnet2.ref,
+                    customer_vpc_private_subnet_id2.value.to_string()
+                ]
+            }
+        )
 
         # app
         app_instance_role = aws_iam.Role(
@@ -362,265 +752,46 @@ class DrupalStack(core.Stack):
             self,
             "AppLaunchConfigInstanceType",
             allowed_values=[
-                # TODO: finalize list of supported instance types
-                "a1.2xlarge",
-                "a1.4xlarge",
-                "a1.large",
-                "a1.medium",
-                "a1.metal",
-                "a1.xlarge",
-                "c1.medium",
-                "c1.xlarge",
-                "c3.2xlarge",
-                "c3.4xlarge",
-                "c3.8xlarge",
-                "c3.large",
-                "c3.xlarge",
-                "c4.2xlarge",
-                "c4.4xlarge",
-                "c4.8xlarge",
-                "c4.large",
-                "c4.xlarge",
-                "c5.12xlarge",
-                "c5.18xlarge",
-                "c5.24xlarge",
-                "c5.2xlarge",
-                "c5.4xlarge",
-                "c5.9xlarge",
-                "c5.large",
-                "c5.metal",
-                "c5.xlarge",
-                "c5d.12xlarge",
-                "c5d.18xlarge",
-                "c5d.24xlarge",
-                "c5d.2xlarge",
-                "c5d.4xlarge",
-                "c5d.9xlarge",
-                "c5d.large",
-                "c5d.metal",
-                "c5d.xlarge",
-                "c5n.18xlarge",
-                "c5n.2xlarge",
-                "c5n.4xlarge",
-                "c5n.9xlarge",
-                "c5n.large",
-                "c5n.metal",
-                "c5n.xlarge",
-                "cc2.8xlarge",
-                "d2.2xlarge",
-                "d2.4xlarge",
-                "d2.8xlarge",
-                "d2.xlarge",
-                "f1.16xlarge",
-                "f1.2xlarge",
-                "f1.4xlarge",
-                "g2.2xlarge",
-                "g2.8xlarge",
-                "g3.16xlarge",
-                "g3.4xlarge",
-                "g3.8xlarge",
-                "g3s.xlarge",
-                "g4dn.12xlarge",
-                "g4dn.16xlarge",
-                "g4dn.2xlarge",
-                "g4dn.4xlarge",
-                "g4dn.8xlarge",
-                "g4dn.xlarge",
-                "h1.16xlarge",
-                "h1.2xlarge",
-                "h1.4xlarge",
-                "h1.8xlarge",
-                "i2.2xlarge",
-                "i2.4xlarge",
-                "i2.8xlarge",
-                "i2.xlarge",
-                "i3.16xlarge",
-                "i3.2xlarge",
-                "i3.4xlarge",
-                "i3.8xlarge",
-                "i3.large",
-                "i3.metal",
-                "i3.xlarge",
-                "i3en.12xlarge",
-                "i3en.24xlarge",
-                "i3en.2xlarge",
-                "i3en.3xlarge",
-                "i3en.6xlarge",
-                "i3en.large",
-                "i3en.metal",
-                "i3en.xlarge",
-                "inf1.24xlarge",
-                "inf1.2xlarge",
-                "inf1.6xlarge",
-                "inf1.xlarge",
-                "m1.large",
-                "m1.medium",
-                "m1.small",
-                "m1.xlarge",
-                "m2.2xlarge",
-                "m2.4xlarge",
-                "m2.xlarge",
-                "m3.2xlarge",
-                "m3.large",
-                "m3.medium",
-                "m3.xlarge",
-                "m4.10xlarge",
-                "m4.16xlarge",
-                "m4.2xlarge",
-                "m4.4xlarge",
-                "m4.large",
-                "m4.xlarge",
-                "m5.12xlarge",
-                "m5.16xlarge",
-                "m5.24xlarge",
-                "m5.2xlarge",
-                "m5.4xlarge",
-                "m5.8xlarge",
-                "m5.large",
-                "m5.metal",
-                "m5.xlarge",
-                "m5a.12xlarge",
-                "m5a.16xlarge",
-                "m5a.24xlarge",
-                "m5a.2xlarge",
-                "m5a.4xlarge",
-                "m5a.8xlarge",
-                "m5a.large",
-                "m5a.xlarge",
-                "m5ad.12xlarge",
-                "m5ad.24xlarge",
-                "m5ad.2xlarge",
-                "m5ad.4xlarge",
-                "m5ad.large",
-                "m5ad.xlarge",
-                "m5d.12xlarge",
-                "m5d.16xlarge",
-                "m5d.24xlarge",
-                "m5d.2xlarge",
-                "m5d.4xlarge",
-                "m5d.8xlarge",
-                "m5d.large",
-                "m5d.metal",
-                "m5d.xlarge",
-                "m5dn.12xlarge",
-                "m5dn.16xlarge",
-                "m5dn.24xlarge",
-                "m5dn.2xlarge",
-                "m5dn.4xlarge",
-                "m5dn.8xlarge",
-                "m5dn.large",
-                "m5dn.xlarge",
-                "m5n.12xlarge",
-                "m5n.16xlarge",
-                "m5n.24xlarge",
-                "m5n.2xlarge",
-                "m5n.4xlarge",
-                "m5n.8xlarge",
-                "m5n.large",
-                "m5n.xlarge",
-                "p2.16xlarge",
-                "p2.8xlarge",
-                "p2.xlarge",
-                "p3.16xlarge",
-                "p3.2xlarge",
-                "p3.8xlarge",
-                "p3dn.24xlarge",
-                "r3.2xlarge",
-                "r3.4xlarge",
-                "r3.8xlarge",
-                "r3.large",
-                "r3.xlarge",
-                "r4.16xlarge",
-                "r4.2xlarge",
-                "r4.4xlarge",
-                "r4.8xlarge",
-                "r4.large",
-                "r4.xlarge",
-                "r5.12xlarge",
-                "r5.16xlarge",
-                "r5.24xlarge",
-                "r5.2xlarge",
-                "r5.4xlarge",
-                "r5.8xlarge",
-                "r5.large",
-                "r5.metal",
-                "r5.xlarge",
-                "r5a.12xlarge",
-                "r5a.16xlarge",
-                "r5a.24xlarge",
-                "r5a.2xlarge",
-                "r5a.4xlarge",
-                "r5a.8xlarge",
-                "r5a.large",
-                "r5a.xlarge",
-                "r5ad.12xlarge",
-                "r5ad.24xlarge",
-                "r5ad.2xlarge",
-                "r5ad.4xlarge",
-                "r5ad.large",
-                "r5ad.xlarge",
-                "r5d.12xlarge",
-                "r5d.16xlarge",
-                "r5d.24xlarge",
-                "r5d.2xlarge",
-                "r5d.4xlarge",
-                "r5d.8xlarge",
-                "r5d.large",
-                "r5d.metal",
-                "r5d.xlarge",
-                "r5dn.12xlarge",
-                "r5dn.16xlarge",
-                "r5dn.24xlarge",
-                "r5dn.2xlarge",
-                "r5dn.4xlarge",
-                "r5dn.8xlarge",
-                "r5dn.large",
-                "r5dn.xlarge",
-                "r5n.12xlarge",
-                "r5n.16xlarge",
-                "r5n.24xlarge",
-                "r5n.2xlarge",
-                "r5n.4xlarge",
-                "r5n.8xlarge",
-                "r5n.large",
-                "r5n.xlarge",
-                "t1.micro",
-                "t2.2xlarge",
-                "t2.large",
-                "t2.medium",
-                "t2.micro",
-                "t2.nano",
-                "t2.small",
-                "t2.xlarge",
-                "t3.2xlarge",
-                "t3.large",
-                "t3.medium",
-                "t3.micro",
-                "t3.nano",
-                "t3.small",
-                "t3.xlarge",
-                "t3a.2xlarge",
-                "t3a.large",
-                "t3a.medium",
-                "t3a.micro",
-                "t3a.nano",
-                "t3a.small",
-                "t3a.xlarge",
-                "x1.16xlarge",
-                "x1.32xlarge",
-                "x1e.16xlarge",
-                "x1e.2xlarge",
-                "x1e.32xlarge",
-                "x1e.4xlarge",
-                "x1e.8xlarge",
-                "x1e.xlarge",
-                "z1d.12xlarge",
-                "z1d.2xlarge",
-                "z1d.3xlarge",
-                "z1d.6xlarge",
-                "z1d.large",
-                "z1d.metal",
-                "z1d.xlarge"
+                'a1.2xlarge', 'a1.4xlarge', 'a1.large', 'a1.medium', 'a1.metal', 'a1.xlarge', 'c1.medium',
+                'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge', 'c3.large', 'c3.xlarge', 'c4.2xlarge',
+                'c4.4xlarge', 'c4.8xlarge', 'c4.large', 'c4.xlarge', 'c5.12xlarge', 'c5.18xlarge', 'c5.24xlarge',
+                'c5.2xlarge', 'c5.4xlarge', 'c5.9xlarge', 'c5.large', 'c5.metal', 'c5.xlarge', 'c5d.12xlarge',
+                'c5d.18xlarge', 'c5d.24xlarge', 'c5d.2xlarge', 'c5d.4xlarge', 'c5d.9xlarge', 'c5d.large',
+                'c5d.metal', 'c5d.xlarge', 'c5n.18xlarge', 'c5n.2xlarge', 'c5n.4xlarge', 'c5n.9xlarge',
+                'c5n.large', 'c5n.metal', 'c5n.xlarge', 'cc2.8xlarge', 'cr1.8xlarge', 'd2.2xlarge', 'd2.4xlarge',
+                'd2.8xlarge', 'd2.xlarge', 'f1.16xlarge', 'f1.2xlarge', 'f1.4xlarge', 'g2.2xlarge', 'g2.8xlarge',
+                'g3.16xlarge', 'g3.4xlarge', 'g3.8xlarge', 'g3s.xlarge', 'g4dn.12xlarge', 'g4dn.16xlarge',
+                'g4dn.2xlarge', 'g4dn.4xlarge', 'g4dn.8xlarge', 'g4dn.metal', 'g4dn.xlarge', 'h1.16xlarge',
+                'h1.2xlarge', 'h1.4xlarge', 'h1.8xlarge', 'hs1.8xlarge', 'i2.2xlarge', 'i2.4xlarge',
+                'i2.8xlarge', 'i2.xlarge', 'i3.16xlarge', 'i3.2xlarge', 'i3.4xlarge', 'i3.8xlarge', 'i3.large',
+                'i3.metal', 'i3.xlarge', 'i3en.12xlarge', 'i3en.24xlarge', 'i3en.2xlarge', 'i3en.3xlarge',
+                'i3en.6xlarge', 'i3en.large', 'i3en.metal', 'i3en.xlarge', 'm1.large', 'm1.medium', 'm1.small',
+                'm1.xlarge', 'm2.2xlarge', 'm2.4xlarge', 'm2.xlarge', 'm3.2xlarge', 'm3.large', 'm3.medium',
+                'm3.xlarge', 'm4.10xlarge', 'm4.16xlarge', 'm4.2xlarge', 'm4.4xlarge', 'm4.large', 'm4.xlarge',
+                'm5.12xlarge', 'm5.16xlarge', 'm5.24xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.8xlarge', 'm5.large',
+                'm5.metal', 'm5.xlarge', 'm5a.12xlarge', 'm5a.16xlarge', 'm5a.24xlarge', 'm5a.2xlarge',
+                'm5a.4xlarge', 'm5a.8xlarge', 'm5a.large', 'm5a.xlarge', 'm5ad.12xlarge', 'm5ad.24xlarge',
+                'm5ad.2xlarge', 'm5ad.4xlarge', 'm5ad.large', 'm5ad.xlarge', 'm5d.12xlarge', 'm5d.16xlarge',
+                'm5d.24xlarge', 'm5d.2xlarge', 'm5d.4xlarge', 'm5d.8xlarge', 'm5d.large', 'm5d.metal', 'm5d.xlarge',
+                'm5dn.12xlarge', 'm5dn.16xlarge', 'm5dn.24xlarge', 'm5dn.2xlarge', 'm5dn.4xlarge', 'm5dn.8xlarge',
+                'm5dn.large', 'm5dn.metal', 'm5dn.xlarge', 'm5n.12xlarge', 'm5n.16xlarge', 'm5n.24xlarge',
+                'm5n.2xlarge', 'm5n.4xlarge', 'm5n.8xlarge', 'm5n.large', 'm5n.metal', 'm5n.xlarge', 'p2.16xlarge',
+                'p2.8xlarge', 'p2.xlarge', 'p3.16xlarge', 'p3.2xlarge', 'p3.8xlarge', 'p3dn.24xlarge', 'r3.2xlarge',
+                'r3.4xlarge', 'r3.8xlarge', 'r3.large', 'r3.xlarge', 'r4.16xlarge', 'r4.2xlarge', 'r4.4xlarge',
+                'r4.8xlarge', 'r4.large', 'r4.xlarge', 'r5.12xlarge', 'r5.16xlarge', 'r5.24xlarge', 'r5.2xlarge',
+                'r5.4xlarge', 'r5.8xlarge', 'r5.large', 'r5.metal', 'r5.xlarge', 'r5a.12xlarge', 'r5a.16xlarge',
+                'r5a.24xlarge', 'r5a.2xlarge', 'r5a.4xlarge', 'r5a.8xlarge', 'r5a.large', 'r5a.xlarge', 'r5ad.12xlarge',
+                'r5ad.24xlarge', 'r5ad.2xlarge', 'r5ad.4xlarge', 'r5ad.large', 'r5ad.xlarge', 'r5d.12xlarge',
+                'r5d.16xlarge', 'r5d.24xlarge', 'r5d.2xlarge', 'r5d.4xlarge', 'r5d.8xlarge', 'r5d.large',
+                'r5d.metal', 'r5d.xlarge', 'r5dn.12xlarge', 'r5dn.16xlarge', 'r5dn.24xlarge', 'r5dn.2xlarge',
+                'r5dn.4xlarge', 'r5dn.8xlarge', 'r5dn.large', 'r5dn.metal', 'r5dn.xlarge', 'r5n.12xlarge',
+                'r5n.16xlarge', 'r5n.24xlarge', 'r5n.2xlarge', 'r5n.4xlarge', 'r5n.8xlarge', 'r5n.large',
+                'r5n.metal', 'r5n.xlarge', 't1.micro', 't2.2xlarge', 't2.large', 't2.medium', 't2.micro',
+                't2.nano', 't2.small', 't2.xlarge', 't3.2xlarge', 't3.large', 't3.medium', 't3.micro',
+                't3.nano', 't3.small', 't3.xlarge', 't3a.2xlarge', 't3a.large', 't3a.medium', 't3a.micro',
+                't3a.nano', 't3a.small', 't3a.xlarge', 'u-18tb1.metal', 'u-24tb1.metal', 'x1.16xlarge',
+                'x1.32xlarge', 'x1e.16xlarge', 'x1e.2xlarge', 'x1e.32xlarge', 'x1e.4xlarge', 'x1e.8xlarge',
+                'x1e.xlarge', 'z1d.12xlarge', 'z1d.2xlarge', 'z1d.3xlarge', 'z1d.6xlarge', 'z1d.large', 'z1d.metal', 'z1d.xlarge'
             ],
             default="t3.micro",
             description="The EC2 instance type for the Drupal server autoscaling group"
@@ -657,7 +828,7 @@ class DrupalStack(core.Stack):
             image_id=AMI, # TODO: Put into CFN Mapping
             instance_type=app_instance_type_param.value_as_string,
             iam_instance_profile=instance_profile.ref,
-            security_groups=[app_sg.security_group_name],
+            security_groups=[app_sg.ref],
             user_data=(
                 core.Fn.base64(
                     core.Fn.sub(app_launch_config_user_data)
@@ -670,17 +841,32 @@ class DrupalStack(core.Stack):
             launch_configuration_name=launch_config.ref,
             desired_capacity=asg_desired_capacity_param.value.to_string(),
             max_size=asg_max_size_param.value.to_string(),
-            min_size=asg_min_size_param.value.to_string(),
-            vpc_zone_identifier=vpc_private_subnet_ids
+            min_size=asg_min_size_param.value.to_string()
         )
         # https://github.com/aws/aws-cdk/issues/3615
+        asg.add_override(
+            "Properties.VPCZoneIdentifier",
+            {
+                "Fn::If": [
+                    customer_vpc_given_condition.logical_id,
+                    [
+                        customer_vpc_private_subnet_id1.value.to_string(),
+                        customer_vpc_private_subnet_id2.value.to_string()
+                    ],
+                    [
+                        vpc_private_subnet1.ref,
+                        vpc_private_subnet2.ref
+                    ]
+                ]
+            }
+        )
         asg.add_override(
             "Properties.TargetGroupARNs",
             {
                 "Fn::If": [
                     certificate_arn_exists_condition.logical_id,
-                    [https_target_group.target_group_arn],
-                    [http_target_group.target_group_arn]
+                    [https_target_group.ref],
+                    [http_target_group.ref]
                 ]
             }
         )
@@ -691,14 +877,68 @@ class DrupalStack(core.Stack):
         asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
         asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
         asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
+        asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
+            self,
+            "WebServerScaleUpPolicy",
+            adjustment_type="ChangeInCapacity",
+            auto_scaling_group_name=asg.ref,
+            cooldown="60",
+            scaling_adjustment=1
+        )
+        asg_web_server_scale_down_policy = aws_autoscaling.CfnScalingPolicy(
+            self,
+            "WebServerScaleDownPolicy",
+            adjustment_type="ChangeInCapacity",
+            auto_scaling_group_name=asg.ref,
+            cooldown="60",
+            scaling_adjustment=-1
+        )
+
+        # cloudwatch alarms
+        cpu_alarm_high = aws_cloudwatch.CfnAlarm(
+            self,
+            "CPUAlarmHigh",
+            comparison_operator="GreaterThanThreshold",
+            evaluation_periods=2,
+            actions_enabled=None,
+            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.topic_arn ],
+            alarm_description="Scale-up if CPU > 90% for 10mins",
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
+            metric_name="CPUUtilization",
+            namespace="AWS/EC2",
+            period=300,
+            statistic="Average",
+            threshold=90
+        )
+        cpu_alarm_low = aws_cloudwatch.CfnAlarm(
+            self,
+            "CPUAlarmLow",
+            comparison_operator="LessThanThreshold",
+            evaluation_periods=2,
+            actions_enabled=None,
+            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.topic_arn ],
+            alarm_description="Scale-down if CPU < 70% for 10mins",
+            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
+                name="AutoScalingGroupName",
+                value=asg.ref
+            )],
+            metric_name="CPUUtilization",
+            namespace="AWS/EC2",
+            period=300,
+            statistic="Average",
+            threshold=70
+        )
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=app_sg.security_group_id,
+            group_id=app_sg.ref,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.security_group_id,
+            source_security_group_id=alb_sg.ref,
             to_port=80
         )
         sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
@@ -707,9 +947,9 @@ class DrupalStack(core.Stack):
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=app_sg.security_group_id,
+            group_id=app_sg.ref,
             ip_protocol="tcp",
-            source_security_group_id=alb_sg.security_group_id,
+            source_security_group_id=alb_sg.ref,
             to_port=443
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
@@ -1031,21 +1271,53 @@ class DrupalStack(core.Stack):
             "ElastiCacheEnableCondition",
             expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
         )
-        elasticache_sg = aws_ec2.SecurityGroup(
+        elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ElastiCacheSg",
-            vpc=vpc
+            group_description="App SG"
         )
-        elasticache_sg.add_ingress_rule(
-            peer=app_sg,
-            connection=aws_ec2.Port.tcp(11211)
+        elasticache_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
         )
-        elasticache_sg.node.default_child.cfn_options.condition = elasticache_enable_condition
-        elasticache_subnet_group = aws_elasticache.CfnSubnetGroup(
+        elasticache_sg.cfn_options.condition = elasticache_enable_condition
+        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "ElasticacheSgIngress",
+            from_port=11211,
+            group_id=elasticache_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=11211
+        )
+        elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
+        elasticache_subnet_group = core.CfnResource(
             self,
             "ElastiCacheSubnetGroup",
-            description="ElastiCache subnet group",
-            subnet_ids=vpc_private_subnet_ids
+            type="AWS::ElastiCache::SubnetGroup",
+            properties={
+                "Description": "test",
+                "SubnetIds":  {
+                    "Fn::If": [
+                        customer_vpc_not_given_condition.logical_id,
+                        [
+                            vpc_private_subnet1.ref,
+                            vpc_private_subnet2.ref
+                        ],
+                        [
+                            customer_vpc_private_subnet_id1.value.to_string(),
+                            customer_vpc_private_subnet_id2.value.to_string()
+                            
+                        ]
+                    ]
+                }
+            }
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
         elasticache_cluster = aws_elasticache.CfnCacheCluster(
@@ -1057,7 +1329,7 @@ class DrupalStack(core.Stack):
             engine="memcached",
             engine_version=elasticache_cluster_engine_version_param.value_as_string,
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg.security_group_id ]
+            vpc_security_group_ids=[ elasticache_sg.ref ]
         )
         core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
@@ -1141,7 +1413,7 @@ class DrupalStack(core.Stack):
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.load_balancer_dns_name,
+                    domain_name=alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
