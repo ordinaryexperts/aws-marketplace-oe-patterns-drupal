@@ -132,13 +132,7 @@ chown www-data /mnt/efs/drupal/files
 mkdir -p /opt/oe/patterns/drupal
 
 # secretsmanager
-SECRET_ARN=${DBSecretArn}
-SECRET=${DBSecret}
-
-if [ -z "$SECRET_ARN" ]
-then
-    SECRET_ARN=$SECRET
-fi
+SECRET_ARN=${SecretArn}
 echo $SECRET_ARN >> /opt/oe/patterns/drupal/secret-arn.txt
 
 SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)

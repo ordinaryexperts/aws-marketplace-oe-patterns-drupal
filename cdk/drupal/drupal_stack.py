@@ -391,24 +391,24 @@ class DrupalStack(core.Stack):
         )
         secret_arn_param = core.CfnParameter(
             self,
-            "DBSecretArn",
+            "SecretArn",
             default="",
             description="The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.",
             type="String"
         )
         secret_arn_exists_condition = core.CfnCondition(
             self,
-            "DBSecretArnExistsCondition",
+            "SecretArnExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
         )
         secret_arn_not_exists_condition = core.CfnCondition(
             self,
-            "DBSecretArnNotExistsCondition",
+            "SecretArnNotExistsCondition",
             expression=core.Fn.condition_equals(secret_arn_param.value, "")
         )
         secret = aws_secretsmanager.CfnSecret(
             self,
-            "DBSecret",
+            "Secret",
             generate_secret_string=aws_secretsmanager.CfnSecret.GenerateSecretStringProperty(
                 exclude_characters="\"@/\\\"'$,[]*?{}~\#%<>|^",
                 exclude_punctuation=True,
@@ -422,7 +422,7 @@ class DrupalStack(core.Stack):
         secret.cfn_options.condition = secret_arn_not_exists_condition
         secret_policy = aws_iam.Policy(
             self,
-            "DBSecretPolicy",
+            "SecretPolicy",
             statements=[
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
@@ -457,8 +457,8 @@ class DrupalStack(core.Stack):
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
                     secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:username}}")
+                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
                 ).to_string(),
             ).to_string(),
             master_user_password=core.Fn.condition_if(
@@ -466,8 +466,8 @@ class DrupalStack(core.Stack):
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
                     secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:password}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:password}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
+                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
                 ).to_string(),
             ).to_string(),
             scaling_configuration={
@@ -892,7 +892,12 @@ class DrupalStack(core.Stack):
             security_groups=[app_sg.ref],
             user_data=(
                 core.Fn.base64(
-                    core.Fn.sub(app_launch_config_user_data)
+                    core.Fn.sub(
+                        app_launch_config_user_data,
+                        {
+                            "SecretArn": "!If [SecretArnExistsCondition, !Ref SecretArn, !Ref Secret]"
+                        }
+                    )
                 )
             )
         )
