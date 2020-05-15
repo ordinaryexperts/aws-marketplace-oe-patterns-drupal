@@ -895,7 +895,12 @@ class DrupalStack(core.Stack):
                     core.Fn.sub(
                         app_launch_config_user_data,
                         {
-                            "SecretArn": core.Fn.condition_if("SecretArnExistsCondition", secret_arn_param.value.to_string(), secret.ref).to_string()
+                            "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
+                            "SecretArn": core.Fn.condition_if(
+                                secret_arn_exists_condition.logical_id,
+                                secret_arn_param.value_as_string,
+                                secret.ref
+                            ).to_string()
                         }
                     )
                 )

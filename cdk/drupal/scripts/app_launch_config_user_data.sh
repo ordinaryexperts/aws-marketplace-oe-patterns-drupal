@@ -149,7 +149,7 @@ jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoin
    '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
 
 # drupal salt
-echo "${AWS::StackId}" > /opt/oe/patterns/drupal/salt.txt
+echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
