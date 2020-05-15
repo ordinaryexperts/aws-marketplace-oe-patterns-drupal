@@ -150,6 +150,10 @@ aws ssm get-parameter \
     --query Parameter.Value \
 | jq -r . >> /opt/oe/patterns/drupal/secret.json
 
+# database values
+jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
+   '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
+
 # drupal salt
 echo "${AWS::StackId}" > /opt/oe/patterns/drupal/salt.txt
 

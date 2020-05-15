@@ -389,24 +389,24 @@ class DrupalStack(core.Stack):
             "DBSnapshotIdentifierExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
-        db_secret_arn_param = core.CfnParameter(
+        secret_arn_param = core.CfnParameter(
             self,
             "DBSecretArn",
             default="",
             description="The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.",
             type="String"
         )
-        db_secret_arn_exists_condition = core.CfnCondition(
+        secret_arn_exists_condition = core.CfnCondition(
             self,
             "DBSecretArnExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(db_secret_arn_param.value, ""))
+            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
         )
-        db_secret_arn_not_exists_condition = core.CfnCondition(
+        secret_arn_not_exists_condition = core.CfnCondition(
             self,
             "DBSecretArnNotExistsCondition",
-            expression=core.Fn.condition_equals(db_secret_arn_param.value, "")
+            expression=core.Fn.condition_equals(secret_arn_param.value, "")
         )
-        db_secret = aws_secretsmanager.CfnSecret(
+        secret = aws_secretsmanager.CfnSecret(
             self,
             "DBSecret",
             generate_secret_string=aws_secretsmanager.CfnSecret.GenerateSecretStringProperty(
@@ -419,7 +419,8 @@ class DrupalStack(core.Stack):
             # kms_key_id="",
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
-        db_secret_policy = aws_iam.Policy(
+        secret.cfn_options.condition = secret_arn_not_exists_condition
+        secret_policy = aws_iam.Policy(
             self,
             "DBSecretPolicy",
             statements=[
@@ -429,11 +430,10 @@ class DrupalStack(core.Stack):
                         "secretsmanager:GetSecretValue"
                     ],
                     resources=[
-                        db_secret.ref,
                         core.Fn.condition_if(
-                            db_secret_arn_exists_condition.logical_id,
-                            db_secret_arn_param.value_as_string,
-                            core.Aws.NO_VALUE
+                            secret_arn_exists_condition.logical_id,
+                            secret_arn_param.value_as_string,
+                            secret.ref
                         ).to_string()
                     ]
                 ),
@@ -444,10 +444,6 @@ class DrupalStack(core.Stack):
                 ),
             ]
         )
-        # TODO: unable to get conditional secret working because the DBCluster username and password depend on the
-        # interpolated value in the Fn.condition_if statements; possibly create a nested secret stack and create the
-        # secret if it receives a blank param; returning param name in stack output?
-        # secret.cfn_options.condition = secret_arn_not_exists_condition
 
         db_cluster = aws_rds.CfnDBCluster(
             self,
@@ -460,7 +456,7 @@ class DrupalStack(core.Stack):
                 db_snapshot_identifier_exists_condition.logical_id,
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
-                    db_secret_arn_exists_condition.logical_id,
+                    secret_arn_exists_condition.logical_id,
                     core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}"),
                     core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:username}}")
                 ).to_string(),
@@ -469,7 +465,7 @@ class DrupalStack(core.Stack):
                 db_snapshot_identifier_exists_condition.logical_id,
                 core.Aws.NO_VALUE,
                 core.Fn.condition_if(
-                    db_secret_arn_exists_condition.logical_id,
+                    secret_arn_exists_condition.logical_id,
                     core.Fn.sub("{{resolve:secretsmanager:${DBSecretArn}:SecretString:password}}"),
                     core.Fn.sub("{{resolve:secretsmanager:${DBSecret}:SecretString:password}}"),
                 ).to_string(),
@@ -703,7 +699,7 @@ class DrupalStack(core.Stack):
             self,
             "EFSSgIngress",
             from_port=2049,
-            group_id=db_sg.ref,
+            group_id=efs_sg.ref,
             ip_protocol="tcp",
             source_security_group_id=app_sg.ref,
             to_port=2049
@@ -805,7 +801,7 @@ class DrupalStack(core.Stack):
             }
         )
         app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
-        app_instance_role.attach_inline_policy(db_secret_policy)
+        app_instance_role.attach_inline_policy(secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
