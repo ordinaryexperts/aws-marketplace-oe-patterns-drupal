@@ -895,7 +895,7 @@ class DrupalStack(core.Stack):
                     core.Fn.sub(
                         app_launch_config_user_data,
                         {
-                            "SecretArn": "!If [SecretArnExistsCondition, !Ref SecretArn, !Ref Secret]"
+                            "SecretArn": core.Fn.condition_if("SecretArnExistsCondition", secret_arn_param.value.to_string(), secret.ref).to_string()
                         }
                     )
                 )
@@ -909,7 +909,6 @@ class DrupalStack(core.Stack):
             max_size=asg_max_size_param.value.to_string(),
             min_size=asg_min_size_param.value.to_string()
         )
-        # https://github.com/aws/aws-cdk/issues/3615
         asg.add_override(
             "Properties.VPCZoneIdentifier",
             {
