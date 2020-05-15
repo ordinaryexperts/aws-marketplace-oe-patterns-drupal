@@ -1,5 +1,5 @@
 general:
-  bucket: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+  s3_bucket: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
 project:
   name: aws-marketplace-oe-patterns-drupal
   regions:
