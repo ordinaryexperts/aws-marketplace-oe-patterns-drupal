@@ -150,25 +150,8 @@ aws ssm get-parameter \
     --query Parameter.Value \
 | jq -r . >> /opt/oe/patterns/drupal/secret.json
 
-# ssm parameters
-aws ssm get-parameters-by-path --path "/${AWS::StackName}/drupal" --recursive --query "Parameters[*]" > /opt/oe/patterns/drupal/ssm-parameters-raw.json
-
-cat <<"EOF" > /opt/oe/patterns/drupal/transform-ssm-parameters.php
-<?php
-
-$array = json_decode(file_get_contents('ssm-parameters-raw.json'));
-
-$array = array_reduce($array, function($carry, $item) {
-    $key = str_replace("/${AWS::StackName}/drupal/", "", $item->Name);
-    $carry[$key] = $item;
-    return $carry;
-  }, array());
-
-echo json_encode($array);
-EOF
-cd /opt/oe/patterns/drupal
-php ./transform-ssm-parameters.php > ssm-parameters.json
-cd -
+# drupal salt
+echo "${AWS::StackId}" > /opt/oe/patterns/drupal/salt.txt
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \

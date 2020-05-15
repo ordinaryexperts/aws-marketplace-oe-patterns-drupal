@@ -346,7 +346,7 @@ class DrupalStack(core.Stack):
             "DBSubnetGroup",
             type="AWS::RDS::DBSubnetGroup",
             properties={
-                "DBSubnetGroupDescription": "test",
+                "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
                 "SubnetIds":  {
                     "Fn::If": [
                         customer_vpc_not_given_condition.logical_id,
@@ -513,14 +513,6 @@ class DrupalStack(core.Stack):
             group_id=alb_sg.ref,
             ip_protocol="tcp",
             to_port=80
-        )
-        db_cluster.add_depends_on(db_secret)
-        db_secret_db_cluster_attachment = aws_secretsmanager.CfnSecretTargetAttachment(
-            self,
-            "DBSecretDbClusterTargetAttachment",
-            secret_id=db_secret.ref,
-            target_id=db_cluster.ref,
-            target_type="AWS::RDS::DBCluster"
         )
         alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -1029,58 +1021,6 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
-        # ssm
-        ssm_drupal_database_name_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalDatabaseNameParameter",
-            description="The name of the database for the Drupal application.",
-            name="/{}/drupal/database-name".format(core.Aws.STACK_NAME),
-            type="String",
-            value="drupal" # TODO: from param?
-        )
-        ssm_drupal_hash_salt_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalHashSaltParameter",
-            description="The configured hash salt for the Drupal application.",
-            name="/{}/drupal/hash-salt".format(core.Aws.STACK_NAME),
-            type="String",
-            # TODO: from param?
-            value="Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA"
-        )
-        ssm_drupal_config_sync_directory_parameter = aws_ssm.CfnParameter(
-            self,
-            "SsmDrupalSyncDirectoryParameter",
-            description="The configured sync directory for the Drupal application.",
-            name="/{}/drupal/config-sync-directory".format(core.Aws.STACK_NAME),
-            type="String",
-            # TODO: from param?
-            value="sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync"
-        )
-        ssm_parameter_store_policy = aws_iam.Policy(
-            self,
-            "SsmParameterStorePolicy",
-            statements=[
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[ "ssm:DescribeParameters" ],
-                    resources=[ "*" ]
-                ),
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[
-                        "ssm:GetParameters",
-                        "ssm:GetParametersByPath"
-                    ],
-                    resources=[
-                        "arn:aws:ssm:{}:{}:parameter/{}/drupal".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME),
-                        "arn:aws:ssm:{}:{}:parameter/{}/drupal/*".format(core.Aws.REGION, core.Aws.ACCOUNT_ID, core.Aws.STACK_NAME)
-                    ]
-                )
-                # TODO: add statement for KMS key decryption?
-            ]
-        )
-        app_instance_role.attach_inline_policy(ssm_parameter_store_policy)
-
         # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
@@ -1197,7 +1137,6 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        deploy_stage_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -1212,7 +1151,6 @@ class DrupalStack(core.Stack):
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
-        code_deploy_role.attach_inline_policy(ssm_parameter_store_policy)
 
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
