@@ -129,46 +129,27 @@ echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 mkdir -p /mnt/efs/drupal/files
 chown www-data /mnt/efs/drupal/files
 
-# write application configuration values to env
-DB_NAME=${SsmDrupalDatabaseNameParameter.Value}
-DB_USER=${SsmDrupalDatabaseUserParameter.Value}
-DB_PASSWORD=${SsmDrupalDatabasePasswordParameter.Value}
-HASH_SALT=${SsmDrupalHashSaltParameter.Value}
-CONFIG_SYNC_DIR=${SsmDrupalSyncDirectoryParameter.Value}
-
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/profile.d/oe-patterns-drupal.sh
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/profile.d/oe-patterns-drupal.sh
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/profile.d/oe-patterns-drupal.sh
-
-echo export OE_PATTERNS_DRUPAL_DATABASE_NAME=$DB_NAME >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_DATABASE_USER=$DB_USER >> /etc/apache2/envvars
-# TODO: currently using regular string ssm parameter for password to allow for user input use case
-echo export OE_PATTERNS_DRUPAL_DATABASE_PASSWORD=$DB_PASSWORD >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_HASH_SALT=$HASH_SALT >> /etc/apache2/envvars
-echo export OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY=$CONFIG_SYNC_DIR >> /etc/apache2/envvars
-
-
 mkdir -p /opt/oe/patterns/drupal
-cat <<"EOF" > /opt/oe/patterns/drupal/settings.php
-<?php
 
-$settings['hash_salt'] = getenv('OE_PATTERNS_DRUPAL_HASH_SALT');
+# secretsmanager
+SECRET_ARN="${SecretArn}"
+echo $SECRET_ARN >> /opt/oe/patterns/drupal/secret-arn.txt
 
-$databases['default']['default'] = array (
-  'database' => getenv('OE_PATTERNS_DRUPAL_DATABASE_NAME'),
-  'username' => getenv('OE_PATTERNS_DRUPAL_DATABASE_USER'),
-  'password' => getenv('OE_PATTERNS_DRUPAL_DATABASE_PASSWORD'),
-  'prefix' => '',
-  'host' => '${DBCluster.Endpoint.Address}',
-  'port' => '${DBCluster.Endpoint.Port}',
-  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
-  'driver' => 'mysql',
-);
-$settings['config_sync_directory'] = getenv('OE_PATTERNS_DRUPAL_CONFIG_SYNC_DIRECTORY');
-EOF
+SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)
+echo $SECRET_NAME >> /opt/oe/patterns/drupal/secret-name.txt
+
+aws ssm get-parameter \
+    --name "/aws/reference/secretsmanager/$SECRET_NAME" \
+    --with-decryption \
+    --query Parameter.Value \
+| jq -r . >> /opt/oe/patterns/drupal/secret.json
+
+# database values
+jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
+   '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
+
+# drupal salt
+echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \

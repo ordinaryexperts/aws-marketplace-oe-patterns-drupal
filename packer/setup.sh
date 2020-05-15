@@ -65,14 +65,14 @@ a2enmod rewrite
 a2enmod ssl
 
 a2dissite 000-default
-mkdir -p /var/www/drupal
+mkdir -p /var/www/app/drupal
 cat <<EOF > /etc/apache2/sites-available/drupal.conf
 LogFormat "{\"time\":\"%{%Y-%m-%d}tT%{%T}t.%{msec_frac}tZ\", \"process\":\"%D\", \"filename\":\"%f\", \"remoteIP\":\"%a\", \"host\":\"%V\", \"request\":\"%U\", \"query\":\"%q\", \"method\":\"%m\", \"status\":\"%>s\", \"userAgent\":\"%{User-agent}i\", \"referer\":\"%{Referer}i\"}" cloudwatch
 ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"process\":\"[pid%P]\", \"message\":\"%M\"}"
 
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/drupal
+        DocumentRoot /var/www/app/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error.log
@@ -81,7 +81,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/drupal>
+        <Directory /var/www/app/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted
@@ -96,7 +96,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
 </VirtualHost>
 <VirtualHost *:443>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/drupal
+        DocumentRoot /var/www/app/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error-ssl.log
@@ -105,7 +105,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/drupal>
+        <Directory /var/www/app/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted
