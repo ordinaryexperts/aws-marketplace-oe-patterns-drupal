@@ -1,7 +1,7 @@
 general:
   s3_bucket: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
 project:
-  name: aws-marketplace-oe-patterns-drupal
+  name: oe-patterns-drupal
   regions:
   - us-east-1
   template: ./template.yaml
