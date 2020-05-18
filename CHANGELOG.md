@@ -16,3 +16,4 @@
 * Adding cleanup script
 * Update Github CI to always upload test artifact
 * Expand test scenarios
+* Add topology diagram to README.md

@@ -2,7 +2,7 @@
 
 ## Drupal Stack
 ![Ordinary Experts Drupal Pattern Topology Diagram]
-(.github/oe_drupal_patterns_topology_diagram.png)
+(oe_drupal_patterns_topology_diagram.png)
 
 ## Setup
 
