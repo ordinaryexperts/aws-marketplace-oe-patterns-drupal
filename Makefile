@@ -19,7 +19,9 @@ deploy:
 	--parameters CustomerVpcPrivateSubnet1=subnet-030c94b9795c6cb96 \
 	--parameters CustomerVpcPrivateSubnet2=subnet-079290412ce63c4d5 \
 	--parameters CustomerVpcPublicSubnet1=subnet-0c2f5d4daa1792c8d \
-	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7
+	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7 \
+	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504 \
+	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy

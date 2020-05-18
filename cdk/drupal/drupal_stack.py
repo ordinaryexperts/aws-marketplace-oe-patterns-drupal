@@ -444,6 +444,19 @@ class DrupalStack(core.Stack):
                 ),
             ]
         )
+        db_snapshot_secret_rule = core.CfnRule(
+            self,
+            "DbSnapshotIdentifierAndSecretRequiredRule",
+            assertions=[
+                core.CfnRuleAssertion(
+                    assert_=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value_as_string, "")),
+                    assert_description="When restoring the database from a snapshot, a secret ARN must also be supplied, prepopulated with username and password key-value pairs which correspond to the snapshot image"
+                )
+            ],
+            rule_condition=core.Fn.condition_not(
+                core.Fn.condition_equals(db_snapshot_identifier_param.value_as_string, "")
+            )
+        )
 
         db_cluster = aws_rds.CfnDBCluster(
             self,
