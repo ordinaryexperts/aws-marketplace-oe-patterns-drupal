@@ -1,5 +1,7 @@
 # Unreleased
 
+# 0.1.0
+
 * Initial commit
 * Add SSL support
 * Add CloudWatch Logs support
