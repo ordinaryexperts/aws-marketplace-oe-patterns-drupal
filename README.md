@@ -1,8 +1,7 @@
 # Ordinary Experts Drupal 8 on AWS Pattern
 
 ## Drupal Stack
-![Ordinary Experts Drupal Pattern Topology Diagram]
-(oe_drupal_patterns_topology_diagram.png)
+![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
 ## Setup
 
