@@ -37,6 +37,18 @@ class DrupalStack(core.Stack):
             block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
 
+        dns_hostname_param = core.CfnParameter(
+            self,
+            "DnsHostname",
+            default="",
+            description="The DNS hostname of the Drupal site."
+        )
+        dns_hostname_exists_condition = core.CfnCondition(
+            self,
+            "DnsHostnameExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(dns_hostname_param.value, ""))
+        )
+
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -1401,6 +1413,12 @@ class DrupalStack(core.Stack):
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
                 # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                # TODO: prototyping to get around override hack?
+                aliases=[ core.Fn.condition_if(
+                    dns_hostname_exists_condition.logical_id,
+                    dns_hostname_param.value_as_string,
+                    core.Aws.NO_VALUE
+                ).to_string() ],
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
