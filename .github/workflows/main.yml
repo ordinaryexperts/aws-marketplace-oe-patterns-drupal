@@ -24,5 +24,3 @@ jobs:
         with:
           name: taskcat_outputs
           path: test/taskcat_outputs/
-      - name: clean
-        run: make clean

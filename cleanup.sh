@@ -2,8 +2,8 @@
 
 BUCKETS=`aws s3 ls | awk '{print $3}'`
 
-PREFIX_TO_DELETE="tcat"
-# PREFIX_TO_DELETE="oe-patterns-drupal-${USER}"
+# PREFIX_TO_DELETE="tcat"
+PREFIX_TO_DELETE="oe-patterns-drupal-${USER}"
 
 for bucket in $BUCKETS; do
     if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
