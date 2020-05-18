@@ -1,5 +1,10 @@
 # Unreleased
 
+* DB snapshot and secret ARN rule validation
+* Update Github CI to always upload test artifact
+* Expand test scenarios
+* Add topology diagram to README.md
+
 # 0.1.0
 
 * Initial commit
@@ -16,7 +21,3 @@
 * Add support for customer VPC configurations
 * Custom OE VPC if customer VPC not given
 * Adding cleanup script
-* DB snapshot and secret ARN rule validation
-* Update Github CI to always upload test artifact
-* Expand test scenarios
-* Add topology diagram to README.md
