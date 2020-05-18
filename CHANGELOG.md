@@ -1,5 +1,7 @@
 # Unreleased
 
+* Add make publish command to push to s3 distribution bucket
+
 # 0.1.0
 
 * Initial commit
