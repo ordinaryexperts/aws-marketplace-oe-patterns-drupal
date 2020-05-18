@@ -14,3 +14,5 @@
 * Add support for customer VPC configurations
 * Custom OE VPC if customer VPC not given
 * Adding cleanup script
+* Update Github CI to always upload test artifact
+* Expand test scenarios
