@@ -1,0 +1,25 @@
+name: AWS Patterns Ordinary Experts Patterns Drupal CI
+
+on:
+  push:
+    branches: [ master, develop, 'hotfix/*', 'release/*' ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  taskcat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: make build
+      - name: test
+        run: make test
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
+      - uses: actions/upload-artifact@v2
+        with:
+          name: taskcat_outputs
+          path: test/taskcat_outputs/
