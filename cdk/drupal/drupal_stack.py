@@ -47,7 +47,7 @@ class DrupalStack(core.Stack):
         )
         pipeline_artifact_bucket = aws_s3.CfnBucket(
             self,
-            "ArtifactBucket",
+            "PipelineArtifactBucket",
             access_control="Private",
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
@@ -821,7 +821,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    pipeline_artifact_bucket.ref
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1130,7 +1134,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    pipeline_artifact_bucket.ref
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1162,7 +1170,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    pipeline_artifact_bucket.ref
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1210,7 +1222,11 @@ class DrupalStack(core.Stack):
             self,
             "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-                location=pipeline_artifact_bucket.ref,
+                location=core.Fn.condition_if(
+                    pipeline_artifact_bucket_name_exists_condition.logical_id,
+                    pipeline_artifact_bucket_name_param.value_as_string,
+                    pipeline_artifact_bucket.ref
+                ).to_string(),
                 type='S3'
             ),
             role_arn=pipeline_role.role_arn,
