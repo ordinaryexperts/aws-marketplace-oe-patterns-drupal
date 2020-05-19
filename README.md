@@ -15,7 +15,7 @@ We support multiple availability zones using an RDS Aurora serverless cluster an
 Optional configurations include the following:
 * Integration of CloudFront as a CDN solution
 * ElastiCache caching layer, ready for easy configuration with the CDN and memcached modules for Drupal.
-* Contain your Drupal infrastructure in a new VPC, or provide this CloudFront stack with an exisitng VPC id and subnets.
+* Contain your Drupal infrastructure in a new VPC, or provide this CloudFront stack with an existing VPC id and subnets.
 * Support for SSL by supplying the ARN of an existing certificate from AWS Certificate Manager.
 
 Comprehensive, professional cloud hosting for Drupal at the click of a button.
