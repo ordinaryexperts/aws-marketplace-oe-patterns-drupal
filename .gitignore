@@ -12,3 +12,6 @@ cdk.out
 # generated test files
 test/template.yaml
 test/taskcat_outputs
+
+# distributed files
+dist/*

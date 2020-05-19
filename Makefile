@@ -39,6 +39,18 @@ packer:
 	docker-compose run -w /code/packer drupal packer build ami.json
 .PHONY: packer
 
+publish:
+	docker-compose run -w /code --rm drupal bash -c "mkdir -p dist \
+	&& cd cdk \
+	&& cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false > ../dist/template.yaml \
+	&& cd .. \
+	&& aws s3 cp dist/template.yaml \
+	s3://deployment-user-and-buck-deploymentartifactbucket-17r9c9e9pu794/`git describe`/oe-drupal-patterns-template.yaml \
+	--sse aws:kms --acl public-read"
+
 rebuild:
 	docker-compose build --no-cache
 

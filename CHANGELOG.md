@@ -4,6 +4,7 @@
 * Update Github CI to always upload test artifact
 * Expand test scenarios
 * Add topology diagram to README.md
+* Add make publish command to push to s3 distribution bucket
 
 # 0.1.0
 
