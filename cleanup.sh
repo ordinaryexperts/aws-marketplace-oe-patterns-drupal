@@ -14,7 +14,7 @@ if [[ $TYPE == "all" || $TYPE == "buckets" ]]; then
     BUCKETS=`aws s3 ls | awk '{print $3}'`
     for bucket in $BUCKETS; do
         if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
-            # echo $bucket
+            echo $bucket
             aws s3 rb s3://$bucket --force
         fi
     done
