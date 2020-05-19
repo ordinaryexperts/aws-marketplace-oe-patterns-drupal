@@ -10,6 +10,15 @@ build:
 clean:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh
 
+clean-buckets:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets
+
+clean-logs:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs
+
+clean-snapshots:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots
+
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \

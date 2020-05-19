@@ -4,6 +4,7 @@
 * Update Github CI to always upload test artifact
 * Expand test scenarios
 * Add topology diagram to README.md
+* Add PipelineArtifactBucketName param
 
 # 0.1.0
 
