@@ -28,7 +28,7 @@ clean-logs-tcat:
 clean-snapshots:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots
 
-clean-snapshots-tact:
+clean-snapshots-tcat:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots tcat
 
 deploy:
