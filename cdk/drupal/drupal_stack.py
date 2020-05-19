@@ -20,7 +20,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-0ca74418ad03a79c8"
+AMI="ami-0f54e7997bfd0eba9"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -45,7 +45,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-68--secrets-management-and-database-init.tar.gz"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz"
         )
         notification_email_param = core.CfnParameter(
             self,
@@ -1336,13 +1336,6 @@ class DrupalStack(core.Stack):
         )
         core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster_id_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterIdOutput",
-            condition=elasticache_enable_condition,
-            description="The Id of the ElastiCache cluster.",
-            value=elasticache_cluster.ref
-        )
         elasticache_cluster_endpoint_output = core.CfnOutput(
             self,
             "ElastiCacheClusterEndpointOutput",
@@ -1400,7 +1393,7 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
