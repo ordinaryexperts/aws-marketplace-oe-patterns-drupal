@@ -10,6 +10,27 @@ build:
 clean:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh
 
+clean-all-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh all tcat
+
+clean-buckets:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets
+
+clean-buckets-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets tcat
+
+clean-logs:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs
+
+clean-logs-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs tcat
+
+clean-snapshots:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots
+
+clean-snapshots-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots tcat
+
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \
@@ -23,9 +44,9 @@ deploy:
 	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7 \
 	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200519 \
 	--parameters ElastiCacheEnable=true \
+	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx \
 	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz \
-	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
+	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
