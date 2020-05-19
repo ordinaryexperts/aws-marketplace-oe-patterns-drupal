@@ -1,5 +1,8 @@
 # Ordinary Experts Drupal 8 on AWS Pattern
 
+## Drupal Stack
+![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
+
 ## Setup
 
 We are following the [3 Musketeers](https://3musketeers.io/) pattern for project layout / setup.

@@ -24,7 +24,8 @@ deploy:
 	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200519 \
 	--parameters ElastiCacheEnable=true \
 	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz
+	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz \
+	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
@@ -41,6 +42,18 @@ lint:
 packer:
 	docker-compose run -w /code/packer drupal packer build ami.json
 .PHONY: packer
+
+publish:
+	docker-compose run -w /code --rm drupal bash -c "mkdir -p dist \
+	&& cd cdk \
+	&& cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false > ../dist/template.yaml \
+	&& cd .. \
+	&& aws s3 cp dist/template.yaml \
+	s3://deployment-user-and-buck-deploymentartifactbucket-17r9c9e9pu794/`git describe`/oe-drupal-patterns-template.yaml \
+	--sse aws:kms --acl public-read"
 
 rebuild:
 	docker-compose build --no-cache
