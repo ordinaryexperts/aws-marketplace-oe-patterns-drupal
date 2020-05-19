@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
 TYPE="${1:-all}"
+PREFIX="${2:-user}"
 
-PREFIX_TO_DELETE="tcat"
-# PREFIX_TO_DELETE="oe-patterns-drupal-${USER}"
+if [[ $PREFIX == "tcat" ]]; then
+    PREFIX_TO_DELETE="tcat"
+else
+    PREFIX_TO_DELETE="oe-patterns-drupal-${USER}"
+fi
 
 if [[ $TYPE == "all" || $TYPE == "buckets" ]]; then
     echo "Removing $PREFIX_TO_DELETE buckets..."

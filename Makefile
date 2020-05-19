@@ -10,14 +10,26 @@ build:
 clean:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh
 
+clean-all-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh all tcat
+
 clean-buckets:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets
+
+clean-buckets-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets tcat
 
 clean-logs:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs
 
+clean-logs-tcat:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs tcat
+
 clean-snapshots:
 	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots
+
+clean-snapshots-tact:
+	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots tcat
 
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
@@ -30,7 +42,8 @@ deploy:
 	--parameters CustomerVpcPublicSubnet1=subnet-0c2f5d4daa1792c8d \
 	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7 \
 	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504 \
-	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
+	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
+	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
