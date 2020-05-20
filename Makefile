@@ -36,6 +36,7 @@ deploy:
 	--require-approval never \
 	--parameters CertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4 \
 	--parameters CloudFrontCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4 \
+	--parameters CloudFrontAliases=cdn-oe-patterns-drupal-${USER}.dev.patterns.ordinaryexperts.com \
 	--parameters CloudFrontEnable=true \
 	--parameters CustomerVpcId=vpc-00425deda4c835455 \
 	--parameters CustomerVpcPrivateSubnet1=subnet-030c94b9795c6cb96 \
