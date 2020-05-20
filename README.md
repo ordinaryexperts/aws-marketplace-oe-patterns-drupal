@@ -35,7 +35,7 @@ Then:
     $ aws-vault exec oe-patterns-dev -- make deploy
 
 ## Deployment Guide
-For detailed information about the architecture and step-by-step instructions, see the [deployment guide](https://docs.google.com/document/d/1jE0veUDrL-HUwkbCbmqzVhq21DenxaKS3b2vEOk5ZUk/edit?usp=sharing).
+Detailed information about the architecture and step-by-step instructions will be made available shortly. 
 
 ## Feedback
 To post feedback, submit feature ideas, or report bugs, use the Issues section of this GitHub repo.
