@@ -20,7 +20,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-0ca74418ad03a79c8"
+AMI="ami-0f54e7997bfd0eba9"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -61,7 +61,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-68--secrets-management-and-database-init.tar.gz"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz"
         )
         notification_email_param = core.CfnParameter(
             self,
@@ -772,6 +772,217 @@ class DrupalStack(core.Stack):
             }
         )
 
+        # elasticache
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterCacheNodeTypeParam",
+            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            default="cache.t2.micro",
+            type="String"
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersionParam",
+            # TODO: determine which versions are supported by the Drupal memcached module
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="The memcached version of the cache cluster.",
+            type="String"
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodesParam",
+            default=2,
+            description="The number of cache nodes in the memcached cluster.",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+        elasticache_sg = aws_ec2.CfnSecurityGroup(
+            self,
+            "ElastiCacheSg",
+            group_description="App SG"
+        )
+        elasticache_sg.add_override(
+            "Properties.VpcId",
+            {
+                "Fn::If": [
+                    customer_vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    customer_vpc_id_param.value.to_string()
+                ]
+            }
+        )
+        elasticache_sg.cfn_options.condition = elasticache_enable_condition
+        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
+            self,
+            "ElasticacheSgIngress",
+            from_port=11211,
+            group_id=elasticache_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=app_sg.ref,
+            to_port=11211
+        )
+        elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
+        elasticache_subnet_group = core.CfnResource(
+            self,
+            "ElastiCacheSubnetGroup",
+            type="AWS::ElastiCache::SubnetGroup",
+            properties={
+                "Description": "test",
+                "SubnetIds":  {
+                    "Fn::If": [
+                        customer_vpc_not_given_condition.logical_id,
+                        [
+                            vpc_private_subnet1.ref,
+                            vpc_private_subnet2.ref
+                        ],
+                        [
+                            customer_vpc_private_subnet_id1.value.to_string(),
+                            customer_vpc_private_subnet_id2.value.to_string()
+                        ]
+                    ]
+                }
+            }
+        )
+        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster = aws_elasticache.CfnCacheCluster(
+            self,
+            "ElastiCacheCluster",
+            az_mode="cross-az",
+            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
+            cache_subnet_group_name=elasticache_subnet_group.ref,
+            engine="memcached",
+            engine_version=elasticache_cluster_engine_version_param.value_as_string,
+            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
+            vpc_security_group_ids=[ elasticache_sg.ref ]
+        )
+        core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
+        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enable_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
+        )
+
+        # cloudfront
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Enable CloudFront CDN support."
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        cloudfront_origin_access_policy_param = core.CfnParameter(
+            self,
+            "CloudFrontOriginAccessPolicyParam",
+            allowed_values = [ "http-only", "https-only", "match-viewer" ],
+            default="match-viewer",
+            description="CloudFront access policy for communicating with content origin."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClassParam",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Price class to use for CloudFront CDN."
+        )
+        cloudfront_distribution = aws_cloudfront.CfnDistribution(
+            self,
+            "CloudFrontDistribution",
+            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
+                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                comment=core.Aws.STACK_NAME,
+                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
+                    allowed_methods=[ "HEAD", "GET" ],
+                    compress=False,
+                    default_ttl=86400,
+                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
+                        query_string=False
+                    ),
+                    min_ttl=0,
+                    max_ttl=31536000,
+                    target_origin_id="alb",
+                    viewer_protocol_policy="allow-all"
+                ),
+                enabled=True,
+                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
+                    domain_name=alb.attr_dns_name,
+                    id="alb",
+                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                    )
+                )],
+                price_class=cloudfront_price_class_param.value_as_string,
+                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
+                    acm_certificate_arn=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        cloudfront_certificate_arn_param.value_as_string,
+                        core.Aws.NO_VALUE
+                    ).to_string(),
+                    ssl_support_method=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "sni-only",
+                        core.Aws.NO_VALUE
+                    ).to_string()
+                )
+            )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            {
+                "Fn::If": [
+                    cloudfront_certificate_arn_exists_condition.logical_id,
+                    { "Ref": "AWS::NoValue" },
+                    True
+                ]
+            }
+        )
+        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enable_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
+        )
+
         # app
         app_instance_role = aws_iam.Role(
             self,
@@ -928,7 +1139,22 @@ class DrupalStack(core.Stack):
                     core.Fn.sub(
                         app_launch_config_user_data,
                         {
+                            "CloudFrontHost": core.Fn.condition_if(
+                                cloudfront_enable_condition.logical_id,
+                                cloudfront_distribution.attr_domain_name,
+                                ""
+                            ).to_string(),
                             "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
+                            "ElastiCacheClusterHost": core.Fn.condition_if(
+                                elasticache_enable_condition.logical_id,
+                                elasticache_cluster.attr_configuration_endpoint_address,
+                                ""
+                            ).to_string(),
+                            "ElastiCacheClusterPort": core.Fn.condition_if(
+                                elasticache_enable_condition.logical_id,
+                                elasticache_cluster.attr_configuration_endpoint_port,
+                                ""
+                            ).to_string(),
                             "SecretArn": core.Fn.condition_if(
                                 secret_arn_exists_condition.logical_id,
                                 secret_arn_param.value_as_string,
@@ -1280,223 +1506,4 @@ class DrupalStack(core.Stack):
                     ]
                 )
             ]
-        )
-
-        # elasticache
-        elasticache_cluster_cache_node_type_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterCacheNodeTypeParam",
-            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
-            default="cache.t2.micro",
-            type="String"
-        )
-        elasticache_cluster_engine_version_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterEngineVersionParam",
-            # TODO: determine which versions are supported by the Drupal memcached module
-            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
-            default="1.5.16",
-            description="The memcached version of the cache cluster.",
-            type="String"
-        )
-        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterNumCacheNodesParam",
-            default=2,
-            description="The number of cache nodes in the memcached cluster.",
-            min_value=1,
-            max_value=20,
-            type="Number"
-        )
-        elasticache_enable_param = core.CfnParameter(
-            self,
-            "ElastiCacheEnable",
-            allowed_values=[ "true", "false" ],
-            default="false",
-        )
-        elasticache_enable_condition = core.CfnCondition(
-            self,
-            "ElastiCacheEnableCondition",
-            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
-        )
-        elasticache_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "ElastiCacheSg",
-            group_description="App SG"
-        )
-        elasticache_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    customer_vpc_id_param.value.to_string()
-                ]
-            }
-        )
-        elasticache_sg.cfn_options.condition = elasticache_enable_condition
-        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "ElasticacheSgIngress",
-            from_port=11211,
-            group_id=elasticache_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=11211
-        )
-        elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
-        elasticache_subnet_group = core.CfnResource(
-            self,
-            "ElastiCacheSubnetGroup",
-            type="AWS::ElastiCache::SubnetGroup",
-            properties={
-                "Description": "test",
-                "SubnetIds":  {
-                    "Fn::If": [
-                        customer_vpc_not_given_condition.logical_id,
-                        [
-                            vpc_private_subnet1.ref,
-                            vpc_private_subnet2.ref
-                        ],
-                        [
-                            customer_vpc_private_subnet_id1.value.to_string(),
-                            customer_vpc_private_subnet_id2.value.to_string()
-                            
-                        ]
-                    ]
-                }
-            }
-        )
-        elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster = aws_elasticache.CfnCacheCluster(
-            self,
-            "ElastiCacheCluster",
-            az_mode="cross-az",
-            cache_node_type=elasticache_cluster_cache_node_type_param.value_as_string,
-            cache_subnet_group_name=elasticache_subnet_group.ref,
-            engine="memcached",
-            engine_version=elasticache_cluster_engine_version_param.value_as_string,
-            num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
-            vpc_security_group_ids=[ elasticache_sg.ref ]
-        )
-        core.Tag.add(asg, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
-        elasticache_cluster.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster_id_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterIdOutput",
-            condition=elasticache_enable_condition,
-            description="The Id of the ElastiCache cluster.",
-            value=elasticache_cluster.ref
-        )
-        elasticache_cluster_endpoint_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterEndpointOutput",
-            condition=elasticache_enable_condition,
-            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
-            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
-                                 elasticache_cluster.attr_configuration_endpoint_port)
-        )
-
-        # cloudfront
-        cloudfront_certificate_arn_param = core.CfnParameter(
-            self,
-            "CloudFrontCertificateArn",
-            default="",
-            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
-        )
-        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        )
-        cloudfront_enable_param = core.CfnParameter(
-            self,
-            "CloudFrontEnable",
-            allowed_values=[ "true", "false" ],
-            default="false",
-            description="Enable CloudFront CDN support."
-        )
-        cloudfront_enable_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnableCondition",
-            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-        )
-        cloudfront_origin_access_policy_param = core.CfnParameter(
-            self,
-            "CloudFrontOriginAccessPolicyParam",
-            allowed_values = [ "http-only", "https-only", "match-viewer" ],
-            default="match-viewer",
-            description="CloudFront access policy for communicating with content origin."
-        )
-        cloudfront_price_class_param = core.CfnParameter(
-            self,
-            "CloudFrontPriceClassParam",
-            # possible to use a map to make the values more human readable
-            allowed_values = [
-                "PriceClass_All",
-                "PriceClass_200",
-                "PriceClass_100"
-            ],
-            default="PriceClass_All",
-            description="Price class to use for CloudFront CDN."
-        )
-        cloudfront_distribution = aws_cloudfront.CfnDistribution(
-            self,
-            "CloudFrontDistribution",
-            distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                # aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
-                comment=core.Aws.STACK_NAME,
-                default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
-                    default_ttl=86400,
-                    forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
-                    ),
-                    min_ttl=0,
-                    max_ttl=31536000,
-                    target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
-                ),
-                enabled=True,
-                origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.attr_dns_name,
-                    id="alb",
-                    custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
-                    )
-                )],
-                price_class=cloudfront_price_class_param.value_as_string,
-                viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        core.Aws.NO_VALUE
-                    ).to_string(),
-                    ssl_support_method=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Aws.NO_VALUE
-                    ).to_string()
-                )
-            )
-        )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
-        )
-        cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
-        cloudfront_distribution_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionEndpointOutput",
-            condition=cloudfront_enable_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
         )

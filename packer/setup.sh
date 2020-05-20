@@ -58,7 +58,13 @@ apt-get -y install            \
         php7.2-dev            \
         php7.2-gd             \
         php7.2-mbstring       \
-        php7.2-xml
+        php7.2-xml            \
+        zlib1g-dev
+
+# memcache
+printf "\n" | pecl install memcache
+echo "extension=memcache.so" > /etc/php/7.2/apache2/conf.d/20-memcache.ini
+echo "extension=memcache.so" > /etc/php/7.2/cli/conf.d/20-memcache.ini
 
 # configure apache
 a2enmod rewrite
