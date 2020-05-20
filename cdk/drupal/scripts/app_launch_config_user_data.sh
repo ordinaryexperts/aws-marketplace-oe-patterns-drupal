@@ -148,6 +148,20 @@ aws ssm get-parameter \
 jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
    '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
 
+# elasticache values
+if [[ "${ElastiCacheEnable}" == "true" ]]
+then
+    jq -n --arg host "${ElastiCacheClusterHost}" \
+       --arg port "${ElastiCacheClusterPort}" \
+       '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
+fi
+
+# cloudfront values
+if [[ "${CloudFrontEnable}" == "true" ]]
+then
+    jq -n --arg host "${CloudFrontHost}" '{host: $host}' > /opt/oe/patterns/drupal/cloudfront.json
+fi
+
 # drupal salt
 echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
