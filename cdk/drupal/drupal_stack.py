@@ -30,12 +30,28 @@ class DrupalStack(core.Stack):
 
         # TODO: Encryption
         # https://github.com/aws/aws-cdk/blob/v1.36.1/packages/@aws-cdk/aws-codepipeline/lib/pipeline.ts#L225-L244
-        artifact_bucket = aws_s3.Bucket(
+        pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
-            "ArtifactBucket",
-            access_control=aws_s3.BucketAccessControl.PRIVATE,
-            block_public_access=aws_s3.BlockPublicAccess.BLOCK_ALL
+            "PipelineArtifactBucketName",
+            default=""
         )
+        pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+            self,
+            "PipelineArtifactBucketNameNotExists",
+            expression=core.Fn.condition_equals(pipeline_artifact_bucket_name_param.value, "")
+        )
+        pipeline_artifact_bucket_name_exists_condition = core.CfnCondition(
+            self,
+            "PipelineArtifactBucketNameExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(pipeline_artifact_bucket_name_param.value, ""))
+        )
+        pipeline_artifact_bucket = aws_s3.CfnBucket(
+            self,
+            "PipelineArtifactBucket",
+            access_control="Private",
+            public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
+        )
+        pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
 
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
@@ -805,7 +821,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    artifact_bucket.bucket_name
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1114,7 +1134,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    artifact_bucket.bucket_name
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1146,7 +1170,11 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    artifact_bucket.bucket_name
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
                                 )
                             ]
                         )
@@ -1194,7 +1222,11 @@ class DrupalStack(core.Stack):
             self,
             "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-                location=artifact_bucket.bucket_name,
+                location=core.Fn.condition_if(
+                    pipeline_artifact_bucket_name_exists_condition.logical_id,
+                    pipeline_artifact_bucket_name_param.value_as_string,
+                    pipeline_artifact_bucket.ref
+                ).to_string(),
                 type='S3'
             ),
             role_arn=pipeline_role.role_arn,
