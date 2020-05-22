@@ -103,6 +103,7 @@ tests:
   #     CustomerVpcPublicSubnet1: subnet-0c2f5d4daa1792c8d
   #     CustomerVpcPublicSubnet2: subnet-060c39a6ded9e89d7
   #     PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+
   # region compatibility testing
   allResourcesUsEast2:
     parameters:
@@ -124,23 +125,135 @@ tests:
   #   parameters:
   #     CloudFrontEnableParam: true
   #     ElastiCacheEnableParam: true
+  #     CertificateArn:
   #     CloudFrontCertificationArn:
   #   regions:
   #     - us-west-2
-
-      # - af-south-1
-      # - ap-east-1
-      # - ap-northeast-1
-      # - ap-northeast-2
-      # - ap-south-1
-      # - ap-southeast-1
-      # - ap-southeast-2
-      # - ca-central-1
-      # - eu-central-1
-      # - eu-north-1
-      # - eu-west-1
-      # - eu-west-2
-      # - eu-west-3
-      # - eu-south-1
-      # - me-south-1
-      # - sa-east-1
+  # allResourcesCaCentral1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ca-central-1
+  # allResourcesEuCentral1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-central-1
+  # allResourcesEuNorth1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-north-1
+  # allResourcesEuWest1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-west-1
+  # allResourcesEuWest2:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-west-2
+  # allResourcesEuWest3:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-west-3
+  # allResourcesEuSouth1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - eu-south-1
+  # allResourcesApEast1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-east-1
+  # allResourcesApNorthEast1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-northeast-1
+  # allResourcesApNorthEast2:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-northeast-2
+  # allResourcesApSouth1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-south-1
+  # allResourcesApSouthEast1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-southeast-1
+  # allResourcesApSouthEast1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - ap-southeast-2
+  # allResourcesAfSouth1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - af-south-1
+  # allResourcesMeSouth1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - me-south-1
+  # allResourcesSaEast1:
+  #   parameters:
+  #     CloudFrontEnableParam: true
+  #     ElastiCacheEnableParam: true
+  #     CertificateArn:
+  #     CloudFrontCertificationArn:
+  #   regions:
+  #     - sa-east-1
