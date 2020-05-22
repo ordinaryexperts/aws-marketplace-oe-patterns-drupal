@@ -1,0 +1,13 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - echo Entered the build phase...
+      - echo Build started on `date`
+      - echo "Aaron" > aaron.txt
+    finally:
+      - echo Finished build
+artifacts:
+  files:
+    - "**/*"
