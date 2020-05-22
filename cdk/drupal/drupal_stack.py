@@ -20,7 +20,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-066ae22bcfcc62764"
+AMI="ami-0031512e401099a97"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -1422,7 +1422,9 @@ class DrupalStack(core.Stack):
                 aws_iam.ServicePrincipal('codedeploy.us-east-1.amazonaws.com'),
                 aws_iam.ServicePrincipal('codedeploy.us-east-2.amazonaws.com'),
                 aws_iam.ServicePrincipal('codedeploy.us-west-1.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.us-west-2.amazonaws.com')
+                aws_iam.ServicePrincipal('codedeploy.us-west-2.amazonaws.com'),
+                aws_iam.ServicePrincipal('codedeploy.ca-central-1.amazonaws.com'),
+                aws_iam.ServicePrincipal('codedeploy.eu-central-1.amazonaws.com')
             ),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
