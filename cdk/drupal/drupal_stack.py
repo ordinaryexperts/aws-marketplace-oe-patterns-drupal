@@ -20,7 +20,7 @@ from aws_cdk import (
     core
 )
 
-AMI="ami-0f54e7997bfd0eba9"
+AMI="ami-066ae22bcfcc62764"
 TWO_YEARS_IN_DAYS=731
 
 class DrupalStack(core.Stack):
@@ -372,7 +372,7 @@ class DrupalStack(core.Stack):
                         [
                             customer_vpc_private_subnet_id1.value.to_string(),
                             customer_vpc_private_subnet_id2.value.to_string()
-                            
+
                         ]
                     ]
                 }
@@ -622,7 +622,7 @@ class DrupalStack(core.Stack):
             protocol="HTTP"
         )
         http_redirect_listener.add_override(
-            "Properties.DefaultActions.0.RedirectConfig", 
+            "Properties.DefaultActions.0.RedirectConfig",
             {
                 "Host": "#{host}",
                 "Path": "/#{path}",
@@ -1415,11 +1415,15 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
-
         code_deploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
-            assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
+            assumed_by=aws_iam.CompositePrincipal(
+                aws_iam.ServicePrincipal('codedeploy.us-east-1.amazonaws.com'),
+                aws_iam.ServicePrincipal('codedeploy.us-east-2.amazonaws.com'),
+                aws_iam.ServicePrincipal('codedeploy.us-west-1.amazonaws.com'),
+                aws_iam.ServicePrincipal('codedeploy.us-west-2.amazonaws.com')
+            ),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
 
