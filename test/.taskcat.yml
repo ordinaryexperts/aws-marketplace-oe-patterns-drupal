@@ -18,7 +18,7 @@ tests:
   cloudfrontEnabled:
     parameters:
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontAliases: cdn-dev.patterns.ordinaryexperts.com
+      CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontEnableParam: true
       CustomerVpcId: vpc-00425deda4c835455
       CustomerVpcPrivateSubnet1: subnet-030c94b9795c6cb96
@@ -76,7 +76,7 @@ tests:
   allResources:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontAliases: cdn-dev.patterns.ordinaryexperts.com
+      CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontEnableParam: true
       ElastiCacheEnableParam: true
@@ -114,7 +114,7 @@ tests:
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
   cloudfrontConfiguration:
     parameters:
-      CloudFrontAliases: cdn-dev.patterns.ordinaryexperts.com
+      CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontEnableParam: true
       CloudFrontOriginAccessPolicyParam: match-viewer
