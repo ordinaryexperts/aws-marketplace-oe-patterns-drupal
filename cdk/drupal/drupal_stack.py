@@ -1085,6 +1085,17 @@ class DrupalStack(core.Stack):
                             ]
                         )
                     ]
+                ),
+                "AllowDescribeAutoScaling": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "autoscaling:Describe*"
+                            ],
+                            resources=[ "*" ]
+                        )
+                    ]
                 )
             }
         )
@@ -1384,7 +1395,12 @@ class DrupalStack(core.Stack):
             # encryption_key="",
             environment=aws_codebuild.CfnProject.EnvironmentProperty(
                 compute_type="BUILD_GENERAL1_SMALL",
-                environment_variables=[],
+                environment_variables=[
+                    aws_codebuild.CfnProject.EnvironmentVariableProperty(
+                        name="AUTO_SCALING_GROUP_NAME",
+                        value=asg.ref,
+                    )
+                ],
                 image="aws/codebuild/standard:4.0",
                 type="LINUX_CONTAINER"
             ),

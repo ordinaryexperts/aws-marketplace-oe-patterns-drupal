@@ -52,9 +52,19 @@ phases:
         rm /var/www/app/drupal/vendor/bin/drush
         ln -s /var/www/app/drupal/vendor/drush/drush/drush /var/www/app/drupal/vendor/bin/drush
         chmod 755 /var/www/app/drupal/vendor/bin/drush
-        export HOME=/var/www/app/drupal
-        cd /var/www/app/drupal
-        /var/www/app/drupal/vendor/bin/drush cache:rebuild
+
+        # only clear cache on "first" instance
+        THIS_INSTANCE_ID=\$(curl http://169.254.169.254/latest/meta-data/instance-id)
+        FIRST_ASG_INSTANCE_ID=\$(aws autoscaling describe-auto-scaling-instances \
+          --query "AutoScalingInstances[?AutoScalingGroupName=='$AUTO_SCALING_GROUP_NAME']|[?LifecycleState=='InService']|[?HeathStatus=='HEALTHY']||[0].InstanceId" \
+          --output text)
+        if [ "\$FIRST_ASG_INSTANCE_ID" == "\$THIS_INSTANCE_ID" ];
+        then
+          export HOME=/var/www/app/drupal
+          cd /var/www/app/drupal
+          /var/www/app/drupal/vendor/bin/drush cache:rebuild
+          echo "Drupal cache cleared by \$THIS_INSTANCE_ID" >> /var/log/drupal-cache.log
+        fi
         EOF
             fi
             cat << EOF >> appspec.yml;
