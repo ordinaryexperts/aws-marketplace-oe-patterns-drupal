@@ -85,5 +85,5 @@ test:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
 	&& cd ../test \
-	&& taskcat test run"
+	&& taskcat test run -k"
 .PHONY: test
