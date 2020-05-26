@@ -44,7 +44,7 @@ phases:
         chown -R www-data /var/www/app/drupal
         EOF
             if [ -f drupal/vendor/drush/drush/drush ]; then
-              cat << EOF >> codedeploy-after-install.sh;
+              cat << EOF >> scripts/codedeploy-after-install.sh;
 
         # clear drupal cache
         chmod 755 /var/www/app/drupal/vendor/drush/drush/drush
