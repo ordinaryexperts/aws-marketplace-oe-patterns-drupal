@@ -52,7 +52,6 @@ class DrupalStack(core.Stack):
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
-
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -880,6 +879,13 @@ class DrupalStack(core.Stack):
         )
 
         # cloudfront
+        cloudfront_aliases_param = core.CfnParameter(
+            self,
+            "CloudFrontAliases",
+            default="",
+            description="A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
+            type="CommaDelimitedList"
+        )
         cloudfront_certificate_arn_param = core.CfnParameter(
             self,
             "CloudFrontCertificateArn",
@@ -926,8 +932,7 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "cdn-{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                aliases=cloudfront_aliases_param.value_as_list,
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
