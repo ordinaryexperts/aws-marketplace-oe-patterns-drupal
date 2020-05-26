@@ -1418,14 +1418,7 @@ class DrupalStack(core.Stack):
         code_deploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
-            assumed_by=aws_iam.CompositePrincipal(
-                aws_iam.ServicePrincipal('codedeploy.us-east-1.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.us-east-2.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.us-west-1.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.us-west-2.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.ca-central-1.amazonaws.com'),
-                aws_iam.ServicePrincipal('codedeploy.eu-central-1.amazonaws.com')
-            ),
+            assumed_by=aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)),
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
 
