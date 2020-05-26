@@ -37,6 +37,14 @@ chmod +x ./install
 ./install auto
 cd -
 
+# install efs mount helper - requires git
+apt-get -y install bin-utils git
+git clone https://github.com/aws/efs-utils /tmp/efs-utils
+cd /tmp/efs-utils
+./build-deb.sh
+apt-get install -y ./build/amazon-efs-utils*deb
+cd -
+
 # install apache and php
 apt-get -y install            \
         apache2               \
@@ -51,21 +59,27 @@ apt-get -y install            \
         php7.2-dev            \
         php7.2-gd             \
         php7.2-mbstring       \
-        php7.2-xml
+        php7.2-xml            \
+        zlib1g-dev
+
+# memcache
+printf "\n" | pecl install memcache
+echo "extension=memcache.so" > /etc/php/7.2/apache2/conf.d/20-memcache.ini
+echo "extension=memcache.so" > /etc/php/7.2/cli/conf.d/20-memcache.ini
 
 # configure apache
 a2enmod rewrite
 a2enmod ssl
 
 a2dissite 000-default
-mkdir -p /var/www/drupal
+mkdir -p /var/www/app/drupal
 cat <<EOF > /etc/apache2/sites-available/drupal.conf
 LogFormat "{\"time\":\"%{%Y-%m-%d}tT%{%T}t.%{msec_frac}tZ\", \"process\":\"%D\", \"filename\":\"%f\", \"remoteIP\":\"%a\", \"host\":\"%V\", \"request\":\"%U\", \"query\":\"%q\", \"method\":\"%m\", \"status\":\"%>s\", \"userAgent\":\"%{User-agent}i\", \"referer\":\"%{Referer}i\"}" cloudwatch
 ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"process\":\"[pid%P]\", \"message\":\"%M\"}"
 
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/drupal
+        DocumentRoot /var/www/app/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error.log
@@ -74,7 +88,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/drupal>
+        <Directory /var/www/app/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted
@@ -89,7 +103,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
 </VirtualHost>
 <VirtualHost *:443>
         ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/drupal
+        DocumentRoot /var/www/app/drupal
 
         LogLevel warn
         ErrorLog /var/log/apache2/error-ssl.log
@@ -98,7 +112,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         RewriteEngine On
         RewriteOptions Inherit
 
-        <Directory /var/www/drupal>
+        <Directory /var/www/app/drupal>
             Options Indexes FollowSymLinks MultiViews
             AllowOverride All
             Require all granted

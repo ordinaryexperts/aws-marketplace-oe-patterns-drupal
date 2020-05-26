@@ -89,6 +89,12 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
             "timezone": "UTC"
           },
           {
+            "file_path": "/var/log/drupal-cache.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/drupal-cache.log",
+            "timezone": "UTC"
+          },
+          {
             "file_path": "/var/log/apache2/access.log",
             "log_group_name": "${DrupalAccessLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
@@ -122,33 +128,48 @@ EOF
 systemctl enable amazon-cloudwatch-agent
 systemctl start amazon-cloudwatch-agent
 
-# Drupal; TODO: remove after CodePipline integration
-aws s3 cp s3://github-user-and-bucket-githubartifactbucket-1c9jk3sjkqv8p/aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.tar.gz .
-tar xvfz develop.tar.gz
-mv -T drupal /var/www/drupal
-mkdir /var/www/drupal/sites/default/files
-chgrp www-data /var/www/drupal/sites/default/files
-chmod 775 /var/www/drupal/sites/default/files
-mkdir -p /opt/drupal
-cat <<"EOF" > /opt/drupal/settings.php
-<?php
+# efs
+mkdir /mnt/efs
+mount -t efs "${AppEfs}":/ /mnt/efs
+echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
+mkdir -p /mnt/efs/drupal/files
+chown www-data /mnt/efs/drupal/files
 
-$settings['hash_salt'] = 'Jj-8N7Jxi9sLEF5si4BVO-naJcB1dfqYQC-El4Z26yDfwqvZnimnI4yXvRbmZ0X4NsOEWEAGyA';
+mkdir -p /opt/oe/patterns/drupal
 
-$databases['default']['default'] = array (
-  'database' => 'drupal',
-  'username' => 'dbadmin',
-  'password' => 'dbpassword',
-  'prefix' => '',
-  'host' => '${DBCluster.Endpoint.Address}',
-  'port' => '${DBCluster.Endpoint.Port}',
-  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
-  'driver' => 'mysql',
-);
-$settings['config_sync_directory'] = 'sites/default/files/config_VIcd0I50kQ3zW70P7XMOy4M2RZKE2qzDP6StW0jPV4O2sRyOrvyyXOXtkkIPy7DpAwxs0G-ZyQ/sync';
-EOF
+# secretsmanager
+SECRET_ARN="${SecretArn}"
+echo $SECRET_ARN >> /opt/oe/patterns/drupal/secret-arn.txt
 
-/var/www/drupal/post-deploy.sh
+SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)
+echo $SECRET_NAME >> /opt/oe/patterns/drupal/secret-name.txt
+
+aws ssm get-parameter \
+    --name "/aws/reference/secretsmanager/$SECRET_NAME" \
+    --with-decryption \
+    --query Parameter.Value \
+| jq -r . >> /opt/oe/patterns/drupal/secret.json
+
+# database values
+jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
+   '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
+
+# elasticache values
+if [[ "${ElastiCacheEnable}" == "true" ]]
+then
+    jq -n --arg host "${ElastiCacheClusterHost}" \
+       --arg port "${ElastiCacheClusterPort}" \
+       '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
+fi
+
+# cloudfront values
+if [[ "${CloudFrontEnable}" == "true" ]]
+then
+    jq -n --arg host "${CloudFrontHost}" '{host: $host}' > /opt/oe/patterns/drupal/cloudfront.json
+fi
+
+# drupal salt
+echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \

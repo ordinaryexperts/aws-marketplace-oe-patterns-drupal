@@ -23,6 +23,8 @@ setuptools.setup(
     install_requires=[
         f"aws-cdk.aws-autoscaling=={CDK_VERSION}",
         f"aws-cdk.aws-cloudfront=={CDK_VERSION}",
+        f"aws-cdk.aws-cloudwatch=={CDK_VERSION}",
+        f"aws-cdk.aws-codebuild=={CDK_VERSION}",
         f"aws-cdk.aws-codedeploy=={CDK_VERSION}",
         f"aws-cdk.aws-codepipeline-actions=={CDK_VERSION}",
         f"aws-cdk.aws-codepipeline=={CDK_VERSION}",
@@ -35,6 +37,7 @@ setuptools.setup(
         f"aws-cdk.aws-s3=={CDK_VERSION}",
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",
         f"aws-cdk.aws-sns=={CDK_VERSION}",
+        f"aws-cdk.aws-ssm=={CDK_VERSION}",
         f"aws-cdk.core=={CDK_VERSION}"
     ],
 
