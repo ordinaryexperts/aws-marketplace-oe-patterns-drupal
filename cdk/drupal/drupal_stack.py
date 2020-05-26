@@ -52,19 +52,6 @@ class DrupalStack(core.Stack):
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
-
-        dns_hostname_param = core.CfnParameter(
-            self,
-            "DnsHostname",
-            default="",
-            description="The DNS hostname of the Drupal site."
-        )
-        dns_hostname_exists_condition = core.CfnCondition(
-            self,
-            "DnsHostnameExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(dns_hostname_param.value, ""))
-        )
-
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
