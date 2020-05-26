@@ -6,6 +6,8 @@
 * Add topology diagram to README.md
 * Add make publish command to push to s3 distribution bucket
 * Add PipelineArtifactBucketName param
+* Add AMI copy-image and CFN mappings
+* Add CodeBuild appspec.yml generation
 
 # 0.1.0
 

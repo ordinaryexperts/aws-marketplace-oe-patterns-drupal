@@ -89,6 +89,12 @@ cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
             "timezone": "UTC"
           },
           {
+            "file_path": "/var/log/drupal-cache.log",
+            "log_group_name": "${DrupalSystemLogGroup}",
+            "log_stream_name": "{instance_id}-/var/log/drupal-cache.log",
+            "timezone": "UTC"
+          },
+          {
             "file_path": "/var/log/apache2/access.log",
             "log_group_name": "${DrupalAccessLogGroup}",
             "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
