@@ -928,14 +928,15 @@ class DrupalStack(core.Stack):
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
                 # TODO: parameterize or integrate alias with Route53; also requires a valid certificate
-                aliases=[ "{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
+                aliases=[ "cdn-{}.dev.patterns.ordinaryexperts.com".format(core.Aws.STACK_NAME) ],
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[ "HEAD", "GET" ],
                     compress=False,
                     default_ttl=86400,
                     forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        query_string=False
+                        headers=[ "Host" ],
+                        query_string=True
                     ),
                     min_ttl=0,
                     max_ttl=31536000,
@@ -947,7 +948,8 @@ class DrupalStack(core.Stack):
                     domain_name=alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string
+                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string,
+                        origin_ssl_protocols=[ "TLSv1.2" ]
                     )
                 )],
                 price_class=cloudfront_price_class_param.value_as_string,
@@ -957,6 +959,7 @@ class DrupalStack(core.Stack):
                         cloudfront_certificate_arn_param.value_as_string,
                         core.Aws.NO_VALUE
                     ).to_string(),
+                    minimum_protocol_version="TLSv1.2_2018",
                     ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
