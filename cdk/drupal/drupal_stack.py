@@ -3,6 +3,7 @@ from aws_cdk import (
     aws_autoscaling,
     aws_cloudfront,
     aws_cloudwatch,
+    aws_codebuild,
     aws_codedeploy,
     aws_codepipeline,
     aws_codepipeline_actions,
@@ -95,7 +96,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-42--cfn-elasticache-drupal-config.tar.gz"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-38-codebuild-appspec.zip"
         )
         notification_email_param = core.CfnParameter(
             self,
@@ -1327,6 +1328,74 @@ class DrupalStack(core.Stack):
         )
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
+        # codebuild
+        codebuild_transform_service_role = aws_iam.Role(
+            self,
+            "CodeBuildTransformServiceRole",
+            assumed_by=aws_iam.ServicePrincipal('codebuild.amazonaws.com'),
+            inline_policies={
+                "TransformRolePermssions": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                'logs:CreateLogGroup',
+                                'logs:CreateLogStream',
+                                'logs:PutLogEvents'
+                            ],
+                            resources=['*']
+                        ),
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:GetObject',
+                                's3:PutObject'
+                            ],
+                            resources=[
+                                core.Arn.format(
+                                    components=core.ArnComponents(
+                                        account="",
+                                        region="",
+                                        resource=core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        ).to_string(),
+                                        resource_name="*",
+                                        service="s3"
+                                    ),
+                                    stack=self
+                                )
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
+        with open('drupal/scripts/codebuild_transform_project_buildspec.yml') as f:
+            codebuild_transform_project_buildspec = f.read()
+        codebuild_transform_project = aws_codebuild.CfnProject(
+            self,
+            "CodeBuildTransformProject",
+            artifacts=aws_codebuild.CfnProject.ArtifactsProperty(
+                type="CODEPIPELINE",
+            ),
+            # TODO: add kms encryption key
+            # encryption_key="",
+            environment=aws_codebuild.CfnProject.EnvironmentProperty(
+                compute_type="BUILD_GENERAL1_SMALL",
+                environment_variables=[],
+                image="aws/codebuild/standard:4.0",
+                type="LINUX_CONTAINER"
+            ),
+            name="{}-transform".format(core.Aws.STACK_NAME),
+            service_role=codebuild_transform_service_role.role_arn,
+            source=aws_codebuild.CfnProject.SourceProperty(
+                build_spec=codebuild_transform_project_buildspec,
+                type="CODEPIPELINE"
+            )
+        )
+
         # cicd pipeline
         # TODO: Tighten role / use managed roles?
         pipeline_role = aws_iam.Role(
@@ -1339,6 +1408,8 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
+                                'codebuild:BatchGetBuilds',
+                                'codebuild:StartBuild',
                                 'codedeploy:GetApplication',
                                 'codedeploy:GetDeploymentGroup',
                                 'codedeploy:ListApplications',
@@ -1416,6 +1487,13 @@ class DrupalStack(core.Stack):
             }
         )
 
+        codedeploy_transform_stage_role = aws_iam.Role(
+            self,
+            "TransformStageRole",
+            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            inline_policies={}
+        )
+
         deploy_stage_role = aws_iam.Role(
             self,
             "DeployStageRole",
@@ -1434,7 +1512,8 @@ class DrupalStack(core.Stack):
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
                                 's3:Get*',
-                                's3:Head*'
+                                's3:Head*',
+                                's3:PutObject'
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
@@ -1463,6 +1542,29 @@ class DrupalStack(core.Stack):
              self,
             "CodeDeployRole",
             assumed_by=aws_iam.ServicePrincipal('codedeploy.amazonaws.com'),
+            inline_policies={
+                "DeployRolePermssions": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                's3:GetObject',
+                                's3:PutObject'
+                            ],
+                            resources=[
+                                "arn:{}:s3:::{}/*".format(
+                                    core.Aws.PARTITION,
+                                    core.Fn.condition_if(
+                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                        pipeline_artifact_bucket_name_param.value_as_string,
+                                        pipeline_artifact_bucket.ref
+                                    ).to_string()
+                                )
+                            ]
+                        ),
+                    ]
+                )
+            },
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
 
@@ -1525,6 +1627,33 @@ class DrupalStack(core.Stack):
                     ]
                 ),
                 aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Transform",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category="Build",
+                                owner="AWS",
+                                provider="CodeBuild",
+                                version="1"
+                            ),
+                            configuration={
+                                "ProjectName": codebuild_transform_project.ref
+                            },
+                            input_artifacts=[
+                                aws_codepipeline.CfnPipeline.InputArtifactProperty(
+                                    name="build",
+                                )
+                            ],
+                            name="TransformAction",
+                            output_artifacts=[
+                                aws_codepipeline.CfnPipeline.OutputArtifactProperty(
+                                    name="transformed"
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
                     name="Deploy",
                     actions=[
                         aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
@@ -1540,7 +1669,7 @@ class DrupalStack(core.Stack):
                             },
                             input_artifacts=[
                                 aws_codepipeline.CfnPipeline.InputArtifactProperty(
-                                    name="build"
+                                    name="transformed"
                                 )
                             ],
                             name="DeployAction",
