@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 if [ "$#" -ne 1 ]; then
-	echo "Usage: make AMI_ID=ami-xxxxxxxxx copy-image"
-	exit
+    echo "Usage: make AMI_ID=ami-xxxxxxxxx copy-image"
+    exit
 fi
 AMI_ID=$1
 
@@ -20,8 +20,8 @@ mapping_code+="# on $(date).\n"
 mapping_code+="generated_ami_ids = {\n"
 
 for i in ${!supported_regions[@]}; do
-	region=${supported_regions[$i]}
-	echo -n "Checking $region..."
+    region=${supported_regions[$i]}
+    echo -n "Checking $region..."
     copied_ami_id=`AWS_REGION=$region aws ec2 describe-images --filters Name=name,Values=$AMI_NAME | jq -r '.Images[].ImageId'`
     if [[ -z "${copied_ami_id}" ]]; then
         echo -n "need to copy AMI..."
