@@ -12,6 +12,7 @@ apt-get -y -q update && apt-get -y -q upgrade
 apt-get -y -q install \
         curl  \
         git   \
+        groff \
         jq    \
         less  \
         unzip \
