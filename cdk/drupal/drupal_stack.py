@@ -1312,7 +1312,20 @@ class DrupalStack(core.Stack):
                                 's3:PutObject'
                             ],
                             resources=[
-                                "arn:aws:s3:::github-user-and-bucket-taskcatbucket-2zppaw3wi3sx/*"
+                                core.Arn.format(
+                                    components=core.ArnComponents(
+                                        account="",
+                                        region="",
+                                        resource=core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        ).to_string(),
+                                        resource_name="*",
+                                        service="s3"
+                                    ),
+                                    stack=self
+                                )
                             ]
                         )
                     ]
