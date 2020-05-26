@@ -8,28 +8,31 @@ build:
 	docker-compose build
 
 clean:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh
 
 clean-all-tcat:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh all tcat
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat
 
 clean-buckets:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets
 
 clean-buckets-tcat:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh buckets tcat
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat
 
 clean-logs:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs
 
 clean-logs-tcat:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh logs tcat
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat
 
 clean-snapshots:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots
 
 clean-snapshots-tcat:
-	docker-compose run -w /code --rm drupal bash ./cleanup.sh snapshots tcat
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat
+
+copy-image:
+	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
 
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
@@ -55,26 +58,17 @@ diff:
 	docker-compose run -w /code/cdk --rm drupal cdk diff
 
 lint:
-	docker-compose run -w /code --rm drupal bash -c "cd cdk \
-	&& cdk synth > ../test/template.yaml \
-	&& cd ../test \
-	&& taskcat lint"
+	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
 packer:
-	docker-compose run -w /code/packer drupal packer build ami.json
+	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
 .PHONY: packer
 
+packer-copy-to-supported-regions:
+	docker-compose run -w /code
+
 publish:
-	docker-compose run -w /code --rm drupal bash -c "mkdir -p dist \
-	&& cd cdk \
-	&& cdk synth \
-	--version-reporting false \
-	--path-metadata false \
-	--asset-metadata false > ../dist/template.yaml \
-	&& cd .. \
-	&& aws s3 cp dist/template.yaml \
-	s3://deployment-user-and-buck-deploymentartifactbucket-17r9c9e9pu794/`git describe`/oe-drupal-patterns-template.yaml \
-	--sse aws:kms --acl public-read"
+	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
 rebuild:
 	docker-compose build --no-cache
