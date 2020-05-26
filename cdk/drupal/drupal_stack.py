@@ -1464,3 +1464,67 @@ class DrupalStack(core.Stack):
                 "TriggerTargetArn": notification_topic.topic_arn
             }
         ])
+
+        pipeline = aws_codepipeline.CfnPipeline(
+            self,
+            "Pipeline",
+            artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
+                location=core.Fn.condition_if(
+                    pipeline_artifact_bucket_name_exists_condition.logical_id,
+                    pipeline_artifact_bucket_name_param.value_as_string,
+                    pipeline_artifact_bucket.ref
+                ).to_string(),
+                type='S3'
+            ),
+            role_arn=pipeline_role.role_arn,
+            stages=[
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Source",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Source',
+                                owner='AWS',
+                                provider='S3',
+                                version='1'
+                            ),
+                            configuration={
+                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
+                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
+                            },
+                            output_artifacts=[
+                                aws_codepipeline.CfnPipeline.OutputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="SourceAction",
+                            role_arn=source_stage_role.role_arn
+                        )
+                    ]
+                ),
+                aws_codepipeline.CfnPipeline.StageDeclarationProperty(
+                    name="Deploy",
+                    actions=[
+                        aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
+                            action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
+                                category='Deploy',
+                                owner='AWS',
+                                provider='CodeDeploy',
+                                version='1'
+                            ),
+                            configuration={
+                                'ApplicationName': code_deploy_application.ref,
+                                'DeploymentGroupName': code_deploy_deployment_group.ref,
+                            },
+                            input_artifacts=[
+                                aws_codepipeline.CfnPipeline.InputArtifactProperty(
+                                    name="build"
+                                )
+                            ],
+                            name="DeployAction",
+                            role_arn=deploy_stage_role.role_arn
+                        )
+                    ]
+                )
+            ]
+        )
