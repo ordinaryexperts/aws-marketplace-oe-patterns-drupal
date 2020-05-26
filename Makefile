@@ -1,3 +1,12 @@
+ami-bash: ami-build
+	docker-compose run --rm ami bash
+
+ami-build:
+	docker-compose build ami
+
+ami-rebuild:
+	docker-compose build ami --no-cache
+
 bash:
 	docker-compose run -w /code --rm drupal bash
 
@@ -5,7 +14,7 @@ bootstrap:
 	docker-compose run -w /code/cdk --rm drupal cdk bootstrap aws://992593896645/us-east-1
 
 build:
-	docker-compose build
+	docker-compose build drupal
 
 clean:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh
@@ -73,7 +82,7 @@ publish:
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
 rebuild:
-	docker-compose build --no-cache
+	docker-compose build drupal --no-cache
 
 synth:
 	docker-compose run -w /code/cdk --rm drupal cdk synth \

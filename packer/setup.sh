@@ -1,7 +1,9 @@
 #!/bin/bash -eux
 
 # wait for cloud-init to be done
-$IN_DOCKER || cloud-init status --wait
+if [ ! "$IN_DOCKER" = true ]; then
+    cloud-init status --wait
+fi
 
 # apt upgrade
 export DEBIAN_FRONTEND=noninteractive
