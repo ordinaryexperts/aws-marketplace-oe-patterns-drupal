@@ -9,14 +9,7 @@ jobs:
   taskcat:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout develop
-        uses: actions/checkout@v2
-        with:
-          ref: develop
-      - name: checkout pull requests
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/checkout@v2
       - name: build
         run: make build
       - name: test
