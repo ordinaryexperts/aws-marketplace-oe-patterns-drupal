@@ -85,6 +85,15 @@ class DrupalStack(core.Stack):
             self,
             "PipelineArtifactBucket",
             access_control="Private",
+            bucket_encryption=aws_s3.CfnBucket.BucketEncryptionProperty(
+                server_side_encryption_configuration=[
+                    aws_s3.CfnBucket.ServerSideEncryptionRuleProperty(
+                        server_side_encryption_by_default=aws_s3.CfnBucket.ServerSideEncryptionByDefaultProperty(
+                            sse_algorithm="AES256"
+                        )
+                    )
+                ]
+            ),
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
@@ -768,7 +777,8 @@ class DrupalStack(core.Stack):
         )
         efs = aws_efs.CfnFileSystem(
             self,
-            "AppEfs"
+            "AppEfs",
+            encrypted=True
         )
         efs_mount_target1 = aws_efs.CfnMountTarget(
             self,
