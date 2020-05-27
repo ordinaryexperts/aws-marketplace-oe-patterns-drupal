@@ -1,5 +1,18 @@
 # Unreleased
 
+# 0.2.0
+
+* DB snapshot and secret ARN rule validation
+* Update Github CI to always upload test artifact
+* Expand test scenarios
+* Add topology diagram to README.md
+* Add make publish command to push to s3 distribution bucket
+* Add PipelineArtifactBucketName param
+* Add AMI copy-image and CFN mappings
+* Add CodeBuild appspec.yml generation
+* AMI hardening / security checklist
+* Encryption
+
 # 0.1.0
 
 * Initial commit

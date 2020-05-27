@@ -9,7 +9,15 @@ export TASKCAT_VERSION=0.9.17
 # system upgrades and tools
 export DEBIAN_FRONTEND=noninteractive
 apt-get -y -q update && apt-get -y -q upgrade
-apt-get -y -q install curl unzip vim wget
+apt-get -y -q install \
+        curl  \
+        git   \
+        groff \
+        jq    \
+        less  \
+        unzip \
+        vim   \
+        wget
 
 # aws cli
 cd /tmp
