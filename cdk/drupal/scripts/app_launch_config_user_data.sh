@@ -135,6 +135,12 @@ echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 mkdir -p /mnt/efs/drupal/files
 chown www-data /mnt/efs/drupal/files
 
+# rds
+mkdir -p /opt/aws/rds
+cd /opt/aws/rds
+wget https://www.amazontrust.com/repository/AmazonRootCA1.pem
+cd -
+
 mkdir -p /opt/oe/patterns/drupal
 
 # secretsmanager

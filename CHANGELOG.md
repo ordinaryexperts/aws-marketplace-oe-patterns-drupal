@@ -8,6 +8,7 @@
 * Add PipelineArtifactBucketName param
 * Add AMI copy-image and CFN mappings
 * Add CodeBuild appspec.yml generation
+* Encryption
 
 # 0.1.0
 
