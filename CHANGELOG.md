@@ -1,5 +1,7 @@
 # Unreleased
 
+# 0.2.0
+
 * DB snapshot and secret ARN rule validation
 * Update Github CI to always upload test artifact
 * Expand test scenarios
