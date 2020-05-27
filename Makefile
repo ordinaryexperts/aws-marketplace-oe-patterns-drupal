@@ -1,3 +1,12 @@
+ami-bash: ami-build
+	docker-compose run --rm ami bash
+
+ami-build:
+	docker-compose build ami
+
+ami-rebuild:
+	docker-compose build ami --no-cache
+
 bash:
 	docker-compose run -w /code --rm drupal bash
 
@@ -5,7 +14,7 @@ bootstrap:
 	docker-compose run -w /code/cdk --rm drupal cdk bootstrap aws://992593896645/us-east-1
 
 build:
-	docker-compose build
+	docker-compose build drupal
 
 clean:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh
@@ -47,11 +56,10 @@ deploy:
 	--parameters CustomerVpcPublicSubnet1=subnet-0c2f5d4daa1792c8d \
 	--parameters CustomerVpcPublicSubnet2=subnet-060c39a6ded9e89d7 \
 	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200520 \
-	--parameters DnsHostname=oe-patterns-drupal-acarlton.dev.patterns.ordinaryexperts.com \
 	--parameters ElastiCacheEnable=true \
 	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx \
 	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-38--codebuild-appspec.zip
+	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
@@ -73,7 +81,7 @@ publish:
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
 rebuild:
-	docker-compose build --no-cache
+	docker-compose build drupal --no-cache
 
 synth:
 	docker-compose run -w /code/cdk --rm drupal cdk synth \

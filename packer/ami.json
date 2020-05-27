@@ -11,7 +11,7 @@
       "source_ami": "ami-085925f297f89fce1",
       "instance_type": "m5.xlarge",
       "ssh_username": "ubuntu",
-      "ami_name": "ordinary-experts-drupal-pattern-{{user `version`}}-{{isotime \"20060102-0304\"}}"
+      "ami_name": "ordinary-experts-patterns-drupal-{{user `version`}}-{{isotime \"20060102-0304\"}}"
     }
   ],
   "provisioners": [
