@@ -1,5 +1,7 @@
 # Unreleased
 
+* Expand test support into other regions
+
 # 0.2.0
 
 * DB snapshot and secret ARN rule validation
