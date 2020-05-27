@@ -89,9 +89,16 @@ synth:
 	--path-metadata false \
 	--asset-metadata false
 
-test:
+all-test:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
 	&& cd ../test \
 	&& taskcat test run"
-.PHONY: test
+.PHONY: all-test
+
+main-test:
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth > ../test/main-test/template.yaml \
+	&& cd ../test/main-test \
+	&& taskcat test run"
+.PHONY: main-test
