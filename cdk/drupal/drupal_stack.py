@@ -466,8 +466,6 @@ class DrupalStack(core.Stack):
                 generate_string_key="password",
                 secret_string_template=json.dumps({"username":"dbadmin"})
             ),
-            # TODO: add encryption key
-            # kms_key_id="",
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
@@ -1391,8 +1389,6 @@ class DrupalStack(core.Stack):
             artifacts=aws_codebuild.CfnProject.ArtifactsProperty(
                 type="CODEPIPELINE",
             ),
-            # TODO: add kms encryption key
-            # encryption_key="",
             environment=aws_codebuild.CfnProject.EnvironmentProperty(
                 compute_type="BUILD_GENERAL1_SMALL",
                 environment_variables=[
