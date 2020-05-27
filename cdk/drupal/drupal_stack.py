@@ -62,8 +62,6 @@ class DrupalStack(core.Stack):
             mapping=ami_mapping
         )
 
-        # TODO: Encryption
-        # https://github.com/aws/aws-cdk/blob/v1.36.1/packages/@aws-cdk/aws-codepipeline/lib/pipeline.ts#L225-L244
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
