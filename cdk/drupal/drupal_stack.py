@@ -96,7 +96,7 @@ class DrupalStack(core.Stack):
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-38-codebuild-appspec.zip"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
         )
         notification_email_param = core.CfnParameter(
             self,
