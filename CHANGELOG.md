@@ -12,6 +12,7 @@
 * Add CodeBuild appspec.yml generation
 * AMI hardening / security checklist
 * Encryption
+* Trimming down allowed instance types
 
 # 0.1.0
 
