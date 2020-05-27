@@ -59,7 +59,7 @@ deploy:
 	--parameters ElastiCacheEnable=true \
 	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx \
 	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-45--encryption.zip
+	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip
 
 destroy:
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
