@@ -47,6 +47,12 @@ cd /tmp/efs-utils
 apt-get install -y ./build/amazon-efs-utils*deb
 cd -
 
+# install RDS SSL CA for Aurora
+mkdir -p /opt/aws/rds
+cd /opt/aws/rds
+wget https://www.amazontrust.com/repository/AmazonRootCA1.pem
+cd -
+
 # install apache and php
 apt-get -y install            \
         apache2               \

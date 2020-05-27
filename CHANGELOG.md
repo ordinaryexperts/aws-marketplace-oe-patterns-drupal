@@ -9,6 +9,7 @@
 * Add AMI copy-image and CFN mappings
 * Add CodeBuild appspec.yml generation
 * AMI hardening / security checklist
+* Encryption
 
 # 0.1.0
 
