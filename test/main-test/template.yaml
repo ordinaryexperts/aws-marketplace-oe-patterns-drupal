@@ -1,0 +1,2235 @@
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      OEDRUPAL: ordinary-experts-patterns-drupal-0.1.0-97-g9c894c6-20200527-0545
+    us-east-2:
+      OEDRUPAL: ami-06f2515184f995d44
+    us-west-1:
+      OEDRUPAL: ami-0f5be2fad5037288c
+    us-west-2:
+      OEDRUPAL: ami-0c259d3589a5c7d75
+    us-east-1:
+      OEDRUPAL: ami-07124a4989ecd4cb6
+Parameters:
+  PipelineArtifactBucketName:
+    Type: String
+    Default: ""
+  SourceArtifactS3Bucket:
+    Type: String
+    Default: github-user-and-bucket-githubartifactbucket-wl52dae3lyub
+  SourceArtifactS3ObjectKey:
+    Type: String
+    Default: aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip
+  NotificationEmail:
+    Type: String
+    Default: ""
+  CertificateArn:
+    Type: String
+    Default: ""
+  CustomerVpcId:
+    Type: String
+    Default: ""
+  CustomerVpcPublicSubnet1:
+    Type: String
+    Default: ""
+  CustomerVpcPublicSubnet2:
+    Type: String
+    Default: ""
+  CustomerVpcPrivateSubnet1:
+    Type: String
+    Default: ""
+  CustomerVpcPrivateSubnet2:
+    Type: String
+    Default: ""
+  DBSnapshotIdentifier:
+    Type: String
+    Default: ""
+    Description: An RDS database cluster snapshot ARN from which to restore. If this parameter is specified, you MUST manually edit the secret values to specify the snapshot credentials for the application.
+  SecretArn:
+    Type: String
+    Default: ""
+    Description: The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.
+  ElastiCacheClusterCacheNodeTypeParam:
+    Type: String
+    Default: cache.t2.micro
+    AllowedValues:
+      - cache.m5.large
+      - cache.m5.xlarge
+      - cache.m5.2xlarge
+      - cache.m5.4xlarge
+      - cache.m5.12xlarge
+      - cache.m5.24xlarge
+      - cache.m4.large
+      - cache.m4.xlarge
+      - cache.m4.2xlarge
+      - cache.m4.4xlarge
+      - cache.m4.10xlarge
+      - cache.t3.micro
+      - cache.t3.small
+      - cache.t3.medium
+      - cache.t2.micro
+      - cache.t2.small
+      - cache.t2.medium
+  ElastiCacheClusterEngineVersionParam:
+    Type: String
+    Default: 1.5.16
+    AllowedValues:
+      - 1.4.14
+      - 1.4.24
+      - 1.4.33
+      - 1.4.34
+      - 1.4.5
+      - 1.5.10
+      - 1.5.16
+    Description: The memcached version of the cache cluster.
+  ElastiCacheClusterNumCacheNodesParam:
+    Type: Number
+    Default: 2
+    Description: The number of cache nodes in the memcached cluster.
+    MaxValue: 20
+    MinValue: 1
+  ElastiCacheEnable:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  CloudFrontAliases:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.
+  CloudFrontCertificateArn:
+    Type: String
+    Default: ""
+    Description: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region.
+  CloudFrontEnable:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable CloudFront CDN support.
+  CloudFrontOriginAccessPolicyParam:
+    Type: String
+    Default: match-viewer
+    AllowedValues:
+      - http-only
+      - https-only
+      - match-viewer
+    Description: CloudFront access policy for communicating with content origin.
+  CloudFrontPriceClassParam:
+    Type: String
+    Default: PriceClass_All
+    AllowedValues:
+      - PriceClass_All
+      - PriceClass_200
+      - PriceClass_100
+    Description: Price class to use for CloudFront CDN.
+  AppLaunchConfigInstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - a1.2xlarge
+      - a1.4xlarge
+      - a1.large
+      - a1.medium
+      - a1.metal
+      - a1.xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c5.12xlarge
+      - c5.18xlarge
+      - c5.24xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.large
+      - c5.metal
+      - c5.xlarge
+      - c5d.12xlarge
+      - c5d.18xlarge
+      - c5d.24xlarge
+      - c5d.2xlarge
+      - c5d.4xlarge
+      - c5d.9xlarge
+      - c5d.large
+      - c5d.metal
+      - c5d.xlarge
+      - c5n.18xlarge
+      - c5n.2xlarge
+      - c5n.4xlarge
+      - c5n.9xlarge
+      - c5n.large
+      - c5n.metal
+      - c5n.xlarge
+      - cc2.8xlarge
+      - cr1.8xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - d2.xlarge
+      - f1.16xlarge
+      - f1.2xlarge
+      - f1.4xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - g3.16xlarge
+      - g3.4xlarge
+      - g3.8xlarge
+      - g3s.xlarge
+      - g4dn.12xlarge
+      - g4dn.16xlarge
+      - g4dn.2xlarge
+      - g4dn.4xlarge
+      - g4dn.8xlarge
+      - g4dn.metal
+      - g4dn.xlarge
+      - h1.16xlarge
+      - h1.2xlarge
+      - h1.4xlarge
+      - h1.8xlarge
+      - hs1.8xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i2.xlarge
+      - i3.16xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.large
+      - i3.metal
+      - i3.xlarge
+      - i3en.12xlarge
+      - i3en.24xlarge
+      - i3en.2xlarge
+      - i3en.3xlarge
+      - i3en.6xlarge
+      - i3en.large
+      - i3en.metal
+      - i3en.xlarge
+      - m1.large
+      - m1.medium
+      - m1.small
+      - m1.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m2.xlarge
+      - m3.2xlarge
+      - m3.large
+      - m3.medium
+      - m3.xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.large
+      - m4.xlarge
+      - m5.12xlarge
+      - m5.16xlarge
+      - m5.24xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.8xlarge
+      - m5.large
+      - m5.metal
+      - m5.xlarge
+      - m5a.12xlarge
+      - m5a.16xlarge
+      - m5a.24xlarge
+      - m5a.2xlarge
+      - m5a.4xlarge
+      - m5a.8xlarge
+      - m5a.large
+      - m5a.xlarge
+      - m5ad.12xlarge
+      - m5ad.24xlarge
+      - m5ad.2xlarge
+      - m5ad.4xlarge
+      - m5ad.large
+      - m5ad.xlarge
+      - m5d.12xlarge
+      - m5d.16xlarge
+      - m5d.24xlarge
+      - m5d.2xlarge
+      - m5d.4xlarge
+      - m5d.8xlarge
+      - m5d.large
+      - m5d.metal
+      - m5d.xlarge
+      - m5dn.12xlarge
+      - m5dn.16xlarge
+      - m5dn.24xlarge
+      - m5dn.2xlarge
+      - m5dn.4xlarge
+      - m5dn.8xlarge
+      - m5dn.large
+      - m5dn.metal
+      - m5dn.xlarge
+      - m5n.12xlarge
+      - m5n.16xlarge
+      - m5n.24xlarge
+      - m5n.2xlarge
+      - m5n.4xlarge
+      - m5n.8xlarge
+      - m5n.large
+      - m5n.metal
+      - m5n.xlarge
+      - p2.16xlarge
+      - p2.8xlarge
+      - p2.xlarge
+      - p3.16xlarge
+      - p3.2xlarge
+      - p3.8xlarge
+      - p3dn.24xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r4.16xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.large
+      - r4.xlarge
+      - r5.12xlarge
+      - r5.16xlarge
+      - r5.24xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - r5.large
+      - r5.metal
+      - r5.xlarge
+      - r5a.12xlarge
+      - r5a.16xlarge
+      - r5a.24xlarge
+      - r5a.2xlarge
+      - r5a.4xlarge
+      - r5a.8xlarge
+      - r5a.large
+      - r5a.xlarge
+      - r5ad.12xlarge
+      - r5ad.24xlarge
+      - r5ad.2xlarge
+      - r5ad.4xlarge
+      - r5ad.large
+      - r5ad.xlarge
+      - r5d.12xlarge
+      - r5d.16xlarge
+      - r5d.24xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.8xlarge
+      - r5d.large
+      - r5d.metal
+      - r5d.xlarge
+      - r5dn.12xlarge
+      - r5dn.16xlarge
+      - r5dn.24xlarge
+      - r5dn.2xlarge
+      - r5dn.4xlarge
+      - r5dn.8xlarge
+      - r5dn.large
+      - r5dn.metal
+      - r5dn.xlarge
+      - r5n.12xlarge
+      - r5n.16xlarge
+      - r5n.24xlarge
+      - r5n.2xlarge
+      - r5n.4xlarge
+      - r5n.8xlarge
+      - r5n.large
+      - r5n.metal
+      - r5n.xlarge
+      - t1.micro
+      - t2.2xlarge
+      - t2.large
+      - t2.medium
+      - t2.micro
+      - t2.nano
+      - t2.small
+      - t2.xlarge
+      - t3.2xlarge
+      - t3.large
+      - t3.medium
+      - t3.micro
+      - t3.nano
+      - t3.small
+      - t3.xlarge
+      - t3a.2xlarge
+      - t3a.large
+      - t3a.medium
+      - t3a.micro
+      - t3a.nano
+      - t3a.small
+      - t3a.xlarge
+      - u-18tb1.metal
+      - u-24tb1.metal
+      - x1.16xlarge
+      - x1.32xlarge
+      - x1e.16xlarge
+      - x1e.2xlarge
+      - x1e.32xlarge
+      - x1e.4xlarge
+      - x1e.8xlarge
+      - x1e.xlarge
+      - z1d.12xlarge
+      - z1d.2xlarge
+      - z1d.3xlarge
+      - z1d.6xlarge
+      - z1d.large
+      - z1d.metal
+      - z1d.xlarge
+    Description: The EC2 instance type for the Drupal server autoscaling group
+  AppAsgDesiredCapacity:
+    Type: Number
+    Default: 1
+    Description: The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain.
+    MinValue: 0
+  AppAsgMaxSize:
+    Type: Number
+    Default: 2
+    Description: The maximum size of the Auto Scaling group.
+    MinValue: 0
+  AppAsgMinSize:
+    Type: Number
+    Default: 1
+    Description: The minimum size of the Auto Scaling group.
+    MinValue: 0
+Conditions:
+  PipelineArtifactBucketNameNotExists:
+    Fn::Equals:
+      - Ref: PipelineArtifactBucketName
+      - ""
+  PipelineArtifactBucketNameExists:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: PipelineArtifactBucketName
+          - ""
+  CertificateArnExists:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: CertificateArn
+          - ""
+  CertificateArnNotExists:
+    Fn::Equals:
+      - Ref: CertificateArn
+      - ""
+  NotificationEmailExists:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: NotificationEmail
+          - ""
+  CustomerVpcGiven:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: CustomerVpcId
+          - ""
+  CustomerVpcNotGiven:
+    Fn::Equals:
+      - Ref: CustomerVpcId
+      - ""
+  DBSnapshotIdentifierExistsCondition:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: DBSnapshotIdentifier
+          - ""
+  SecretArnExistsCondition:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: SecretArn
+          - ""
+  SecretArnNotExistsCondition:
+    Fn::Equals:
+      - Ref: SecretArn
+      - ""
+  ElastiCacheEnableCondition:
+    Fn::Equals:
+      - Ref: ElastiCacheEnable
+      - "true"
+  CloudFrontCertificateArnExists:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: CloudFrontCertificateArn
+          - ""
+  CloudFrontEnableCondition:
+    Fn::Equals:
+      - Ref: CloudFrontEnable
+      - "true"
+Resources:
+  PipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/PipelineArtifactBucket
+    Condition: PipelineArtifactBucketNameNotExists
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/Vpc
+    Condition: CustomerVpcNotGiven
+  VpcInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcInternetGateway
+    Condition: CustomerVpcNotGiven
+  VpcIGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: Vpc
+      InternetGatewayId:
+        Ref: VpcInternetGateway
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcIGWAttachment
+    Condition: CustomerVpcNotGiven
+  VpcPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PublicRouteTable
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicRouteTable
+    Condition: CustomerVpcNotGiven
+  VpcPublicDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: VpcPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: VpcInternetGateway
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicDefaultRoute
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.0/18
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PublicSubnet1
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet1
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: VpcPublicRouteTable
+      SubnetId:
+        Ref: VpcPublicSubnet1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet1RouteTableAssociation
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet1EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet1EIP
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet1NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - VpcPublicSubnet1EIP
+          - AllocationId
+      SubnetId:
+        Ref: VpcPublicSubnet1
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PublicSubnet1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet1NATGateway
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.64.0/18
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PublicSubnet2
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet2
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: VpcPublicRouteTable
+      SubnetId:
+        Ref: VpcPublicSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet2RouteTableAssociation
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet2EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet2EIP
+    Condition: CustomerVpcNotGiven
+  VpcPublicSubnet2NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - VpcPublicSubnet2EIP
+          - AllocationId
+      SubnetId:
+        Ref: VpcPublicSubnet1
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PublicSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPublicSubnet2NATGateway
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.128.0/18
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PrivateSubnet1
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet1
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PrivateSubnet1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet1RouteTable
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet1RouteTable
+      SubnetId:
+        Ref: VpcPrivateSubnet1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet1RouteTableAssociation
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet1DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: VpcPublicSubnet1NATGateway
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet1DefaultRoute
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.192.0/18
+      VpcId:
+        Ref: Vpc
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PrivateSubnet2
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet2
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /Vpc/PrivateSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet2RouteTable
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet2RouteTable
+      SubnetId:
+        Ref: VpcPrivateSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet2RouteTableAssociation
+    Condition: CustomerVpcNotGiven
+  VpcPrivateSubnet2DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: VpcPrivateSubnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: VpcPublicSubnet2NATGateway
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/VpcPrivateSubnet2DefaultRoute
+    Condition: CustomerVpcNotGiven
+  AppSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App SG
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppSg
+  DBSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database SG
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DBSg
+  DBSgIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 3306
+      GroupId:
+        Ref: DBSg
+      SourceSecurityGroupId:
+        Ref: AppSg
+      ToPort: 3306
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DBSgIngress
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: MySQL Aurora DB Subnet Group
+      SubnetIds:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - - Ref: VpcPrivateSubnet1
+            - Ref: VpcPrivateSubnet2
+          - - Ref: CustomerVpcPrivateSubnet1
+            - Ref: CustomerVpcPrivateSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DBSubnetGroup
+  DBClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: test
+      Family: aurora5.6
+      Parameters:
+        character_set_client: utf8
+        character_set_connection: utf8
+        character_set_database: utf8
+        character_set_filesystem: utf8
+        character_set_results: utf8
+        character_set_server: utf8
+        collation_connection: utf8_general_ci
+        collation_server: utf8_general_ci
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DBClusterParameterGroup
+  Secret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: "\"@/\\\"'$,[]*?{}~\\#%<>|^"
+        ExcludePunctuation: true
+        GenerateStringKey: password
+        SecretStringTemplate: '{"username": "dbadmin"}'
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - /drupal/secret
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/Secret
+    Condition: SecretArnNotExistsCondition
+  SecretPolicy5A40C30B:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              Fn::If:
+                - SecretArnExistsCondition
+                - Ref: SecretArn
+                - Ref: Secret
+          - Action: secretsmanager:ListSecrets
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: SecretPolicy5A40C30B
+      Roles:
+        - Ref: AppInstanceRoleC467FFEA
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/SecretPolicy/Resource
+  DBCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora
+      DBClusterParameterGroupName:
+        Ref: DBClusterParameterGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      EngineMode: serverless
+      MasterUsername:
+        Fn::If:
+          - DBSnapshotIdentifierExistsCondition
+          - Ref: AWS::NoValue
+          - Fn::If:
+              - SecretArnExistsCondition
+              - Fn::Sub: "{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"
+              - Fn::Sub: "{{resolve:secretsmanager:${Secret}:SecretString:username}}"
+      MasterUserPassword:
+        Fn::If:
+          - DBSnapshotIdentifierExistsCondition
+          - Ref: AWS::NoValue
+          - Fn::If:
+              - SecretArnExistsCondition
+              - Fn::Sub: "{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"
+              - Fn::Sub: "{{resolve:secretsmanager:${Secret}:SecretString:password}}"
+      ScalingConfiguration: {}
+      SnapshotIdentifier:
+        Fn::If:
+          - DBSnapshotIdentifierExistsCondition
+          - Ref: DBSnapshotIdentifier
+          - Ref: AWS::NoValue
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+        - Ref: DBSg
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DBCluster
+  ALBSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB SG
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/ALBSg
+  AlbSgHttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      Description: Allow from anyone on port 80
+      FromPort: 80
+      GroupId:
+        Ref: ALBSg
+      ToPort: 80
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AlbSgHttpIngress
+  AlbSgHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      Description: Allow from anyone on port 443
+      FromPort: 443
+      GroupId:
+        Ref: ALBSg
+      ToPort: 443
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AlbSgHttpsIngress
+  AppAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      SecurityGroups:
+        - Ref: ALBSg
+      Subnets:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - - Ref: VpcPublicSubnet1
+            - Ref: VpcPublicSubnet2
+          - - Ref: CustomerVpcPublicSubnet1
+            - Ref: CustomerVpcPublicSubnet2
+      Type: application
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppAlb
+  AsgHttpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AsgHttpTargetGroup
+    Condition: CertificateArnNotExists
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn:
+            Ref: AsgHttpTargetGroup
+          Type: forward
+      LoadBalancerArn:
+        Ref: AppAlb
+      Port: 80
+      Protocol: HTTP
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/HttpListener
+    Condition: CertificateArnNotExists
+  HttpRedirectListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - RedirectConfig:
+            Host: "#{host}"
+            Path: /#{path}
+            Port: "443"
+            Protocol: HTTPS
+            Query: "#{query}"
+            StatusCode: HTTP_301
+          Type: redirect
+      LoadBalancerArn:
+        Ref: AppAlb
+      Port: 80
+      Protocol: HTTP
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/HttpRedirectListener
+    Condition: CertificateArnExists
+  AsgHttpsTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 443
+      Protocol: HTTPS
+      TargetType: instance
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AsgHttpsTargetGroup
+    Condition: CertificateArnExists
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn:
+            Ref: AsgHttpsTargetGroup
+          Type: forward
+      LoadBalancerArn:
+        Ref: AppAlb
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn:
+            Ref: CertificateArn
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/HttpsListener
+    Condition: CertificateArnExists
+  NotificationTopicEB7A0DF1:
+    Type: AWS::SNS::Topic
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/NotificationTopic/Resource
+  NotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn:
+        Ref: NotificationTopicEB7A0DF1
+      Endpoint:
+        Ref: NotificationEmail
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/NotificationSubscription
+    Condition: NotificationEmailExists
+  DrupalSystemLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 731
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DrupalSystemLogGroup
+  DrupalAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 731
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DrupalAccessLogGroup
+  DrupalErrorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 731
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DrupalErrorLogGroup
+  EfsSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS SG
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/EfsSg
+  EFSSgIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 2049
+      GroupId:
+        Ref: EfsSg
+      SourceSecurityGroupId:
+        Ref: AppSg
+      ToPort: 2049
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/EFSSgIngress
+  AppEfs:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppEfs
+  AppEfsMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId:
+        Ref: AppEfs
+      SecurityGroups:
+        - Ref: EfsSg
+      SubnetId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: VpcPrivateSubnet1
+          - Ref: CustomerVpcPrivateSubnet1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppEfsMountTarget1
+  AppEfsMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId:
+        Ref: AppEfs
+      SecurityGroups:
+        - Ref: EfsSg
+      SubnetId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: VpcPrivateSubnet2
+          - Ref: CustomerVpcPrivateSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppEfsMountTarget2
+  ElastiCacheSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: App SG
+      VpcId:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - Ref: Vpc
+          - Ref: CustomerVpcId
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/ElastiCacheSg
+    Condition: ElastiCacheEnableCondition
+  ElasticacheSgIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 11211
+      GroupId:
+        Ref: ElastiCacheSg
+      SourceSecurityGroupId:
+        Ref: AppSg
+      ToPort: 11211
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/ElasticacheSgIngress
+    Condition: ElastiCacheEnableCondition
+  ElastiCacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: test
+      SubnetIds:
+        Fn::If:
+          - CustomerVpcNotGiven
+          - - Ref: VpcPrivateSubnet1
+            - Ref: VpcPrivateSubnet2
+          - - Ref: CustomerVpcPrivateSubnet1
+            - Ref: CustomerVpcPrivateSubnet2
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/ElastiCacheSubnetGroup
+    Condition: ElastiCacheEnableCondition
+  ElastiCacheCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      CacheNodeType:
+        Ref: ElastiCacheClusterCacheNodeTypeParam
+      Engine: memcached
+      NumCacheNodes:
+        Ref: ElastiCacheClusterNumCacheNodesParam
+      AZMode: cross-az
+      CacheSubnetGroupName:
+        Ref: ElastiCacheSubnetGroup
+      EngineVersion:
+        Ref: ElastiCacheClusterEngineVersionParam
+      Tags:
+        - Key: oe:patterns:drupal:stack
+          Value:
+            Ref: AWS::StackName
+      VpcSecurityGroupIds:
+        - Ref: ElastiCacheSg
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/ElastiCacheCluster
+    Condition: ElastiCacheEnableCondition
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          Ref: CloudFrontAliases
+        Comment:
+          Ref: AWS::StackName
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - HEAD
+            - GET
+          Compress: false
+          DefaultTTL: 86400
+          ForwardedValues:
+            Headers:
+              - Host
+            QueryString: true
+          MaxTTL: 31536000
+          MinTTL: 0
+          TargetOriginId: alb
+          ViewerProtocolPolicy: allow-all
+        Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              OriginProtocolPolicy:
+                Ref: CloudFrontOriginAccessPolicyParam
+              OriginSSLProtocols:
+                - TLSv1.2
+            DomainName:
+              Fn::GetAtt:
+                - AppAlb
+                - DNSName
+            Id: alb
+        PriceClass:
+          Ref: CloudFrontPriceClassParam
+        ViewerCertificate:
+          AcmCertificateArn:
+            Fn::If:
+              - CloudFrontCertificateArnExists
+              - Ref: CloudFrontCertificateArn
+              - Ref: AWS::NoValue
+          CloudFrontDefaultCertificate:
+            Fn::If:
+              - CloudFrontCertificateArnExists
+              - Ref: AWS::NoValue
+              - true
+          MinimumProtocolVersion: TLSv1.2_2018
+          SslSupportMethod:
+            Fn::If:
+              - CloudFrontCertificateArnExists
+              - sni-only
+              - Ref: AWS::NoValue
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CloudFrontDistribution
+    Condition: CloudFrontEnableCondition
+  AppInstanceRoleC467FFEA:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - Fn::GetAtt:
+                      - DrupalAccessLogGroup
+                      - Arn
+                  - Fn::GetAtt:
+                      - DrupalErrorLogGroup
+                      - Arn
+                  - Fn::GetAtt:
+                      - DrupalSystemLogGroup
+                      - Arn
+            Version: "2012-10-17"
+          PolicyName: AllowStreamLogsToCloudWatch
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeTags
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:PutMetricData
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: AllowStreamMetricsToCloudWatch
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:Get*
+                  - s3:Head*
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Fn::If:
+                          - PipelineArtifactBucketNameExists
+                          - Ref: PipelineArtifactBucketName
+                          - Ref: PipelineArtifactBucket
+                      - /*
+            Version: "2012-10-17"
+          PolicyName: AllowGetFromArtifactBucket
+        - PolicyDocument:
+            Statement:
+              - Action: autoscaling:Describe*
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: AllowDescribeAutoScaling
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppInstanceRole/Resource
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Ref: AppInstanceRoleC467FFEA
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppInstanceProfile
+  AppLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId:
+        Fn::FindInMap:
+          - AWSAMIRegionMap
+          - Ref: AWS::Region
+          - OEDRUPAL
+      InstanceType:
+        Ref: AppLaunchConfigInstanceType
+      IamInstanceProfile:
+        Ref: AppInstanceProfile
+      SecurityGroups:
+        - Ref: AppSg
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - >
+              #!/bin/bash
+
+
+              # aws cloudwatch
+
+              cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+              {
+                "agent": {
+                  "metrics_collection_interval": 60,
+                  "run_as_user": "root",
+                  "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+                },
+                "metrics": {
+                  "metrics_collected": {
+                    "collectd": {
+                      "metrics_aggregation_interval": 60
+                    },
+                    "disk": {
+                      "measurement": ["used_percent"],
+                      "metrics_collection_interval": 60,
+                      "resources": ["*"]
+                    },
+                    "mem": {
+                      "measurement": ["mem_used_percent"],
+                      "metrics_collection_interval": 60
+                    }
+                  },
+                  "append_dimensions": {
+                    "ImageId": "\${!aws:ImageId}",
+                    "InstanceId": "\${!aws:InstanceId}",
+                    "InstanceType": "\${!aws:InstanceType}",
+                    "AutoScalingGroupName": "\${!aws:AutoScalingGroupName}"
+                  }
+                },
+                "logs": {
+                  "logs_collected": {
+                    "files": {
+                      "collect_list": [
+                        {
+                          "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/dpkg.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/dpkg.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/apt/history.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/apt/history.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/cloud-init.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/cloud-init.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/cloud-init-output.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/cloud-init-output.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/auth.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/auth.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/syslog",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/syslog",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/amazon/ssm/amazon-ssm-agent.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/amazon/ssm/amazon-ssm-agent.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/amazon/ssm/errors.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/amazon/ssm/errors.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/drupal-cache.log",
+                          "log_group_name": "${DrupalSystemLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/drupal-cache.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/apache2/access.log",
+                          "log_group_name": "${DrupalAccessLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/apache2/access.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/apache2/error.log",
+                          "log_group_name": "${DrupalErrorLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/apache2/error.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/apache2/access-ssl.log",
+                          "log_group_name": "${DrupalAccessLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/apache2/access-ssl.log",
+                          "timezone": "UTC"
+                        },
+                        {
+                          "file_path": "/var/log/apache2/error-ssl.log",
+                          "log_group_name": "${DrupalErrorLogGroup}",
+                          "log_stream_name": "{instance_id}-/var/log/apache2/error-ssl.log",
+                          "timezone": "UTC"
+                        }
+                      ]
+                    }
+                  },
+                  "log_stream_name": "{instance_id}"
+                }
+              }
+
+              EOF
+
+              systemctl enable amazon-cloudwatch-agent
+
+              systemctl start amazon-cloudwatch-agent
+
+
+              # efs
+
+              mkdir /mnt/efs
+
+              mount -t efs "${AppEfs}":/ /mnt/efs
+
+              echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
+
+              mkdir -p /mnt/efs/drupal/files
+
+              chown www-data /mnt/efs/drupal/files
+
+
+              mkdir -p /opt/oe/patterns/drupal
+
+
+              # secretsmanager
+
+              SECRET_ARN="${SecretArn}"
+
+              echo $SECRET_ARN >> /opt/oe/patterns/drupal/secret-arn.txt
+
+
+              SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)
+
+              echo $SECRET_NAME >> /opt/oe/patterns/drupal/secret-name.txt
+
+
+              aws ssm get-parameter \
+                  --name "/aws/reference/secretsmanager/$SECRET_NAME" \
+                  --with-decryption \
+                  --query Parameter.Value \
+              | jq -r . >> /opt/oe/patterns/drupal/secret.json
+
+
+              # database values
+
+              jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
+                 '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
+
+              # elasticache values
+
+              if [[ "${ElastiCacheEnable}" == "true" ]]
+
+              then
+                  jq -n --arg host "${ElastiCacheClusterHost}" \
+                     --arg port "${ElastiCacheClusterPort}" \
+                     '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
+              fi
+
+
+              # cloudfront values
+
+              if [[ "${CloudFrontEnable}" == "true" ]]
+
+              then
+                  jq -n --arg host "${CloudFrontHost}" '{host: $host}' > /opt/oe/patterns/drupal/cloudfront.json
+              fi
+
+
+              # drupal salt
+
+              echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
+
+
+              # apache
+
+              openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+                -keyout /etc/ssl/private/apache-selfsigned.key \
+                -out /etc/ssl/certs/apache-selfsigned.crt \
+                -subj '/CN=localhost'
+              systemctl enable apache2 && systemctl start apache2
+
+
+              cfn-signal --exit-code $? --stack ${AWS::StackName} --resource AppAsg --region ${AWS::Region}
+            - CloudFrontHost:
+                Fn::If:
+                  - CloudFrontEnableCondition
+                  - Fn::GetAtt:
+                      - CloudFrontDistribution
+                      - DomainName
+                  - ""
+              DrupalSalt:
+                Fn::Base64:
+                  Ref: AWS::StackId
+              ElastiCacheClusterHost:
+                Fn::If:
+                  - ElastiCacheEnableCondition
+                  - Fn::GetAtt:
+                      - ElastiCacheCluster
+                      - ConfigurationEndpoint.Address
+                  - ""
+              ElastiCacheClusterPort:
+                Fn::If:
+                  - ElastiCacheEnableCondition
+                  - Fn::GetAtt:
+                      - ElastiCacheCluster
+                      - ConfigurationEndpoint.Port
+                  - ""
+              SecretArn:
+                Fn::If:
+                  - SecretArnExistsCondition
+                  - Ref: SecretArn
+                  - Ref: Secret
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppLaunchConfig
+  AppAsg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MaxSize:
+        Ref: AppAsgMaxSize
+      MinSize:
+        Ref: AppAsgMinSize
+      DesiredCapacity:
+        Ref: AppAsgDesiredCapacity
+      LaunchConfigurationName:
+        Ref: AppLaunchConfig
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value:
+            Fn::Join:
+              - ""
+              - - Ref: AWS::StackName
+                - /AppAsg
+      TargetGroupARNs:
+        Fn::If:
+          - CertificateArnExists
+          - - Ref: AsgHttpsTargetGroup
+          - - Ref: AsgHttpTargetGroup
+      VPCZoneIdentifier:
+        Fn::If:
+          - CustomerVpcGiven
+          - - Ref: CustomerVpcPrivateSubnet1
+            - Ref: CustomerVpcPrivateSubnet2
+          - - Ref: VpcPrivateSubnet1
+            - Ref: VpcPrivateSubnet2
+    DependsOn:
+      - DBCluster
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppAsg
+    UpdatePolicy:
+      AutoScalingScheduledAction:
+        IgnoreUnmodifiedGroupSizeProperties: true
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 1
+        WaitOnResourceSignals: true
+        PauseTime: PT15M
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT15M
+  WebServerScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName:
+        Ref: AppAsg
+      AdjustmentType: ChangeInCapacity
+      Cooldown: "60"
+      ScalingAdjustment: 1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/WebServerScaleUpPolicy
+  WebServerScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName:
+        Ref: AppAsg
+      AdjustmentType: ChangeInCapacity
+      Cooldown: "60"
+      ScalingAdjustment: -1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/WebServerScaleDownPolicy
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 2
+      AlarmActions:
+        - Ref: WebServerScaleUpPolicy
+        - Ref: NotificationTopicEB7A0DF1
+      AlarmDescription: Scale-up if CPU > 90% for 10mins
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value:
+            Ref: AppAsg
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 300
+      Statistic: Average
+      Threshold: 90
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CPUAlarmHigh
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ComparisonOperator: LessThanThreshold
+      EvaluationPeriods: 2
+      AlarmActions:
+        - Ref: WebServerScaleDownPolicy
+        - Ref: NotificationTopicEB7A0DF1
+      AlarmDescription: Scale-down if CPU < 70% for 10mins
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value:
+            Ref: AppAsg
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 300
+      Statistic: Average
+      Threshold: 70
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CPUAlarmLow
+  AppSgHttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 80
+      GroupId:
+        Ref: AppSg
+      SourceSecurityGroupId:
+        Ref: ALBSg
+      ToPort: 80
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppSgHttpIngress
+    Condition: CertificateArnNotExists
+  AppSgHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 443
+      GroupId:
+        Ref: AppSg
+      SourceSecurityGroupId:
+        Ref: ALBSg
+      ToPort: 443
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/AppSgHttpsIngress
+    Condition: CertificateArnExists
+  CodeBuildTransformServiceRoleE916FDFC:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Fn::If:
+                          - PipelineArtifactBucketNameExists
+                          - Ref: PipelineArtifactBucketName
+                          - Ref: PipelineArtifactBucket
+                      - /*
+            Version: "2012-10-17"
+          PolicyName: TransformRolePermssions
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CodeBuildTransformServiceRole/Resource
+  CodeBuildTransformProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: AUTO_SCALING_GROUP_NAME
+            Value:
+              Ref: AppAsg
+        Image: aws/codebuild/standard:4.0
+        Type: LINUX_CONTAINER
+      ServiceRole:
+        Fn::GetAtt:
+          - CodeBuildTransformServiceRoleE916FDFC
+          - Arn
+      Source:
+        BuildSpec: >
+          version: 0.2
+
+
+          phases:
+            build:
+              commands:
+                - |
+                  if [ ! -f appspec.yml ]; then
+                    cat << EOF > appspec.yml;
+                  version: 0.0
+                  os: linux
+                  files:
+                    - source: .
+                      destination: /var/www/app
+                  hooks:
+                  EOF
+                    mkdir -p scripts;
+                    if [ ! -f scripts/codedeploy-before-install.sh ]; then
+                      cat << EOF > scripts/codedeploy-before-install.sh;
+                  #!/bin/bash
+
+                  rm -f /var/www/app/drupal/sites/default/files
+                  EOF
+                      cat << EOF >> appspec.yml;
+                    BeforeInstall:
+                      - location: scripts/codedeploy-before-install.sh
+                        runas: root
+                  EOF
+                    fi
+                    if [ ! -f scripts/codedeploy-after-install.sh ]; then
+                      cat << EOF > scripts/codedeploy-after-install.sh;
+                  #!/bin/bash
+
+                  # symlink to efs files directory
+                  ln -s /mnt/efs/drupal/files /var/www/app/drupal/sites/default/files
+
+                  # permissions
+                  find /var/www/app/drupal -type d -exec chmod 755 {} +
+                  find /var/www/app/drupal -type f -exec chmod 644 {} +
+                  chmod 444 /var/www/app/drupal/.htaccess
+                  chmod 555 /var/www/app/drupal/sites/default
+                  chmod 400 /var/www/app/drupal/sites/default/settings.php
+                  find /var/www/app/drupal/sites/default/files -type d -exec chmod 755 {} +
+                  find /var/www/app/drupal/sites/default/files -type f -exec chmod 664 {} +
+                  chown -R www-data /var/www/app/drupal
+                  EOF
+                      if [ -f drupal/vendor/drush/drush/drush ]; then
+                        cat << EOF >> scripts/codedeploy-after-install.sh;
+
+                  # clear drupal cache
+                  chmod 755 /var/www/app/drupal/vendor/drush/drush/drush
+                  # recreate symlink: https://github.com/aws/aws-codedeploy-agent/issues/152
+                  rm /var/www/app/drupal/vendor/bin/drush
+                  ln -s /var/www/app/drupal/vendor/drush/drush/drush /var/www/app/drupal/vendor/bin/drush
+                  chmod 755 /var/www/app/drupal/vendor/bin/drush
+
+                  # only clear cache on "first" instance
+                  THIS_INSTANCE_ID=\$(curl http://169.254.169.254/latest/meta-data/instance-id)
+                  FIRST_ASG_INSTANCE_ID=\$(aws autoscaling describe-auto-scaling-instances \
+                    --query "AutoScalingInstances[?AutoScalingGroupName=='$AUTO_SCALING_GROUP_NAME']|[?LifecycleState=='InService']|[?HeathStatus=='HEALTHY']||[0].InstanceId" \
+                    --output text)
+                  if [ "\$FIRST_ASG_INSTANCE_ID" == "\$THIS_INSTANCE_ID" ];
+                  then
+                    export HOME=/var/www/app/drupal
+                    cd /var/www/app/drupal
+                    /var/www/app/drupal/vendor/bin/drush cache:rebuild
+                    echo "Drupal cache cleared by \$THIS_INSTANCE_ID" >> /var/log/drupal-cache.log
+                  fi
+                  EOF
+                      fi
+                      cat << EOF >> appspec.yml;
+                    AfterInstall:
+                      - location: scripts/codedeploy-after-install.sh
+                        runas: root
+                  EOF
+                    fi
+                  fi
+                - cat appspec.yml
+                - cat scripts/codedeploy-before-install.sh
+                - cat scripts/codedeploy-after-install.sh
+              finally:
+                - echo Finished build
+          artifacts:
+            files:
+              - "**/*"
+        Type: CODEPIPELINE
+      Name:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - -transform
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CodeBuildTransformProject
+  PipelineRoleDCFDBB91:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - codedeploy:GetApplication
+                  - codedeploy:GetDeploymentGroup
+                  - codedeploy:ListApplications
+                  - codedeploy:ListDeploymentGroups
+                  - codepipeline:*
+                  - iam:ListRoles
+                  - iam:PassRole
+                  - lambda:GetFunctionConfiguration
+                  - lambda:ListFunctions
+                  - s3:CreateBucket
+                  - s3:GetBucketPolicy
+                  - s3:GetObject
+                  - s3:ListAllMyBuckets
+                  - s3:ListBucket
+                  - s3:PutBucketPolicy
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: CodePipelinePerms
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/PipelineRole/Resource
+  SourceStageRole2A3ED94A:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRoleDCFDBB91
+                  - Arn
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:Get*
+                  - s3:Head*
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Ref: SourceArtifactS3Bucket
+                      - /
+                      - Ref: SourceArtifactS3ObjectKey
+              - Action: s3:GetBucketVersioning
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Ref: SourceArtifactS3Bucket
+              - Action: s3:*
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Fn::If:
+                          - PipelineArtifactBucketNameExists
+                          - Ref: PipelineArtifactBucketName
+                          - Ref: PipelineArtifactBucket
+                      - /*
+            Version: "2012-10-17"
+          PolicyName: SourceRolePerms
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/SourceStageRole/Resource
+  TransformStageRole39B996DE:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRoleDCFDBB91
+                  - Arn
+        Version: "2012-10-17"
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/TransformStageRole/Resource
+  DeployStageRole0FE1C354:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - PipelineRoleDCFDBB91
+                  - Arn
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action: codedeploy:*
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - s3:Get*
+                  - s3:Head*
+                  - s3:PutObject
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Fn::If:
+                          - PipelineArtifactBucketNameExists
+                          - Ref: PipelineArtifactBucketName
+                          - Ref: PipelineArtifactBucket
+                      - /*
+            Version: "2012-10-17"
+          PolicyName: DeployRolePerms
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/DeployStageRole/Resource
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName:
+        Ref: AWS::StackName
+      ComputePlatform: Server
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CodeDeployApplication
+  CodeDeployRole12BEECBE:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codedeploy.us-east-1.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSCodeDeployRole
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Effect: Allow
+                Resource:
+                  Fn::Join:
+                    - ""
+                    - - "arn:"
+                      - Ref: AWS::Partition
+                      - ":s3:::"
+                      - Fn::If:
+                          - PipelineArtifactBucketNameExists
+                          - Ref: PipelineArtifactBucketName
+                          - Ref: PipelineArtifactBucket
+                      - /*
+            Version: "2012-10-17"
+          PolicyName: DeployRolePermssions
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CodeDeployRole/Resource
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName:
+        Ref: AWS::StackName
+      ServiceRoleArn:
+        Fn::GetAtt:
+          - CodeDeployRole12BEECBE
+          - Arn
+      AutoScalingGroups:
+        - Ref: AppAsg
+      DeploymentConfigName: CodeDeployDefault.AllAtOnce
+      DeploymentGroupName:
+        Fn::Join:
+          - ""
+          - - Ref: AWS::StackName
+            - -app
+      TriggerConfigurations:
+        - TriggerEvents:
+            - DeploymentSuccess
+            - DeploymentRollback
+          TriggerName: DeploymentNotification
+          TriggerTargetArn:
+            Ref: NotificationTopicEB7A0DF1
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/CodeDeployDeploymentGroup
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn:
+        Fn::GetAtt:
+          - PipelineRoleDCFDBB91
+          - Arn
+      Stages:
+        - Actions:
+            - ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                S3Bucket:
+                  Ref: SourceArtifactS3Bucket
+                S3ObjectKey:
+                  Ref: SourceArtifactS3ObjectKey
+              Name: SourceAction
+              OutputArtifacts:
+                - Name: build
+              RoleArn:
+                Fn::GetAtt:
+                  - SourceStageRole2A3ED94A
+                  - Arn
+          Name: Source
+        - Actions:
+            - ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName:
+                  Ref: CodeBuildTransformProject
+              InputArtifacts:
+                - Name: build
+              Name: TransformAction
+              OutputArtifacts:
+                - Name: transformed
+          Name: Transform
+        - Actions:
+            - ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeploy
+                Version: "1"
+              Configuration:
+                ApplicationName:
+                  Ref: CodeDeployApplication
+                DeploymentGroupName:
+                  Ref: CodeDeployDeploymentGroup
+              InputArtifacts:
+                - Name: transformed
+              Name: DeployAction
+              RoleArn:
+                Fn::GetAtt:
+                  - DeployStageRole0FE1C354
+                  - Arn
+          Name: Deploy
+      ArtifactStore:
+        Location:
+          Fn::If:
+            - PipelineArtifactBucketNameExists
+            - Ref: PipelineArtifactBucketName
+            - Ref: PipelineArtifactBucket
+        Type: S3
+    Metadata:
+      aws:cdk:path: oe-patterns-drupal-helenkim/Pipeline
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Modules: aws-cdk=1.36.1,@aws-cdk/assets=1.36.1,@aws-cdk/aws-apigateway=1.36.1,@aws-cdk/aws-applicationautoscaling=1.36.1,@aws-cdk/aws-autoscaling=1.36.1,@aws-cdk/aws-autoscaling-common=1.36.1,@aws-cdk/aws-autoscaling-hooktargets=1.36.1,@aws-cdk/aws-batch=1.36.1,@aws-cdk/aws-certificatemanager=1.36.1,@aws-cdk/aws-cloudformation=1.36.1,@aws-cdk/aws-cloudfront=1.36.1,@aws-cdk/aws-cloudwatch=1.36.1,@aws-cdk/aws-codebuild=1.36.1,@aws-cdk/aws-codecommit=1.36.1,@aws-cdk/aws-codedeploy=1.36.1,@aws-cdk/aws-codepipeline=1.36.1,@aws-cdk/aws-codepipeline-actions=1.36.1,@aws-cdk/aws-cognito=1.36.1,@aws-cdk/aws-ec2=1.36.1,@aws-cdk/aws-ecr=1.36.1,@aws-cdk/aws-ecr-assets=1.36.1,@aws-cdk/aws-ecs=1.36.1,@aws-cdk/aws-efs=1.36.1,@aws-cdk/aws-elasticache=1.36.1,@aws-cdk/aws-elasticloadbalancing=1.36.1,@aws-cdk/aws-elasticloadbalancingv2=1.36.1,@aws-cdk/aws-events=1.36.1,@aws-cdk/aws-events-targets=1.36.1,@aws-cdk/aws-iam=1.36.1,@aws-cdk/aws-kms=1.36.1,@aws-cdk/aws-lambda=1.36.1,@aws-cdk/aws-logs=1.36.1,@aws-cdk/aws-rds=1.36.1,@aws-cdk/aws-route53=1.36.1,@aws-cdk/aws-route53-targets=1.36.1,@aws-cdk/aws-s3=1.36.1,@aws-cdk/aws-s3-assets=1.36.1,@aws-cdk/aws-sam=1.36.1,@aws-cdk/aws-secretsmanager=1.36.1,@aws-cdk/aws-servicediscovery=1.36.1,@aws-cdk/aws-sns=1.36.1,@aws-cdk/aws-sns-subscriptions=1.36.1,@aws-cdk/aws-sqs=1.36.1,@aws-cdk/aws-ssm=1.36.1,@aws-cdk/aws-stepfunctions=1.36.1,@aws-cdk/cloud-assembly-schema=1.36.1,@aws-cdk/core=1.36.1,@aws-cdk/custom-resources=1.36.1,@aws-cdk/cx-api=1.36.1,@aws-cdk/region-info=1.36.1,jsii-runtime=Python/3.8.2
+Rules:
+  DbSnapshotIdentifierAndSecretRequiredRule:
+    RuleCondition:
+      Fn::Not:
+        - Fn::Equals:
+            - Ref: DBSnapshotIdentifier
+            - ""
+    Assertions:
+      - Assert:
+          Fn::Not:
+            - Fn::Equals:
+                - Ref: SecretArn
+                - ""
+        AssertDescription: When restoring the database from a snapshot, a secret ARN must also be supplied, prepopulated with username and password key-value pairs which correspond to the snapshot image
+Outputs:
+  AlbDnsNameOutput:
+    Description: The DNS name of the application load balancer.
+    Value:
+      Fn::GetAtt:
+        - AppAlb
+        - DNSName
+  ElastiCacheClusterEndpointOutput:
+    Description: The endpoint of the cluster for connection. Configure in Drupal's settings.php.
+    Value:
+      Fn::Join:
+        - ""
+        - - Fn::GetAtt:
+              - ElastiCacheCluster
+              - ConfigurationEndpoint.Address
+          - ":"
+          - Fn::GetAtt:
+              - ElastiCacheCluster
+              - ConfigurationEndpoint.Port
+    Condition: ElastiCacheEnableCondition
+  CloudFrontDistributionEndpointOutput:
+    Description: The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.
+    Value:
+      Fn::GetAtt:
+        - CloudFrontDistribution
+        - DomainName
+    Condition: CloudFrontEnableCondition
+
