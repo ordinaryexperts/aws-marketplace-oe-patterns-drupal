@@ -14,9 +14,9 @@ We support multiple availability zones using an RDS Aurora serverless cluster an
 
 Regions supported by Ordinary Experts' stack:
 
-| Fully Supported | Partially Supported | Unsupported |
-| ----------- | ----------- | ----------- |
-| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li></ul> | <ul><li>ap-northeast-2 (Seoul):</br>requires subnets in<br>specific AZs to run<br> Aurora Serverless;<br>to launch in this region,<br>provide a VPC with<br>subnets in 2a and 2c.</li></ul> | <ul><li>eu-north-1 (Stockholm)</li><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li><li>sa-east-1 (Sao Paolo)</li></ul> |
+| Fully Supported | Unsupported |
+| -------------- | ----------- |
+| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li></ul> | <ul><li>eu-north-1 (Stockholm)</li><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li><li>sa-east-1 (Sao Paolo)</li><li>ap-northeast-2 (Seoul):</br>requires subnets in<br>specific AZs to run<br> Aurora Serverless.</li></ul> |
 
 
 Optional configurations include the following:
