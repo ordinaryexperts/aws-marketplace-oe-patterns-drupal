@@ -4,6 +4,7 @@
 * Pass test buckets for each region
 * Update supported regions list
 * Pass creds in workflow to run clean script
+* Add deployment guide
 
 # 0.3.0
 
