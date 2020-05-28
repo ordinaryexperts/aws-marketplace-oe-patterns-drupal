@@ -392,7 +392,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -407,7 +407,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -434,8 +434,8 @@ class DrupalStack(core.Stack):
                             vpc_private_subnet2.ref
                         ],
                         [
-                            vpc_private_subnet_id1_param.value.to_string(),
-                            vpc_private_subnet_id2_param.value.to_string()
+                            vpc_private_subnet_id1_param.value_as_string,
+                            vpc_private_subnet_id2_param.value_as_string
 
                         ]
                     ]
@@ -585,7 +585,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -626,8 +626,8 @@ class DrupalStack(core.Stack):
                         vpc_public_subnet2.ref
                     ],
                     [
-                        vpc_public_subnet_id1_param.value.to_string(),
-                        vpc_public_subnet_id2_param.value.to_string()
+                        vpc_public_subnet_id1_param.value_as_string,
+                        vpc_public_subnet_id2_param.value_as_string
                     ]
                 ]
             }
@@ -654,7 +654,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -710,7 +710,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -781,7 +781,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -812,7 +812,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc_private_subnet1.ref,
-                    vpc_private_subnet_id1_param.value.to_string()
+                    vpc_private_subnet_id1_param.value_as_string
                 ]
             }
         )
@@ -829,7 +829,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc_private_subnet2.ref,
-                    vpc_private_subnet_id2_param.value.to_string()
+                    vpc_private_subnet_id2_param.value_as_string
                 ]
             }
         )
@@ -860,7 +860,7 @@ class DrupalStack(core.Stack):
         )
         elasticache_enable_param = core.CfnParameter(
             self,
-            "_ElastiCacheEnable",
+            "ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
             description="Required: Whether to provision ElastiCache memcached cluster."
@@ -881,7 +881,7 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -910,8 +910,8 @@ class DrupalStack(core.Stack):
                             vpc_private_subnet2.ref
                         ],
                         [
-                            vpc_private_subnet_id1_param.value.to_string(),
-                            vpc_private_subnet_id2_param.value.to_string()
+                            vpc_private_subnet_id1_param.value_as_string,
+                            vpc_private_subnet_id2_param.value_as_string
                         ]
                     ]
                 }
@@ -1214,6 +1214,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
+            # using value.to_string() here because these parameters are Number type
             desired_capacity=asg_desired_capacity_param.value.to_string(),
             max_size=asg_max_size_param.value.to_string(),
             min_size=asg_min_size_param.value.to_string()
@@ -1224,8 +1225,8 @@ class DrupalStack(core.Stack):
                 "Fn::If": [
                     vpc_given_condition.logical_id,
                     [
-                        vpc_private_subnet_id1_param.value.to_string(),
-                        vpc_private_subnet_id2_param.value.to_string()
+                        vpc_private_subnet_id1_param.value_as_string,
+                        vpc_private_subnet_id2_param.value_as_string
                     ],
                     [
                         vpc_private_subnet1.ref,
