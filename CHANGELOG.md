@@ -4,7 +4,7 @@
 * Test all resources scenario only in main workflow
 * Expand test support into other regions
 * Update clean up script to cover all regions
-* Parameter updates
+* Renaming make targets
 
 # 0.2.0
 
