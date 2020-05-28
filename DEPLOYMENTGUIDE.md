@@ -72,7 +72,7 @@ The core AWS components in our architecture include the following AWS services:
 
 Deploying this template for a new virtual private cloud (VPC) with all optional resources provisioned builds the following Drupal 8 environment in the AWS Cloud.
 
-![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)*Figure 1: Ordinary Experts Drupal Pattern Architecture*
+![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
 Automatically configured to support auto-scaling through AWS Autoscaling Groups, our solution leverages an EFS file system to share user generated content between application servers. We support multiple availability zones using an RDS Aurora serverless cluster and Amazon's integrated options to distribute infrastructure. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
 
