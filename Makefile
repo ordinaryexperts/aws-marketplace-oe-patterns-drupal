@@ -1,11 +1,17 @@
-ami-bash: ami-build
+ami-docker-bash: ami-docker-build
 	docker-compose run --rm ami bash
 
-ami-build:
+ami-docker-build:
 	docker-compose build ami
 
-ami-rebuild:
+ami-docker-rebuild:
 	docker-compose build ami --no-cache
+
+ami-ec2-build:
+	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
+
+ami-ec2-copy:
+	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
 
 bash:
 	docker-compose run -w /code --rm drupal bash
@@ -22,11 +28,17 @@ clean:
 clean-all-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat
 
+clean-all-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat all
+
 clean-buckets:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets
 
 clean-buckets-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat
+
+clean-buckets-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat all
 
 clean-logs:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs
@@ -34,14 +46,17 @@ clean-logs:
 clean-logs-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat
 
+clean-logs-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat all
+
 clean-snapshots:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots
 
 clean-snapshots-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat
 
-copy-image:
-	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
+clean-snapshots-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat all
 
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
@@ -70,13 +85,6 @@ diff:
 lint:
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
-packer:
-	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
-.PHONY: packer
-
-packer-copy-to-supported-regions:
-	docker-compose run -w /code
-
 publish:
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
@@ -89,9 +97,22 @@ synth:
 	--path-metadata false \
 	--asset-metadata false
 
-test:
+synth-to-file:
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false > /code/dist/template.yaml \
+	&& echo 'Template saved to dist/template.yaml'"
+
+test-all:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
 	&& cd ../test \
 	&& taskcat test run"
-.PHONY: test
+
+test-main:
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth > ../test/main-test/template.yaml \
+	&& cd ../test/main-test \
+	&& taskcat test run"

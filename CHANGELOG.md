@@ -1,5 +1,13 @@
 # Unreleased
 
+# 0.3.0
+
+* Schedule nightly workflow to test all scenarios
+* Test all resources scenario only in main workflow
+* Expand test support into other regions
+* Update clean up script to cover all regions
+* Renaming make targets
+
 # 0.2.0
 
 * DB snapshot and secret ARN rule validation
@@ -12,6 +20,7 @@
 * Add CodeBuild appspec.yml generation
 * AMI hardening / security checklist
 * Encryption
+* Trimming down allowed instance types
 
 # 0.1.0
 
