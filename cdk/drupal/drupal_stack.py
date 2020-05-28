@@ -3,6 +3,7 @@ import os
 import yaml
 from aws_cdk import (
     aws_autoscaling,
+    aws_backup,
     aws_cloudfront,
     aws_cloudwatch,
     aws_codebuild,
@@ -561,6 +562,7 @@ class DrupalStack(core.Stack):
                 core.Aws.NO_VALUE
             ).to_string(),
             storage_encrypted=True,
+            tags=[core.CfnTag(key="{}-backup".format(core.Aws.STACK_NAME), value="true")],
             vpc_security_group_ids=[ db_sg.ref ]
         )
         alb_sg = aws_ec2.CfnSecurityGroup(
@@ -762,7 +764,8 @@ class DrupalStack(core.Stack):
         efs_sg = aws_ec2.CfnSecurityGroup(
             self,
             "EfsSg",
-            group_description="EFS SG"
+            group_description="EFS SG",
+            tags=[core.CfnTag(key="{}-backup".format(core.Aws.STACK_NAME), value="true")]
         )
         efs_sg.add_override(
             "Properties.VpcId",
@@ -787,6 +790,16 @@ class DrupalStack(core.Stack):
             self,
             "AppEfs",
             encrypted=True
+        )
+        efs_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource="file-system",
+                resource_name=efs.ref,
+                service="elasticfilesystem"
+            ),
+            stack=self
         )
         efs_mount_target1 = aws_efs.CfnMountTarget(
             self,
@@ -1671,4 +1684,76 @@ class DrupalStack(core.Stack):
                     ]
                 )
             ]
+        )
+
+        # backup
+        backup_vault = aws_backup.CfnBackupVault(
+            self,
+            "BackupVault",
+            backup_vault_name="{}-backup-vault".format(core.Aws.STACK_NAME),
+            notifications=aws_backup.CfnBackupVault.NotificationObjectTypeProperty(
+                backup_vault_events=[
+                    "BACKUP_JOB_STARTED",
+                    "BACKUP_JOB_COMPLETED",
+                    "RESTORE_JOB_STARTED",
+                    "RESTORE_JOB_COMPLETED",
+                    "RECOVERY_POINT_MODIFIED"
+                ],
+                sns_topic_arn=notification_topic.topic_arn
+            )
+        )
+        backup_plan = aws_backup.CfnBackupPlan(
+            self,
+            "BackupPlan",
+            backup_plan=aws_backup.CfnBackupPlan.BackupPlanResourceTypeProperty(
+                backup_plan_name="{}-backup-plan".format(core.Aws.STACK_NAME),
+                backup_plan_rule=[
+                    aws_backup.CfnBackupPlan.BackupRuleResourceTypeProperty(
+                        lifecycle=aws_backup.CfnBackupPlan.LifecycleResourceTypeProperty(
+                            delete_after_days=31,
+                        ),
+                        rule_name="Daily",
+                        schedule_expression="cron(0 0 * * ? *)",
+                        start_window_minutes=480,
+                        target_backup_vault=backup_vault.ref
+                    ),
+                    aws_backup.CfnBackupPlan.BackupRuleResourceTypeProperty(
+                        lifecycle=aws_backup.CfnBackupPlan.LifecycleResourceTypeProperty(
+                            delete_after_days=365,
+                            move_to_cold_storage_after_days=31
+                        ),
+                        rule_name="Monthly",
+                        schedule_expression="cron(0 0 1 * ? *)",
+                        start_window_minutes=480,
+                        target_backup_vault=backup_vault.ref
+                    )
+                ]
+            )
+        )
+        backup_role = aws_iam.Role(
+            self,
+            "BackupRole",
+            assumed_by=aws_iam.ServicePrincipal("backup.amazonaws.com"),
+        )
+        backup_role.add_managed_policy(
+            aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForBackup")
+        );
+        backup_role.add_managed_policy(
+            aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForRestores")
+        );
+        backup_selection = aws_backup.CfnBackupSelection(
+            self,
+            "BackupSelection",
+            backup_plan_id=backup_plan.ref,
+            backup_selection=aws_backup.CfnBackupSelection.BackupSelectionResourceTypeProperty(
+                list_of_tags=[
+                    aws_backup.CfnBackupSelection.ConditionResourceTypeProperty(
+                        condition_key="{}-backup".format(core.Aws.STACK_NAME),
+                        condition_type="STRINGEQUALS",
+                        condition_value="true"
+                    )
+                ],
+                iam_role_arn=backup_role.role_arn,
+                selection_name="{}-selection".format(core.Aws.STACK_NAME)
+            )
         )
