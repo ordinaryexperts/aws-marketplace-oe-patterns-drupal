@@ -28,11 +28,17 @@ clean:
 clean-all-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat
 
+clean-all-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat all
+
 clean-buckets:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets
 
 clean-buckets-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat
+
+clean-buckets-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat all
 
 clean-logs:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs
@@ -40,11 +46,17 @@ clean-logs:
 clean-logs-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat
 
+clean-logs-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat all
+
 clean-snapshots:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots
 
 clean-snapshots-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat
+
+clean-snapshots-tcat-all-regions:
+	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat all
 
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
