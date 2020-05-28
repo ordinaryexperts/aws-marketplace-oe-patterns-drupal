@@ -1,5 +1,7 @@
 # Unreleased
 
+* Parameter updates
+
 # 0.2.0
 
 * DB snapshot and secret ARN rule validation

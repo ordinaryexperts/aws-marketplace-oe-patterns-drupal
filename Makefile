@@ -1,11 +1,17 @@
-ami-bash: ami-build
+ami-docker-bash: ami-docker-build
 	docker-compose run --rm ami bash
 
-ami-build:
+ami-docker-build:
 	docker-compose build ami
 
-ami-rebuild:
+ami-docker-rebuild:
 	docker-compose build ami --no-cache
+
+ami-ec2-build:
+	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
+
+ami-ec2-copy:
+	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
 
 bash:
 	docker-compose run -w /code --rm drupal bash
@@ -40,9 +46,6 @@ clean-snapshots:
 clean-snapshots-tcat:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat
 
-copy-image:
-	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
-
 deploy:
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \
@@ -70,13 +73,6 @@ diff:
 lint:
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
-packer:
-	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
-.PHONY: packer
-
-packer-copy-to-supported-regions:
-	docker-compose run -w /code
-
 publish:
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
@@ -89,16 +85,22 @@ synth:
 	--path-metadata false \
 	--asset-metadata false
 
-all-test:
+synth-to-file:
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth \
+	--version-reporting false \
+	--path-metadata false \
+	--asset-metadata false > /code/dist/template.yaml \
+	&& echo 'Template saved to dist/template.yaml'"
+
+test-all:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
 	&& cd ../test \
 	&& taskcat test run"
-.PHONY: all-test
 
-main-test:
+test-main:
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/main-test/template.yaml \
 	&& cd ../test/main-test \
 	&& taskcat test run"
-.PHONY: main-test
