@@ -77,7 +77,8 @@ class DrupalStack(core.Stack):
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
-            default=""
+            default="",
+            description="TODO"
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -108,23 +109,27 @@ class DrupalStack(core.Stack):
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub",
+            description="TODO"
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
+            description="TODO"
         )
         notification_email_param = core.CfnParameter(
             self,
             "NotificationEmail",
-            default=""
+            default="",
+            description="TODO"
         )
 
         certificate_arn_param = core.CfnParameter(
             self,
             "CertificateArn",
-            default=""
+            default="",
+            description="TODO"
         )
         certificate_arn_exists_condition = core.CfnCondition(
             self,
@@ -146,27 +151,32 @@ class DrupalStack(core.Stack):
         customer_vpc_id_param = core.CfnParameter(
             self,
             "CustomerVpcId",
-            default=""
+            default="",
+            description="TODO"
         )
         customer_vpc_public_subnet_id1 = core.CfnParameter(
             self,
             "CustomerVpcPublicSubnet1",
-            default=""
+            default="",
+            description="TODO"
         )
         customer_vpc_public_subnet_id2 = core.CfnParameter(
             self,
             "CustomerVpcPublicSubnet2",
-            default=""
+            default="",
+            description="TODO"
         )
         customer_vpc_private_subnet_id1 = core.CfnParameter(
             self,
             "CustomerVpcPrivateSubnet1",
-            default=""
+            default="",
+            description="TODO"
         )
         customer_vpc_private_subnet_id2 = core.CfnParameter(
             self,
             "CustomerVpcPrivateSubnet2",
-            default=""
+            default="",
+            description="TODO"
         )
         customer_vpc_given_condition = core.CfnCondition(
             self,
@@ -829,6 +839,7 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterCacheNodeTypeParam",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
+            description="TODO",
             type="String"
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
@@ -854,6 +865,7 @@ class DrupalStack(core.Stack):
             "ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
+            description="TODO"
         )
         elasticache_enable_condition = core.CfnCondition(
             self,
@@ -1133,7 +1145,7 @@ class DrupalStack(core.Stack):
             self,
             "AppLaunchConfigInstanceType",
             allowed_values=allowed_instance_types,
-            default="t3.micro",
+            default="m5.xlarge",
             description="The EC2 instance type for the Drupal server autoscaling group"
         )
         asg_desired_capacity_param = core.CfnParameter(
@@ -1672,3 +1684,24 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
+
+        # AWS::CloudFormation::Interface
+        self.template_options.metadata = {
+            "AWS::CloudFormation::Interface": {
+                "ParameterGroups": [
+                    {
+                        "Label": {
+                            "default": "CI/CD"
+                        },
+                        "Parameters": [
+                            pipeline_artifact_bucket_name_param.logical_id
+                        ]
+                    }
+                ],
+                "ParameterLabels": {
+                    pipeline_artifact_bucket_name_param.logical_id: {
+                        "default": "test"
+                    }
+                }
+            }
+        }
