@@ -1,5 +1,10 @@
 # Unreleased
 
+* Schedule nightly workflow to test all scenarios
+* Test all resources scenario only in main workflow
+* Expand test support into other regions
+* Update clean up script to cover all regions
+
 # 0.2.0
 
 * DB snapshot and secret ARN rule validation
