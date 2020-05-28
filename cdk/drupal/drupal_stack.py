@@ -78,7 +78,7 @@ class DrupalStack(core.Stack):
             self,
             "PipelineArtifactBucketName",
             default="",
-            description="TODO"
+            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. This can be handy when re-creating this template many times."
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -110,26 +110,26 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactS3Bucket",
             default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub",
-            description="TODO"
+            description="Required: AWS S3 Bucket name which contains the build artifacts for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
-            description="TODO"
+            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
         notification_email_param = core.CfnParameter(
             self,
             "NotificationEmail",
             default="",
-            description="TODO"
+            description="Optional: Specify an email address to get emails about deploys and other system events."
         )
 
         certificate_arn_param = core.CfnParameter(
             self,
             "CertificateArn",
             default="",
-            description="TODO"
+            description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
         )
         certificate_arn_exists_condition = core.CfnCondition(
             self,
@@ -150,34 +150,38 @@ class DrupalStack(core.Stack):
         # VPC
         vpc_id_param = core.CfnParameter(
             self,
-            "VpcIdParam",
+            "VpcId",
             default="",
-            type="AWS::EC2::VPC::Id",
-            description="To use an existing VPC, specify the VPC ID."
-        )
-        vpc_public_subnet_id1_param = core.CfnParameter(
-            self,
-            "VpcPublicSubnet1Param",
-            default="",
-            description="TODO"
-        )
-        vpc_public_subnet_id2_param = core.CfnParameter(
-            self,
-            "VpcPublicSubnet2Param",
-            default="",
-            description="TODO"
+            description="Optional: Specify the VPC ID.  If not specified, a VPC will be created.",
+            type="AWS::EC2::VPC::Id"
         )
         vpc_private_subnet_id1_param = core.CfnParameter(
             self,
-            "VpcPrivateSubnet1Param",
+            "VpcPrivateSubnetId1",
             default="",
-            description="TODO"
+            description="Optional: Specify Subnet ID for first private subnet.",
+            type="AWS::EC2::Subnet::Id"
         )
         vpc_private_subnet_id2_param = core.CfnParameter(
             self,
-            "VpcPrivateSubnet2Param",
+            "VpcPrivateSubnetId2",
             default="",
-            description="TODO"
+            description="Optional: Specify Subnet ID for second private subnet.",
+            type="AWS::EC2::Subnet::Id"
+        )
+        vpc_public_subnet_id1_param = core.CfnParameter(
+            self,
+            "VpcPublicSubnetId1",
+            default="",
+            description="Optional: Specify Subnet ID for first public subnet.",
+            type="AWS::EC2::Subnet::Id"
+        )
+        vpc_public_subnet_id2_param = core.CfnParameter(
+            self,
+            "VpcPublicSubnetId2",
+            default="",
+            description="Optional: Specify Subnet ID for second public subnet.",
+            type="AWS::EC2::Subnet::Id"
         )
         vpc_given_condition = core.CfnCondition(
             self,
@@ -461,7 +465,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSnapshotIdentifier",
             default="",
-            description="An RDS database cluster snapshot ARN from which to restore. If this parameter is specified, you MUST manually edit the secret values to specify the snapshot credentials for the application."
+            description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
         )
         db_snapshot_identifier_exists_condition = core.CfnCondition(
             self,
@@ -472,7 +476,7 @@ class DrupalStack(core.Stack):
             self,
             "SecretArn",
             default="",
-            description="The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.",
+            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified a secret will be created.",
             type="String"
         )
         secret_arn_exists_condition = core.CfnCondition(
@@ -840,7 +844,7 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterCacheNodeTypeParam",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
-            description="Instance type for the memcached cluster nodes.",
+            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled).",
             type="String"
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
@@ -848,24 +852,24 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterEngineVersionParam",
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
-            description="The memcached version of the cache cluster.",
+            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled).",
             type="String"
         )
         elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
             self,
             "ElastiCacheClusterNumCacheNodesParam",
             default=2,
-            description="The number of cache nodes in the memcached cluster.",
+            description="Required: The number of cache nodes in the memcached cluster (only applies ElastiCache enabled).",
             min_value=1,
             max_value=20,
             type="Number"
         )
         elasticache_enable_param = core.CfnParameter(
             self,
-            "ElastiCacheEnable",
+            "_ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
-            description="TODO"
+            description="Required: Whether to provision ElastiCache memcached cluster."
         )
         elasticache_enable_condition = core.CfnCondition(
             self,
@@ -947,14 +951,14 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontAliases",
             default="",
-            description="A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
+            description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
             type="CommaDelimitedList"
         )
         cloudfront_certificate_arn_param = core.CfnParameter(
             self,
             "CloudFrontCertificateArn",
             default="",
-            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+            description="Optional: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east-1 region."
         )
         cloudfront_certificate_arn_exists_condition = core.CfnCondition(
             self,
@@ -966,7 +970,7 @@ class DrupalStack(core.Stack):
             "CloudFrontEnable",
             allowed_values=[ "true", "false" ],
             default="false",
-            description="Enable CloudFront CDN support."
+            description="Required: Enable CloudFront CDN support."
         )
         cloudfront_enable_condition = core.CfnCondition(
             self,
@@ -978,7 +982,7 @@ class DrupalStack(core.Stack):
             "CloudFrontOriginAccessPolicyParam",
             allowed_values = [ "http-only", "https-only", "match-viewer" ],
             default="match-viewer",
-            description="CloudFront access policy for communicating with content origin."
+            description="Required: CloudFront access policy for communicating with content origin (only applies when CloudFront enabled)."
         )
         cloudfront_price_class_param = core.CfnParameter(
             self,
@@ -990,7 +994,7 @@ class DrupalStack(core.Stack):
                 "PriceClass_100"
             ],
             default="PriceClass_All",
-            description="Price class to use for CloudFront CDN."
+            description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
         )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
@@ -1146,13 +1150,13 @@ class DrupalStack(core.Stack):
             "AppLaunchConfigInstanceType",
             allowed_values=allowed_instance_types,
             default="m5.xlarge",
-            description="The EC2 instance type for the Drupal server autoscaling group"
+            description="Required: The EC2 instance type for the application Auto Scaling Group."
         )
         asg_desired_capacity_param = core.CfnParameter(
             self,
             "AppAsgDesiredCapacity",
             default=1,
-            description="The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain.",
+            description="Required: The desired capacity of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1160,7 +1164,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsgMaxSize",
             default=2,
-            description="The maximum size of the Auto Scaling group.",
+            description="Required: The maximum size of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1168,7 +1172,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsgMinSize",
             default=1,
-            description="The minimum size of the Auto Scaling group.",
+            description="Required: The minimum size of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1694,13 +1698,151 @@ class DrupalStack(core.Stack):
                             "default": "CI/CD"
                         },
                         "Parameters": [
+                            notification_email_param.logical_id,
+                            source_artifact_s3_bucket_param.logical_id,
+                            source_artifact_s3_object_key_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Data Snapshots"
+                        },
+                        "Parameters": [
+                            db_snapshot_identifier_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Application Config"
+                        },
+                        "Parameters": [
+                            certificate_arn_param.logical_id,
+                            secret_arn_param.logical_id,
+                            app_instance_type_param.logical_id,
+                            asg_min_size_param.logical_id,
+                            asg_max_size_param.logical_id,
+                            asg_desired_capacity_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "ElastiCache memcached"
+                        },
+                        "Parameters": [
+                            elasticache_enable_param.logical_id,
+                            elasticache_cluster_engine_version_param.logical_id,
+                            elasticache_cluster_cache_node_type_param.logical_id,
+                            elasticache_cluster_num_cache_nodes_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "CloudFront"
+                        },
+                        "Parameters": [
+                            cloudfront_enable_param.logical_id,
+                            cloudfront_certificate_arn_param.logical_id,
+                            cloudfront_aliases_param.logical_id,
+                            cloudfront_origin_access_policy_param.logical_id,
+                            cloudfront_price_class_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "VPC"
+                        },
+                        "Parameters": [
+                            vpc_id_param.logical_id,
+                            vpc_private_subnet_id1_param.logical_id,
+                            vpc_private_subnet_id2_param.logical_id,
+                            vpc_public_subnet_id1_param.logical_id,
+                            vpc_public_subnet_id2_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Template Development"
+                        },
+                        "Parameters": [
                             pipeline_artifact_bucket_name_param.logical_id
                         ]
                     }
                 ],
                 "ParameterLabels": {
+                    app_instance_type_param.logical_id: {
+                        "default": "Instance Type"
+                    },
+                    asg_desired_capacity_param.logical_id: {
+                        "default": "Auto Scaling Group Desired Capacity"
+                    },
+                    asg_max_size_param.logical_id: {
+                        "default": "Auto Scaling Group Maximum Size"
+                    },
+                    asg_min_size_param.logical_id: {
+                        "default": "Auto Scaling Group Minimum Size"
+                    },
+                    certificate_arn_param.logical_id: {
+                        "default": "ACM Certificate ARN"
+                    },
+                    cloudfront_aliases_param.logical_id: {
+                        "default": "CloudFront Aliases"
+                    },
+                    cloudfront_certificate_arn_param.logical_id: {
+                        "default": "CloudFront ACM Certificate ARN"
+                    },
+                    cloudfront_enable_param.logical_id: {
+                        "default": "Enable CloudFront"
+                    },
+                    cloudfront_origin_access_policy_param.logical_id: {
+                        "default": "CloudFront Origin Access Policy"
+                    },
+                    cloudfront_price_class_param.logical_id: {
+                        "default": "CloudFront Price Class"
+                    },
+                    db_snapshot_identifier_param.logical_id: {
+                        "default": "RDS Snapshot Identifier"
+                    },
+                    elasticache_cluster_cache_node_type_param.logical_id: {
+                        "default": "ElastiCache Cache Node Type"
+                    },
+                    elasticache_cluster_engine_version_param.logical_id: {
+                        "default": "ElastiCache Engine Version"
+                    },
+                    elasticache_cluster_num_cache_nodes_param.logical_id: {
+                        "default": "ElastiCache Num Nodes"
+                    },
+                    elasticache_enable_param.logical_id: {
+                        "default": "Enable ElastiCache"
+                    },
+                    notification_email_param.logical_id: {
+                        "default": "Notification Email"
+                    },
                     pipeline_artifact_bucket_name_param.logical_id: {
-                        "default": "test"
+                        "default": "CodePipeline Bucket Name"
+                    },
+                    secret_arn_param.logical_id: {
+                        "default": "SecretsManager secret ARN"
+                    },
+                    source_artifact_s3_bucket_param.logical_id: {
+                        "default": "Source Artifact S3 Bucket Name"
+                    },
+                    source_artifact_s3_object_key_param.logical_id: {
+                        "default": "Source Artifact S3 Object Key (path)"
+                    },
+                    vpc_id_param.logical_id: {
+                        "default": "VPC ID"
+                    },
+                    vpc_private_subnet_id1_param.logical_id: {
+                        "default": "Private Subnet ID 1"
+                    },
+                    vpc_private_subnet_id2_param.logical_id: {
+                        "default": "Private Subnet ID 2"
+                    },
+                    vpc_public_subnet_id1_param.logical_id: {
+                        "default": "Public Subnet ID 1"
+                    },
+                    vpc_public_subnet_id2_param.logical_id: {
+                        "default": "Public Subnet ID 2"
                     }
                 }
             }
