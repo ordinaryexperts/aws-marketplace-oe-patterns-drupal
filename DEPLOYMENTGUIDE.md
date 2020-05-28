@@ -2,24 +2,24 @@
 
 This AWS Marketplace template was created by Amazon Web Services Partners at Ordinary Experts with the aim of providing cloud developers a comprehensive AWS infrastructure that follows AWS best practices.
 
-- [Overview](#overview)
-  * [Amazon Web Services and Drupal](#amazon-web-services-and-drupal)
-  * [Cost and Licenses](#cost-and-licenses)
-- [Architecture](#architecture)
-  * [AWS Resources](#aws-resources)
-  * [Infrastructure](#infrastructure)
-- [Planning the Deployment](#planning-the-deployment)
-- [Deployment Options](#deployment-options)
-  * [Enable Routing via HTTPS](#to-enable-routing-via-https)
-  * [Use an Existing VPC](#to-use-an-existing-vpc)
-  * [Use Existing Snapshot and Secrets](#to-configure-database-with-existing-snapshot-and-secrets)
-  * [Use and Configure ElastiCache](#to-use-elasticache-and-configure-resource)
-  * [Use and Configure CloudFront](#to-use-cloudfront-and-configure-resource)
-  * [Configure Auto Scaling Groups](#to-configure-auto-scaling-groups)
-- [Security](#security)
-- [Troubleshooting](#troubleshooting)
-- [Additional Resources](#additional-resources)
-- [Document Revisions](#document-revisions)
+* [Overview](#overview)
+  - [Amazon Web Services and Drupal](#amazon-web-services-and-drupal)
+  - [Cost and Licenses](#cost-and-licenses)
+* [Architecture](#architecture)
+  - [AWS Resources](#aws-resources)
+  - [Infrastructure](#infrastructure)
+* [Planning the Deployment](#planning-the-deployment)
+* [Deployment Options](#deployment-options)
+  - [Enable Routing via HTTPS](#to-enable-routing-via-https)
+  - [Use an Existing VPC](#to-use-an-existing-vpc)
+  - [Use Existing Snapshot and Secrets](#to-configure-database-with-existing-snapshot-and-secrets)
+  - [Use and Configure ElastiCache](#to-use-elasticache-and-configure-resource)
+  - [Use and Configure CloudFront](#to-use-cloudfront-and-configure-resource)
+  - [Configure Auto Scaling Groups](#to-configure-auto-scaling-groups)
+* [Security](#security)
+* [Troubleshooting](#troubleshooting)
+* [Additional Resources](#additional-resources)
+* [Document Revisions](#document-revisions)
 
 ## Overview
 
@@ -34,7 +34,7 @@ You can use this template to:
 * Deploy Drupal using your existing VPC
 * Optionally configure AWS resources to better suit your requirements
 
-This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
+This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
 ### Cost and Licenses
 
@@ -54,6 +54,7 @@ The core AWS components in our architecture include the following AWS services:
 * **Amazon Elastic File System (Amazon EFS)** — Used to share user generated content between application servers.
 * **Amazon Simple Storage System (Amazon S3)** — Used to hold pipeline artifacts and store the source artifact for AWS CodePipeline. The source zip is your compressed Drupal project which is either uploaded manually or via another pipeline to the S3 bucket. When the source zip file is changed, the pipeline will be triggered to run.
 * **AWS CodePipeline** — Stack CI/CD polls the source zip in S3 for changes and uses CodeDeploy to deploy the updated source zip into Auto Scaling Group.
+* **AWS CodeBuild** — Build project using `appspec.yml` to set-up Drupal environment.
 * **AWS CodeDeploy** — Deploy action launches the updated source zip into the associated Auto Scaling Group and sends email to subscription email notifying deployment success or rollback.
 * **Amazon Secrets Manager** — Auto-generate database username and password without storing hard-coded values to guarantee high level of security.
 * **Amazon ElastiCache** — Optional memcached in-memory data storage
@@ -95,31 +96,110 @@ As stated previously, our template will provision a VPC with all associated comp
 
 The following optional parameters are accepted by the template to further customize the application stack.
 
-##### To enable routing via HTTPS:
+#### To enable routing via HTTPS:
+* CertificateArn (*default: `''`*):
+  - The ARN of the SSL certificate from Certificate Manager
+  - e.g. `arn:aws:acm:{region}:{accountId}:certificate/{certificateId}`
 
+#### To use an existing VPC:
+* CustomerVpcId (*default: `''`*):
+  - The ID of an existing VPC
+  - e.g. `vpc-{id}`
+* CustomerVpcPrivateSubnet1 (*default: `''`*):
+  - The ID of an existing VPC's private subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPrivateSubnet2 (*default: `''`*):
+  - The ID of an existing VPC's private subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPublicSubnet1 (*default: `''`*):
+  - The ID of an existing VPC's public subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPublicSubnet2 (*default: `''`*):
+  - The ID of an existing VPC's public subnet
+  - e.g. `subnet-{id}`
 
-##### To use an existing VPC:
+#### To configure database with existing snapshot and secrets:
+* DBSnapshotIdentifier (*default: `''`*):
+  - The ARN of the RDS snapshot to restore for database
+  - e.g. `arn:aws:rds:{region}:{accountId}:cluster-snapshot:
+{snapshotIdentifier}`
+* SecretArn (*default: `''`*):
+  - The ARN of the Secret Manager key
+  - e.g. `arn:aws:secretsmanager:{region}:{accountId}:secret:
+{secretIdentifier}`
 
-##### To configure database with existing snapshot and secrets:
+#### To use ElastiCache and configure resource:
+* ElastiCacheEnableParam (*default:* `false`):
+  - Boolean value to enable ElastiCache
+* ElastiCacheClusterCacheNodeTypeParam (*default:* `cache.t2.micro`):
+  - The node type for ElastiCache cluster
+  - Accepted values:<br>```[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ]```
+* ElastiCacheClusterEngineVersionParam (*default:* `1.5.16`):
+  - The engine version for ElastiCache cluster
+  - Accepted values:<br>```[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ]```
+* ElastiCacheEnableParam (*default:* `2`):
+  - The number of cache nodes for ElastiCache cluster
+  - Min: `1`, Max: `20`
 
-##### To use ElastiCache and configure resource:
+#### To use CloudFront and configure resource:
+* CloudFrontEnableParam (*default:* `false`):
+  - Boolean value to enable CloudFront
+* CloudFrontCertificateArn (*default:* `''`):
+  - The ARN of the SSL certificate from Certificate Manager
+  - e.g. `arn:aws:acm:{region}:{accountId}:certificate/{certificateId}`
+* CloudFrontOriginAccessPolicyParam (*default:* `match-viewer`):
+  - The origin access policy for CloudFront
+  - Accepted values:<br>```[ "http-only", "https-only", "match-viewer" ]```
+* CloudFrontPriceClassParam (*default:* `PriceClass_All`):
+  - The price class for CloudFront
+  - Accepted values:<br>```[ "PriceClass_All", "PriceClass_200", "PriceClass_100" ]```
 
-##### To use CloudFront and configure resource:
-
-##### To configure Auto Scaling Groups:
+#### To configure Auto Scaling Groups:
+* AppLaunchConfigInstanceType (*default:* `m5.xlarge`):
+  - The EC2 instance type for the Drupal server autoscaling group
+  - The full list of accepted values can be found [here](/cdk/drupal/allowed_instance_types.yaml)
+* AppAsgDesiredCapacity (*default:* `1`):
+  - The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain
+  - Min: `0`
+* AppAsgMaxSize (*default:* `2`):
+  - The maximum size of the Auto Scaling group
+  - Min: `0`
+* AppAsgMinSize (*default:* `1`):
+  - The minimum size of the Auto Scaling group
+  - Min: `0`
 
 ## Security
 
-This is an h1 heading
+The template follows best practice rules for AWS access by using IAM roles to grant the least privilege need to run the associated AWS resources. Each resource has assigned roles to dictate the performable actions and no resource has full privileges.
 
-## Troubleshooting
+The stack also includes built-in support for encrypting data at rest and in transport using default AWS managed keys. Both the Aurora Serverless database cluster and EFS file system are encrypted and if the CodePipeline artifact S3 bucket is created by our stack, it enforces encryption as well.
 
-This is an h1 heading
+The CloudFormation CDN accepts both HTTP and HTTPS traffic, communicating with the origin server as requested. However, if a certificate ARN is provided for SSL, the application load balancer redirects all traffic to HTTPS.
+
+For communication between the application and the database, the application developer has the ability to integrate the certificate authority file located at `/opt/aws/rds/AmazonRootCA1.pem` into Drupal’s settings.php for an encrypted connection.
+
+Finally, if the application stack creates a SecretsManager secret to store the database credentials, it is encrypted by Amazon’s managed key for that service as well.
+
+## FAQ
+
+If you have any questions, problems deploying, or feature requests, please use the Issues section of this Github repo.
 
 ## Additional Resources
 
-This is an h1 heading
-
-## Document Revisions
-
-This is an h1 heading
+* [Drupal 8](https://www.drupal.org/docs)
+* [AWS Identity Access Management (AWS IAM)](https://aws.amazon.com/iam/)
+* [Amazon Elastic Compute Cloud (Amazon EC2)](https://aws.amazon.com/ec2/)
+* [AWS Auto Scaling Groups](https://aws.amazon.com/ec2/autoscaling/)
+* [Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/)
+* [Amazon Virtual Public Cloud (Amazon VPC)](https://aws.amazon.com/vpc/)
+* [Amazon Aurora Serverless](https://aws.amazon.com/rds/aurora/serverless/)
+* [Amazon Elastic File System (Amazon EFS)](https://aws.amazon.com/efs/)
+* [Amazon Simple Storage System (Amazon S3)](https://aws.amazon.com/s3/)
+* [AWS CodePipeline](https://aws.amazon.com/codepipeline/)
+* [AWS CodeDeploy](https://aws.amazon.com/codedeploy/)
+* [AWS CodeBuild](https://aws.amazon.com/codebuild/)
+* [Amazon Secrets Manager](https://aws.amazon.com/secrets-manager/)
+* [Amazon ElastiCache](https://aws.amazon.com/elasticache/)
+* [Amazon CloudFront](https://aws.amazon.com/cloudfront/)
+* [Amazon Simple Notification Service (Amazon SNS)](https://aws.amazon.com/sns/)
+* [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/)
