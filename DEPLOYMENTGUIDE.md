@@ -19,7 +19,6 @@ This AWS Marketplace template was created by Amazon Web Services Partners at Ord
 * [Security](#security)
 * [Troubleshooting](#troubleshooting)
 * [Additional Resources](#additional-resources)
-* [Document Revisions](#document-revisions)
 
 ## Overview
 
