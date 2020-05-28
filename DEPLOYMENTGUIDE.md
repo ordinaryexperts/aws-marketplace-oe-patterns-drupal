@@ -36,6 +36,12 @@ You can use this template to:
 
 This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
+Regions supported by Ordinary Experts' stack:
+
+| Fully Supported | Unsupported |
+| -------------- | ----------- |
+| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li></ul> | <ul><li>eu-north-1 (Stockholm)</li><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li><li>sa-east-1 (Sao Paolo)</li><li>ap-northeast-2 (Seoul):</br>requires subnets in<br>specific AZs to run<br> Aurora Serverless.</li></ul> |
+
 ### Cost and Licenses
 
 This deployment launches Drupal 8 automatically into a configuration of your choice. Drupal is open-source software licensed under GNU GPL version 2. For information about Drupal’s licensing, please refer to [Drupal’s license documentation](https://www.drupal.org/about/licensing#q1). You are responsible for the cost of AWS services used while running this template and a subscription fee for using our template. For a detailed cost breakdown and estimate, please refer to the infrastructure pricing estimation calculator on our Marketplace product page. Prices are subject to change.
