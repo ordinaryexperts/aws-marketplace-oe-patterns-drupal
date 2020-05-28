@@ -157,8 +157,7 @@ jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoin
 # elasticache values
 if [[ "${ElastiCacheEnable}" == "true" ]]
 then
-    jq -n --arg host "${ElastiCacheClusterHost}" \
-       --arg port "${ElastiCacheClusterPort}" \
+    jq -n --arg host "${ElastiCacheClusterHost}" --arg port "${ElastiCacheClusterPort}" \
        '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
 fi
 
