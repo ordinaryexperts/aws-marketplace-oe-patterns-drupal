@@ -1,5 +1,10 @@
 # Unreleased
 
+* AWS::CloudFormation::Interface and other param fixes
+* Pass test buckets for each region
+* Update supported regions list
+* Pass creds in workflow to run clean script
+
 # 0.3.0
 
 * Schedule nightly workflow to test all scenarios

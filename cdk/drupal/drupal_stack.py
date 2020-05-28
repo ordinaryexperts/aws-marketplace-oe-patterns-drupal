@@ -78,7 +78,8 @@ class DrupalStack(core.Stack):
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
-            default=""
+            default="",
+            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. This can be handy when re-creating this template many times."
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -106,26 +107,32 @@ class DrupalStack(core.Stack):
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
+        pipeline_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
+            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub",
+            description="Required: AWS S3 Bucket name which contains the build artifacts for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
         source_artifact_s3_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
+            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
+            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
         notification_email_param = core.CfnParameter(
             self,
             "NotificationEmail",
-            default=""
+            default="",
+            description="Optional: Specify an email address to get emails about deploys and other system events."
         )
 
         certificate_arn_param = core.CfnParameter(
             self,
             "CertificateArn",
-            default=""
+            default="",
+            description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
         )
         certificate_arn_exists_condition = core.CfnCondition(
             self,
@@ -144,40 +151,45 @@ class DrupalStack(core.Stack):
         )
 
         # VPC
-        customer_vpc_id_param = core.CfnParameter(
+        vpc_id_param = core.CfnParameter(
             self,
-            "CustomerVpcId",
-            default=""
+            "VpcId",
+            default="",
+            description="Optional: Specify the VPC ID.  If not specified, a VPC will be created."
         )
-        customer_vpc_public_subnet_id1 = core.CfnParameter(
+        vpc_private_subnet_id1_param = core.CfnParameter(
             self,
-            "CustomerVpcPublicSubnet1",
-            default=""
+            "VpcPrivateSubnetId1",
+            default="",
+            description="Optional: Specify Subnet ID for first private subnet."
         )
-        customer_vpc_public_subnet_id2 = core.CfnParameter(
+        vpc_private_subnet_id2_param = core.CfnParameter(
             self,
-            "CustomerVpcPublicSubnet2",
-            default=""
+            "VpcPrivateSubnetId2",
+            default="",
+            description="Optional: Specify Subnet ID for second private subnet."
         )
-        customer_vpc_private_subnet_id1 = core.CfnParameter(
+        vpc_public_subnet_id1_param = core.CfnParameter(
             self,
-            "CustomerVpcPrivateSubnet1",
-            default=""
+            "VpcPublicSubnetId1",
+            default="",
+            description="Optional: Specify Subnet ID for first public subnet."
         )
-        customer_vpc_private_subnet_id2 = core.CfnParameter(
+        vpc_public_subnet_id2_param = core.CfnParameter(
             self,
-            "CustomerVpcPrivateSubnet2",
-            default=""
+            "VpcPublicSubnetId2",
+            default="",
+            description="Optional: Specify Subnet ID for second public subnet."
         )
-        customer_vpc_given_condition = core.CfnCondition(
+        vpc_given_condition = core.CfnCondition(
             self,
-            "CustomerVpcGiven",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, ""))
+            "VpcGiven",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(vpc_id_param.value, ""))
         )
-        customer_vpc_not_given_condition = core.CfnCondition(
+        vpc_not_given_condition = core.CfnCondition(
             self,
-            "CustomerVpcNotGiven",
-            expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
+            "VpcNotGiven",
+            expression=core.Fn.condition_equals(vpc_id_param.value, "")
         )
         vpc = aws_ec2.CfnVPC(
             self,
@@ -188,21 +200,21 @@ class DrupalStack(core.Stack):
             instance_tenancy="default",
             tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
         )
-        vpc.cfn_options.condition=customer_vpc_not_given_condition
+        vpc.cfn_options.condition=vpc_not_given_condition
 
         vpc_igw = aws_ec2.CfnInternetGateway(
             self,
             "VpcInternetGateway",
             tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
         )
-        vpc_igw.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_igw.cfn_options.condition=vpc_not_given_condition
         vpc_igw_attachment = aws_ec2.CfnVPCGatewayAttachment(
             self,
             "VpcIGWAttachment",
             vpc_id=vpc.ref,
             internet_gateway_id=vpc_igw.ref
         )
-        vpc_igw_attachment.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_igw_attachment.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_route_table = aws_ec2.CfnRouteTable(
             self,
@@ -210,7 +222,7 @@ class DrupalStack(core.Stack):
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicRouteTable".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_public_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPublicDefaultRoute",
@@ -218,7 +230,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             gateway_id=vpc_igw.ref
         )
-        vpc_public_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_default_route.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_subnet1 = aws_ec2.CfnSubnet(
             self,
@@ -234,20 +246,20 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Public")
             ]
         )
-        vpc_public_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPublicSubnet1RouteTableAssociation",
             route_table_id=vpc_public_route_table.ref,
             subnet_id=vpc_public_subnet1.ref
         )
-        vpc_public_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_eip = aws_ec2.CfnEIP(
             self,
             "VpcPublicSubnet1EIP",
             domain="vpc"
         )
-        vpc_public_subnet1_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_eip.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_nat_gateway = aws_ec2.CfnNatGateway(
             self,
             "VpcPublicSubnet1NATGateway",
@@ -255,7 +267,7 @@ class DrupalStack(core.Stack):
             subnet_id=vpc_public_subnet1.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_subnet1_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_nat_gateway.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -271,20 +283,20 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Public")
             ]
         )
-        vpc_public_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPublicSubnet2RouteTableAssociation",
             route_table_id=vpc_public_route_table.ref,
             subnet_id=vpc_public_subnet2.ref
         )
-        vpc_public_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_eip = aws_ec2.CfnEIP(
             self,
             "VpcPublicSubnet2EIP",
             domain="vpc"
         )
-        vpc_public_subnet2_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_eip.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_nat_gateway = aws_ec2.CfnNatGateway(
             self,
             "VpcPublicSubnet2NATGateway",
@@ -292,7 +304,7 @@ class DrupalStack(core.Stack):
             subnet_id=vpc_public_subnet1.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_subnet2_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_nat_gateway.cfn_options.condition=vpc_not_given_condition
 
         vpc_private_subnet1 = aws_ec2.CfnSubnet(
             self,
@@ -308,21 +320,21 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Private")
             ]
         )
-        vpc_private_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_route_table = aws_ec2.CfnRouteTable(
             self,
             "VpcPrivateSubnet1RouteTable",
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))]
         )
-        vpc_private_subnet1_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPrivateSubnet1RouteTableAssociation",
             route_table_id=vpc_private_subnet1_route_table.ref,
             subnet_id=vpc_private_subnet1.ref
         )
-        vpc_private_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPrivateSubnet1DefaultRoute",
@@ -330,7 +342,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             nat_gateway_id=vpc_public_subnet1_nat_gateway.ref
         )
-        vpc_private_subnet1_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_default_route.cfn_options.condition=vpc_not_given_condition
 
         vpc_private_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -346,21 +358,21 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Private")
             ]
         )
-        vpc_private_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_route_table = aws_ec2.CfnRouteTable(
             self,
             "VpcPrivateSubnet2RouteTable",
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))]
         )
-        vpc_private_subnet2_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPrivateSubnet2RouteTableAssociation",
             route_table_id=vpc_private_subnet2_route_table.ref,
             subnet_id=vpc_private_subnet2.ref
         )
-        vpc_private_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPrivateSubnet2DefaultRoute",
@@ -368,7 +380,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             nat_gateway_id=vpc_public_subnet2_nat_gateway.ref
         )
-        vpc_private_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_default_route.cfn_options.condition=vpc_not_given_condition
 
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
@@ -379,9 +391,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -394,9 +406,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -417,14 +429,14 @@ class DrupalStack(core.Stack):
                 "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
                 "SubnetIds":  {
                     "Fn::If": [
-                        customer_vpc_not_given_condition.logical_id,
+                        vpc_not_given_condition.logical_id,
                         [
                             vpc_private_subnet1.ref,
                             vpc_private_subnet2.ref
                         ],
                         [
-                            customer_vpc_private_subnet_id1.value.to_string(),
-                            customer_vpc_private_subnet_id2.value.to_string()
+                            vpc_private_subnet_id1_param.value_as_string,
+                            vpc_private_subnet_id2_param.value_as_string
 
                         ]
                     ]
@@ -451,7 +463,7 @@ class DrupalStack(core.Stack):
             self,
             "DBSnapshotIdentifier",
             default="",
-            description="An RDS database cluster snapshot ARN from which to restore. If this parameter is specified, you MUST manually edit the secret values to specify the snapshot credentials for the application."
+            description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
         )
         db_snapshot_identifier_exists_condition = core.CfnCondition(
             self,
@@ -462,8 +474,7 @@ class DrupalStack(core.Stack):
             self,
             "SecretArn",
             default="",
-            description="The ARN of an existing SecretsManager secret used to access the database credentials and store other configuration.",
-            type="String"
+            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified a secret will be created."
         )
         secret_arn_exists_condition = core.CfnCondition(
             self,
@@ -574,9 +585,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -611,14 +622,14 @@ class DrupalStack(core.Stack):
             "Properties.Subnets",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     [
                         vpc_public_subnet1.ref,
                         vpc_public_subnet2.ref
                     ],
                     [
-                        customer_vpc_public_subnet_id1.value.to_string(),
-                        customer_vpc_public_subnet_id2.value.to_string()
+                        vpc_public_subnet_id1_param.value_as_string,
+                        vpc_public_subnet_id2_param.value_as_string
                     ]
                 ]
             }
@@ -643,9 +654,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -699,9 +710,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -771,9 +782,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -812,9 +823,9 @@ class DrupalStack(core.Stack):
             "Properties.SubnetId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc_private_subnet1.ref,
-                    customer_vpc_private_subnet_id1.value.to_string()
+                    vpc_private_subnet_id1_param.value_as_string
                 ]
             }
         )
@@ -829,9 +840,9 @@ class DrupalStack(core.Stack):
             "Properties.SubnetId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc_private_subnet2.ref,
-                    customer_vpc_private_subnet_id2.value.to_string()
+                    vpc_private_subnet_id2_param.value_as_string
                 ]
             }
         )
@@ -842,22 +853,20 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterCacheNodeTypeParam",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
-            type="String"
+            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
             self,
             "ElastiCacheClusterEngineVersionParam",
-            # TODO: determine which versions are supported by the Drupal memcached module
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
-            description="The memcached version of the cache cluster.",
-            type="String"
+            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
             self,
             "ElastiCacheClusterNumCacheNodesParam",
             default=2,
-            description="The number of cache nodes in the memcached cluster.",
+            description="Required: The number of cache nodes in the memcached cluster (only applies ElastiCache enabled).",
             min_value=1,
             max_value=20,
             type="Number"
@@ -867,6 +876,7 @@ class DrupalStack(core.Stack):
             "ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
+            description="Required: Whether to provision ElastiCache memcached cluster."
         )
         elasticache_enable_condition = core.CfnCondition(
             self,
@@ -882,9 +892,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value_as_string
                 ]
             }
         )
@@ -907,14 +917,14 @@ class DrupalStack(core.Stack):
                 "Description": "test",
                 "SubnetIds":  {
                     "Fn::If": [
-                        customer_vpc_not_given_condition.logical_id,
+                        vpc_not_given_condition.logical_id,
                         [
                             vpc_private_subnet1.ref,
                             vpc_private_subnet2.ref
                         ],
                         [
-                            customer_vpc_private_subnet_id1.value.to_string(),
-                            customer_vpc_private_subnet_id2.value.to_string()
+                            vpc_private_subnet_id1_param.value_as_string,
+                            vpc_private_subnet_id2_param.value_as_string
                         ]
                     ]
                 }
@@ -948,14 +958,14 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontAliases",
             default="",
-            description="A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
+            description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
             type="CommaDelimitedList"
         )
         cloudfront_certificate_arn_param = core.CfnParameter(
             self,
             "CloudFrontCertificateArn",
             default="",
-            description="The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east region."
+            description="Optional: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east-1 region."
         )
         cloudfront_certificate_arn_exists_condition = core.CfnCondition(
             self,
@@ -967,7 +977,7 @@ class DrupalStack(core.Stack):
             "CloudFrontEnable",
             allowed_values=[ "true", "false" ],
             default="false",
-            description="Enable CloudFront CDN support."
+            description="Required: Enable CloudFront CDN support."
         )
         cloudfront_enable_condition = core.CfnCondition(
             self,
@@ -979,7 +989,7 @@ class DrupalStack(core.Stack):
             "CloudFrontOriginAccessPolicyParam",
             allowed_values = [ "http-only", "https-only", "match-viewer" ],
             default="match-viewer",
-            description="CloudFront access policy for communicating with content origin."
+            description="Required: CloudFront access policy for communicating with content origin (only applies when CloudFront enabled)."
         )
         cloudfront_price_class_param = core.CfnParameter(
             self,
@@ -991,7 +1001,7 @@ class DrupalStack(core.Stack):
                 "PriceClass_100"
             ],
             default="PriceClass_All",
-            description="Price class to use for CloudFront CDN."
+            description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
         )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
@@ -1146,14 +1156,14 @@ class DrupalStack(core.Stack):
             self,
             "AppLaunchConfigInstanceType",
             allowed_values=allowed_instance_types,
-            default="t3.micro",
-            description="The EC2 instance type for the Drupal server autoscaling group"
+            default="m5.xlarge",
+            description="Required: The EC2 instance type for the application Auto Scaling Group."
         )
         asg_desired_capacity_param = core.CfnParameter(
             self,
             "AppAsgDesiredCapacity",
             default=1,
-            description="The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain.",
+            description="Required: The desired capacity of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1161,7 +1171,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsgMaxSize",
             default=2,
-            description="The maximum size of the Auto Scaling group.",
+            description="Required: The maximum size of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1169,7 +1179,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsgMinSize",
             default=1,
-            description="The minimum size of the Auto Scaling group.",
+            description="Required: The minimum size of the Auto Scaling Group.",
             min_value=0,
             type="Number"
         )
@@ -1217,6 +1227,7 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
+            # using value.to_string() here because these parameters are Number type
             desired_capacity=asg_desired_capacity_param.value.to_string(),
             max_size=asg_max_size_param.value.to_string(),
             min_size=asg_min_size_param.value.to_string()
@@ -1225,10 +1236,10 @@ class DrupalStack(core.Stack):
             "Properties.VPCZoneIdentifier",
             {
                 "Fn::If": [
-                    customer_vpc_given_condition.logical_id,
+                    vpc_given_condition.logical_id,
                     [
-                        customer_vpc_private_subnet_id1.value.to_string(),
-                        customer_vpc_private_subnet_id2.value.to_string()
+                        vpc_private_subnet_id1_param.value_as_string,
+                        vpc_private_subnet_id2_param.value_as_string
                     ],
                     [
                         vpc_private_subnet1.ref,
@@ -1757,3 +1768,162 @@ class DrupalStack(core.Stack):
                 selection_name="{}-selection".format(core.Aws.STACK_NAME)
             )
         )
+
+        # AWS::CloudFormation::Interface
+        self.template_options.metadata = {
+            "AWS::CloudFormation::Interface": {
+                "ParameterGroups": [
+                    {
+                        "Label": {
+                            "default": "CI/CD"
+                        },
+                        "Parameters": [
+                            notification_email_param.logical_id,
+                            source_artifact_s3_bucket_param.logical_id,
+                            source_artifact_s3_object_key_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Data Snapshots"
+                        },
+                        "Parameters": [
+                            db_snapshot_identifier_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Application Config"
+                        },
+                        "Parameters": [
+                            certificate_arn_param.logical_id,
+                            secret_arn_param.logical_id,
+                            app_instance_type_param.logical_id,
+                            asg_min_size_param.logical_id,
+                            asg_max_size_param.logical_id,
+                            asg_desired_capacity_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "ElastiCache memcached"
+                        },
+                        "Parameters": [
+                            elasticache_enable_param.logical_id,
+                            elasticache_cluster_engine_version_param.logical_id,
+                            elasticache_cluster_cache_node_type_param.logical_id,
+                            elasticache_cluster_num_cache_nodes_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "CloudFront"
+                        },
+                        "Parameters": [
+                            cloudfront_enable_param.logical_id,
+                            cloudfront_certificate_arn_param.logical_id,
+                            cloudfront_aliases_param.logical_id,
+                            cloudfront_origin_access_policy_param.logical_id,
+                            cloudfront_price_class_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "VPC"
+                        },
+                        "Parameters": [
+                            vpc_id_param.logical_id,
+                            vpc_private_subnet_id1_param.logical_id,
+                            vpc_private_subnet_id2_param.logical_id,
+                            vpc_public_subnet_id1_param.logical_id,
+                            vpc_public_subnet_id2_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Template Development"
+                        },
+                        "Parameters": [
+                            pipeline_artifact_bucket_name_param.logical_id
+                        ]
+                    }
+                ],
+                "ParameterLabels": {
+                    app_instance_type_param.logical_id: {
+                        "default": "Instance Type"
+                    },
+                    asg_desired_capacity_param.logical_id: {
+                        "default": "Auto Scaling Group Desired Capacity"
+                    },
+                    asg_max_size_param.logical_id: {
+                        "default": "Auto Scaling Group Maximum Size"
+                    },
+                    asg_min_size_param.logical_id: {
+                        "default": "Auto Scaling Group Minimum Size"
+                    },
+                    certificate_arn_param.logical_id: {
+                        "default": "ACM Certificate ARN"
+                    },
+                    cloudfront_aliases_param.logical_id: {
+                        "default": "CloudFront Aliases"
+                    },
+                    cloudfront_certificate_arn_param.logical_id: {
+                        "default": "CloudFront ACM Certificate ARN"
+                    },
+                    cloudfront_enable_param.logical_id: {
+                        "default": "Enable CloudFront"
+                    },
+                    cloudfront_origin_access_policy_param.logical_id: {
+                        "default": "CloudFront Origin Access Policy"
+                    },
+                    cloudfront_price_class_param.logical_id: {
+                        "default": "CloudFront Price Class"
+                    },
+                    db_snapshot_identifier_param.logical_id: {
+                        "default": "RDS Snapshot Identifier"
+                    },
+                    elasticache_cluster_cache_node_type_param.logical_id: {
+                        "default": "ElastiCache Cache Node Type"
+                    },
+                    elasticache_cluster_engine_version_param.logical_id: {
+                        "default": "ElastiCache Engine Version"
+                    },
+                    elasticache_cluster_num_cache_nodes_param.logical_id: {
+                        "default": "ElastiCache Num Nodes"
+                    },
+                    elasticache_enable_param.logical_id: {
+                        "default": "Enable ElastiCache"
+                    },
+                    notification_email_param.logical_id: {
+                        "default": "Notification Email"
+                    },
+                    pipeline_artifact_bucket_name_param.logical_id: {
+                        "default": "CodePipeline Bucket Name"
+                    },
+                    secret_arn_param.logical_id: {
+                        "default": "SecretsManager secret ARN"
+                    },
+                    source_artifact_s3_bucket_param.logical_id: {
+                        "default": "Source Artifact S3 Bucket Name"
+                    },
+                    source_artifact_s3_object_key_param.logical_id: {
+                        "default": "Source Artifact S3 Object Key (path)"
+                    },
+                    vpc_id_param.logical_id: {
+                        "default": "VPC ID"
+                    },
+                    vpc_private_subnet_id1_param.logical_id: {
+                        "default": "Private Subnet ID 1"
+                    },
+                    vpc_private_subnet_id2_param.logical_id: {
+                        "default": "Private Subnet ID 2"
+                    },
+                    vpc_public_subnet_id1_param.logical_id: {
+                        "default": "Public Subnet ID 1"
+                    },
+                    vpc_public_subnet_id2_param.logical_id: {
+                        "default": "Public Subnet ID 2"
+                    }
+                }
+            }
+        }
