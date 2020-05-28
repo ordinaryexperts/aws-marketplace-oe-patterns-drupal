@@ -1,5 +1,7 @@
 # Unreleased
 
+# 0.3.0
+
 * Schedule nightly workflow to test all scenarios
 * Test all resources scenario only in main workflow
 * Expand test support into other regions
