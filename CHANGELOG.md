@@ -1,5 +1,7 @@
 # Unreleased
 
+* AWS::CloudFormation::Interface and other param fixes
+
 # 0.3.0
 
 * Schedule nightly workflow to test all scenarios
