@@ -12,7 +12,7 @@ Automatically configured to support auto-scaling through AWS Autoscaling Groups,
 
 We support multiple availability zones using an RDS Aurora serverless cluster and Amazon's integrated options to distribute infrastructure.
 
-Regions suppored by OE stack based on Aurora serverless availability:
+Regions supported by Ordinary Experts' stack:
 
 | Fully Supported | Partially Supported | Unsupported |
 | ----------- | ----------- | ----------- |
