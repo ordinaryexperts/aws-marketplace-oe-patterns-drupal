@@ -1,4 +1,6 @@
-# Ordinary Experts Drupal 8 on AWS Pattern
+![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
+
+# Drupal 8 on AWS Pattern
 
 ## Drupal Stack
 

@@ -1,4 +1,6 @@
-# Ordinary Experts Drupal 8 on AWS Deployment Guide
+![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
+
+# Drupal 8 on AWS Deployment Guide
 
 This AWS Marketplace template was created by Amazon Web Services Partners at Ordinary Experts with the aim of providing cloud developers a comprehensive AWS infrastructure that follows AWS best practices.
 
