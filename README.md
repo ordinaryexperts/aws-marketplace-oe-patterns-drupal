@@ -2,8 +2,6 @@
 
 # Drupal 8 on AWS Pattern
 
-## Drupal Stack
-
 The Ordinary Experts Drupal 8 Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal 8 project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal 8 app in the AWS cloud.
 
 Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal 8 application or can be provided with an existing Drupal project.
@@ -30,6 +28,8 @@ Optional configurations include the following:
 * Support for SSL by supplying the ARN of an existing certificate from AWS Certificate Manager.
 
 Comprehensive, professional cloud hosting for Drupal at the click of a button.
+
+## Drupal Stack Infrastructure
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
