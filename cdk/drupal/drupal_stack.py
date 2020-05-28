@@ -106,6 +106,8 @@ class DrupalStack(core.Stack):
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
+        pipeline_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
