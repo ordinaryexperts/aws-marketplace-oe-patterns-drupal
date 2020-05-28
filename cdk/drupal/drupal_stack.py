@@ -148,45 +148,46 @@ class DrupalStack(core.Stack):
         )
 
         # VPC
-        customer_vpc_id_param = core.CfnParameter(
+        vpc_id_param = core.CfnParameter(
             self,
-            "CustomerVpcId",
+            "VpcIdParam",
+            default="",
+            type="AWS::EC2::VPC::Id",
+            description="To use an existing VPC, specify the VPC ID."
+        )
+        vpc_public_subnet_id1_param = core.CfnParameter(
+            self,
+            "VpcPublicSubnet1Param",
             default="",
             description="TODO"
         )
-        customer_vpc_public_subnet_id1 = core.CfnParameter(
+        vpc_public_subnet_id2_param = core.CfnParameter(
             self,
-            "CustomerVpcPublicSubnet1",
+            "VpcPublicSubnet2Param",
             default="",
             description="TODO"
         )
-        customer_vpc_public_subnet_id2 = core.CfnParameter(
+        vpc_private_subnet_id1_param = core.CfnParameter(
             self,
-            "CustomerVpcPublicSubnet2",
+            "VpcPrivateSubnet1Param",
             default="",
             description="TODO"
         )
-        customer_vpc_private_subnet_id1 = core.CfnParameter(
+        vpc_private_subnet_id2_param = core.CfnParameter(
             self,
-            "CustomerVpcPrivateSubnet1",
+            "VpcPrivateSubnet2Param",
             default="",
             description="TODO"
         )
-        customer_vpc_private_subnet_id2 = core.CfnParameter(
+        vpc_given_condition = core.CfnCondition(
             self,
-            "CustomerVpcPrivateSubnet2",
-            default="",
-            description="TODO"
+            "VpcGiven",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(vpc_id_param.value, ""))
         )
-        customer_vpc_given_condition = core.CfnCondition(
+        vpc_not_given_condition = core.CfnCondition(
             self,
-            "CustomerVpcGiven",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(customer_vpc_id_param.value, ""))
-        )
-        customer_vpc_not_given_condition = core.CfnCondition(
-            self,
-            "CustomerVpcNotGiven",
-            expression=core.Fn.condition_equals(customer_vpc_id_param.value, "")
+            "VpcNotGiven",
+            expression=core.Fn.condition_equals(vpc_id_param.value, "")
         )
         vpc = aws_ec2.CfnVPC(
             self,
@@ -197,21 +198,21 @@ class DrupalStack(core.Stack):
             instance_tenancy="default",
             tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
         )
-        vpc.cfn_options.condition=customer_vpc_not_given_condition
+        vpc.cfn_options.condition=vpc_not_given_condition
 
         vpc_igw = aws_ec2.CfnInternetGateway(
             self,
             "VpcInternetGateway",
             tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
         )
-        vpc_igw.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_igw.cfn_options.condition=vpc_not_given_condition
         vpc_igw_attachment = aws_ec2.CfnVPCGatewayAttachment(
             self,
             "VpcIGWAttachment",
             vpc_id=vpc.ref,
             internet_gateway_id=vpc_igw.ref
         )
-        vpc_igw_attachment.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_igw_attachment.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_route_table = aws_ec2.CfnRouteTable(
             self,
@@ -219,7 +220,7 @@ class DrupalStack(core.Stack):
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicRouteTable".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_public_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPublicDefaultRoute",
@@ -227,7 +228,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             gateway_id=vpc_igw.ref
         )
-        vpc_public_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_default_route.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_subnet1 = aws_ec2.CfnSubnet(
             self,
@@ -243,20 +244,20 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Public")
             ]
         )
-        vpc_public_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPublicSubnet1RouteTableAssociation",
             route_table_id=vpc_public_route_table.ref,
             subnet_id=vpc_public_subnet1.ref
         )
-        vpc_public_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_eip = aws_ec2.CfnEIP(
             self,
             "VpcPublicSubnet1EIP",
             domain="vpc"
         )
-        vpc_public_subnet1_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_eip.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet1_nat_gateway = aws_ec2.CfnNatGateway(
             self,
             "VpcPublicSubnet1NATGateway",
@@ -264,7 +265,7 @@ class DrupalStack(core.Stack):
             subnet_id=vpc_public_subnet1.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_subnet1_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet1_nat_gateway.cfn_options.condition=vpc_not_given_condition
 
         vpc_public_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -280,20 +281,20 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Public")
             ]
         )
-        vpc_public_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPublicSubnet2RouteTableAssociation",
             route_table_id=vpc_public_route_table.ref,
             subnet_id=vpc_public_subnet2.ref
         )
-        vpc_public_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_eip = aws_ec2.CfnEIP(
             self,
             "VpcPublicSubnet2EIP",
             domain="vpc"
         )
-        vpc_public_subnet2_eip.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_eip.cfn_options.condition=vpc_not_given_condition
         vpc_public_subnet2_nat_gateway = aws_ec2.CfnNatGateway(
             self,
             "VpcPublicSubnet2NATGateway",
@@ -301,7 +302,7 @@ class DrupalStack(core.Stack):
             subnet_id=vpc_public_subnet1.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))]
         )
-        vpc_public_subnet2_nat_gateway.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_public_subnet2_nat_gateway.cfn_options.condition=vpc_not_given_condition
 
         vpc_private_subnet1 = aws_ec2.CfnSubnet(
             self,
@@ -317,21 +318,21 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Private")
             ]
         )
-        vpc_private_subnet1.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_route_table = aws_ec2.CfnRouteTable(
             self,
             "VpcPrivateSubnet1RouteTable",
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))]
         )
-        vpc_private_subnet1_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPrivateSubnet1RouteTableAssociation",
             route_table_id=vpc_private_subnet1_route_table.ref,
             subnet_id=vpc_private_subnet1.ref
         )
-        vpc_private_subnet1_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet1_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPrivateSubnet1DefaultRoute",
@@ -339,7 +340,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             nat_gateway_id=vpc_public_subnet1_nat_gateway.ref
         )
-        vpc_private_subnet1_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet1_default_route.cfn_options.condition=vpc_not_given_condition
 
         vpc_private_subnet2 = aws_ec2.CfnSubnet(
             self,
@@ -355,21 +356,21 @@ class DrupalStack(core.Stack):
                 core.CfnTag(key="aws-cdk:subnet-type", value="Private")
             ]
         )
-        vpc_private_subnet2.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_route_table = aws_ec2.CfnRouteTable(
             self,
             "VpcPrivateSubnet2RouteTable",
             vpc_id=vpc.ref,
             tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))]
         )
-        vpc_private_subnet2_route_table.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
             self,
             "VpcPrivateSubnet2RouteTableAssociation",
             route_table_id=vpc_private_subnet2_route_table.ref,
             subnet_id=vpc_private_subnet2.ref
         )
-        vpc_private_subnet2_route_table_association.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
         vpc_private_subnet2_default_route = aws_ec2.CfnRoute(
             self,
             "VpcPrivateSubnet2DefaultRoute",
@@ -377,7 +378,7 @@ class DrupalStack(core.Stack):
             destination_cidr_block="0.0.0.0/0",
             nat_gateway_id=vpc_public_subnet2_nat_gateway.ref
         )
-        vpc_private_subnet2_default_route.cfn_options.condition=customer_vpc_not_given_condition
+        vpc_private_subnet2_default_route.cfn_options.condition=vpc_not_given_condition
 
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
@@ -388,9 +389,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -403,9 +404,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -426,14 +427,14 @@ class DrupalStack(core.Stack):
                 "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
                 "SubnetIds":  {
                     "Fn::If": [
-                        customer_vpc_not_given_condition.logical_id,
+                        vpc_not_given_condition.logical_id,
                         [
                             vpc_private_subnet1.ref,
                             vpc_private_subnet2.ref
                         ],
                         [
-                            customer_vpc_private_subnet_id1.value.to_string(),
-                            customer_vpc_private_subnet_id2.value.to_string()
+                            vpc_private_subnet_id1_param.value.to_string(),
+                            vpc_private_subnet_id2_param.value.to_string()
 
                         ]
                     ]
@@ -582,9 +583,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -619,14 +620,14 @@ class DrupalStack(core.Stack):
             "Properties.Subnets",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     [
                         vpc_public_subnet1.ref,
                         vpc_public_subnet2.ref
                     ],
                     [
-                        customer_vpc_public_subnet_id1.value.to_string(),
-                        customer_vpc_public_subnet_id2.value.to_string()
+                        vpc_public_subnet_id1_param.value.to_string(),
+                        vpc_public_subnet_id2_param.value.to_string()
                     ]
                 ]
             }
@@ -651,9 +652,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -707,9 +708,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -778,9 +779,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -809,9 +810,9 @@ class DrupalStack(core.Stack):
             "Properties.SubnetId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc_private_subnet1.ref,
-                    customer_vpc_private_subnet_id1.value.to_string()
+                    vpc_private_subnet_id1_param.value.to_string()
                 ]
             }
         )
@@ -826,9 +827,9 @@ class DrupalStack(core.Stack):
             "Properties.SubnetId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc_private_subnet2.ref,
-                    customer_vpc_private_subnet_id2.value.to_string()
+                    vpc_private_subnet_id2_param.value.to_string()
                 ]
             }
         )
@@ -839,13 +840,12 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterCacheNodeTypeParam",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
-            description="TODO",
+            description="Instance type for the memcached cluster nodes.",
             type="String"
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
             self,
             "ElastiCacheClusterEngineVersionParam",
-            # TODO: determine which versions are supported by the Drupal memcached module
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
             description="The memcached version of the cache cluster.",
@@ -881,9 +881,9 @@ class DrupalStack(core.Stack):
             "Properties.VpcId",
             {
                 "Fn::If": [
-                    customer_vpc_not_given_condition.logical_id,
+                    vpc_not_given_condition.logical_id,
                     vpc.ref,
-                    customer_vpc_id_param.value.to_string()
+                    vpc_id_param.value.to_string()
                 ]
             }
         )
@@ -906,14 +906,14 @@ class DrupalStack(core.Stack):
                 "Description": "test",
                 "SubnetIds":  {
                     "Fn::If": [
-                        customer_vpc_not_given_condition.logical_id,
+                        vpc_not_given_condition.logical_id,
                         [
                             vpc_private_subnet1.ref,
                             vpc_private_subnet2.ref
                         ],
                         [
-                            customer_vpc_private_subnet_id1.value.to_string(),
-                            customer_vpc_private_subnet_id2.value.to_string()
+                            vpc_private_subnet_id1_param.value.to_string(),
+                            vpc_private_subnet_id2_param.value.to_string()
                         ]
                     ]
                 }
@@ -1224,10 +1224,10 @@ class DrupalStack(core.Stack):
             "Properties.VPCZoneIdentifier",
             {
                 "Fn::If": [
-                    customer_vpc_given_condition.logical_id,
+                    vpc_given_condition.logical_id,
                     [
-                        customer_vpc_private_subnet_id1.value.to_string(),
-                        customer_vpc_private_subnet_id2.value.to_string()
+                        vpc_private_subnet_id1_param.value.to_string(),
+                        vpc_private_subnet_id2_param.value.to_string()
                     ],
                     [
                         vpc_private_subnet1.ref,
