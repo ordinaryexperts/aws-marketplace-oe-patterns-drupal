@@ -152,36 +152,31 @@ class DrupalStack(core.Stack):
             self,
             "VpcId",
             default="",
-            description="Optional: Specify the VPC ID.  If not specified, a VPC will be created.",
-            type="AWS::EC2::VPC::Id"
+            description="Optional: Specify the VPC ID.  If not specified, a VPC will be created."
         )
         vpc_private_subnet_id1_param = core.CfnParameter(
             self,
             "VpcPrivateSubnetId1",
             default="",
-            description="Optional: Specify Subnet ID for first private subnet.",
-            type="AWS::EC2::Subnet::Id"
+            description="Optional: Specify Subnet ID for first private subnet."
         )
         vpc_private_subnet_id2_param = core.CfnParameter(
             self,
             "VpcPrivateSubnetId2",
             default="",
-            description="Optional: Specify Subnet ID for second private subnet.",
-            type="AWS::EC2::Subnet::Id"
+            description="Optional: Specify Subnet ID for second private subnet."
         )
         vpc_public_subnet_id1_param = core.CfnParameter(
             self,
             "VpcPublicSubnetId1",
             default="",
-            description="Optional: Specify Subnet ID for first public subnet.",
-            type="AWS::EC2::Subnet::Id"
+            description="Optional: Specify Subnet ID for first public subnet."
         )
         vpc_public_subnet_id2_param = core.CfnParameter(
             self,
             "VpcPublicSubnetId2",
             default="",
-            description="Optional: Specify Subnet ID for second public subnet.",
-            type="AWS::EC2::Subnet::Id"
+            description="Optional: Specify Subnet ID for second public subnet."
         )
         vpc_given_condition = core.CfnCondition(
             self,
@@ -476,8 +471,7 @@ class DrupalStack(core.Stack):
             self,
             "SecretArn",
             default="",
-            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified a secret will be created.",
-            type="String"
+            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified a secret will be created."
         )
         secret_arn_exists_condition = core.CfnCondition(
             self,
@@ -844,16 +838,14 @@ class DrupalStack(core.Stack):
             "ElastiCacheClusterCacheNodeTypeParam",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
-            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled).",
-            type="String"
+            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
             self,
             "ElastiCacheClusterEngineVersionParam",
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
-            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled).",
-            type="String"
+            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
             self,
