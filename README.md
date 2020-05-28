@@ -49,4 +49,4 @@ Then:
 Detailed information about the architecture and step-by-step instructions are available on our [deployment guide](DEPLOYMENTGUIDE.md).
 
 ## Feedback
-To post feedback, submit feature ideas, or report bugs, use the Issues section of this GitHub repo.
+To post feedback, submit feature ideas, or report bugs, use the [Issues section](https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/issues) of this GitHub repo.

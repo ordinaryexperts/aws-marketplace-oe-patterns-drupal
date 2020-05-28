@@ -189,7 +189,7 @@ Finally, if the application stack creates a SecretsManager secret to store the d
 
 ## FAQ
 
-If you have any questions, problems deploying, or feature requests, please use the Issues section of this Github repo.
+If you have any questions, problems deploying, or feature requests, please use the [Issues section](https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/issues) of this Github repo.
 
 ## Additional Resources
 
