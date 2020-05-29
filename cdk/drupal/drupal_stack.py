@@ -948,6 +948,13 @@ class DrupalStack(core.Stack):
             description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
             type="CommaDelimitedList"
         )
+        cloudfront_aliases_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontAliasesExist",
+            expression=core.Fn.condition_not(
+                core.Fn.condition_equals(core.Fn.select(0, cloudfront_aliases_param.value_as_list), "")
+            )
+        )
         cloudfront_certificate_arn_param = core.CfnParameter(
             self,
             "CloudFrontCertificateArn",
@@ -997,11 +1004,27 @@ class DrupalStack(core.Stack):
                 aliases=cloudfront_aliases_param.value_as_list,
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
+                    allowed_methods=[
+                        "DELETE",
+                        "GET",
+                        "HEAD",
+                        "OPTIONS",
+                        "PATCH",
+                        "POST",
+                        "PUT"
+                    ],
+                    compress=True,
                     default_ttl=86400,
                     forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        headers=[ "Host" ],
+                        cookies=aws_cloudfront.CfnDistribution.CookiesProperty(
+                            forward="whitelist",
+                            whitelisted_names=[ "SESS*" ]
+                        ),
+                        headers=[
+                            "CloudFront-Forwarded-Proto",
+                            "Host",
+                            "Origin"
+                        ],
                         query_string=True
                     ),
                     min_ttl=0,
@@ -1015,7 +1038,7 @@ class DrupalStack(core.Stack):
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string,
-                        origin_ssl_protocols=[ "TLSv1.2" ]
+                        origin_ssl_protocols=[ "TLSv1.1", "TLSv1.2" ]
                     )
                 )],
                 price_class=cloudfront_price_class_param.value_as_string,
@@ -1025,7 +1048,16 @@ class DrupalStack(core.Stack):
                         cloudfront_certificate_arn_param.value_as_string,
                         core.Aws.NO_VALUE
                     ).to_string(),
-                    minimum_protocol_version="TLSv1.2_2018",
+                    cloud_front_default_certificate=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        core.Aws.NO_VALUE,
+                        True
+                    ),
+                    minimum_protocol_version=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "TLSv1.2_2018",
+                        core.Aws.NO_VALUE
+                    ).to_string(),
                     ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
@@ -1034,15 +1066,15 @@ class DrupalStack(core.Stack):
                 )
             )
         )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
-            {
-                "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
-                ]
-            }
+        cloudfront_distribution_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource="distribution",
+                resource_name=cloudfront_distribution.ref,
+                service="cloudfront"
+            ),
+            stack=self
         )
         cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
         cloudfront_distribution_endpoint_output = core.CfnOutput(
@@ -1122,6 +1154,17 @@ class DrupalStack(core.Stack):
                             resources=[ "*" ]
                         )
                     ]
+                ),
+                "AllowCloudfrontAccess": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "cloudfront:GetDistribution"
+                            ],
+                            resources=[ cloudfront_distribution_arn ]
+                        )
+                    ]
                 )
             }
         )
@@ -1186,7 +1229,11 @@ class DrupalStack(core.Stack):
                         {
                             "CloudFrontHost": core.Fn.condition_if(
                                 cloudfront_enable_condition.logical_id,
-                                cloudfront_distribution.attr_domain_name,
+                                core.Fn.condition_if(
+                                    cloudfront_aliases_exist_condition.logical_id,
+                                    core.Fn.select(0, cloudfront_aliases_param.value_as_list),
+                                    cloudfront_distribution.attr_domain_name
+                                ).to_string(),
                                 ""
                             ).to_string(),
                             "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
