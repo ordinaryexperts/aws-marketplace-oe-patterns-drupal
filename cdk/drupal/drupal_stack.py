@@ -539,6 +539,7 @@ class DrupalStack(core.Stack):
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
+            backup_retention_period=35,
             engine="aurora",
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
