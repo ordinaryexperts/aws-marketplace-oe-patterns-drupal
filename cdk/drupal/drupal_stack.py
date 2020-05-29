@@ -775,8 +775,7 @@ class DrupalStack(core.Stack):
         efs_sg = aws_ec2.CfnSecurityGroup(
             self,
             "EfsSg",
-            group_description="EFS SG",
-            tags=[core.CfnTag(key="{}-backup".format(core.Aws.STACK_NAME), value="true")]
+            group_description="EFS SG"
         )
         efs_sg.add_override(
             "Properties.VpcId",
@@ -800,7 +799,13 @@ class DrupalStack(core.Stack):
         efs = aws_efs.CfnFileSystem(
             self,
             "AppEfs",
-            encrypted=True
+            encrypted=True,
+            file_system_tags=[
+                aws_efs.CfnFileSystem.ElasticFileSystemTagProperty(
+                    key="{}-backup".format(core.Aws.STACK_NAME),
+                    value="true"
+                )
+            ]
         )
         efs_arn = core.Arn.format(
             components=core.ArnComponents(
@@ -1745,13 +1750,11 @@ class DrupalStack(core.Stack):
             self,
             "BackupRole",
             assumed_by=aws_iam.ServicePrincipal("backup.amazonaws.com"),
+            managed_policies=[
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForBackup"),
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForRestores")
+            ]
         )
-        backup_role.add_managed_policy(
-            aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForBackup")
-        );
-        backup_role.add_managed_policy(
-            aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForRestores")
-        );
         backup_selection = aws_backup.CfnBackupSelection(
             self,
             "BackupSelection",
