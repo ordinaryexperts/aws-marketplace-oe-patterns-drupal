@@ -993,14 +993,6 @@ class DrupalStack(core.Stack):
                 core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
             )
         )
-        # TODO: remove parameter? - determine http-only or https-only based on cert existence
-        cloudfront_origin_access_policy_param = core.CfnParameter(
-            self,
-            "CloudFrontOriginAccessPolicyParam",
-            allowed_values = [ "http-only", "https-only", "match-viewer" ],
-            default="match-viewer",
-            description="Required: CloudFront access policy for communicating with content origin (only applies when CloudFront enabled)."
-        )
         cloudfront_price_class_param = core.CfnParameter(
             self,
             "CloudFrontPriceClassParam",
@@ -1045,15 +1037,23 @@ class DrupalStack(core.Stack):
                     min_ttl=0,
                     max_ttl=31536000,
                     target_origin_id="alb",
-                    # TODO: parameterize?
-                    viewer_protocol_policy="allow-all"
+                    # when alb certificate is supplied, we automatically redirect http traffic to https.
+                    # using that as a best-practice pattern, we redirect all traffic at cloudfront as well,
+                    # covered either by the default AWS cloudfront cert when no aliases are supplied, or by the
+                    # cert of the CloudFrontCertificateArn parameter.
+                    viewer_protocol_policy="redirect-to-https"
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
                     domain_name=alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string,
+                        # if there is an ssl cert on the alb, use https only
+                        origin_protocol_policy=core.Fn.condition_if(
+                            certificate_arn_exists_condition.logical_id,
+                            "https-only",
+                            "http-only"
+                        ).to_string(),
                         origin_ssl_protocols=[ "TLSv1.1", "TLSv1.2" ]
                     )
                 )],
@@ -1800,7 +1800,6 @@ class DrupalStack(core.Stack):
                             cloudfront_enable_param.logical_id,
                             cloudfront_certificate_arn_param.logical_id,
                             cloudfront_aliases_param.logical_id,
-                            cloudfront_origin_access_policy_param.logical_id,
                             cloudfront_price_class_param.logical_id
                         ]
                     },
@@ -1849,9 +1848,6 @@ class DrupalStack(core.Stack):
                     },
                     cloudfront_enable_param.logical_id: {
                         "default": "Enable CloudFront"
-                    },
-                    cloudfront_origin_access_policy_param.logical_id: {
-                        "default": "CloudFront Origin Access Policy"
                     },
                     cloudfront_price_class_param.logical_id: {
                         "default": "CloudFront Price Class"
