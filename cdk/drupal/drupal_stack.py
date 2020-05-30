@@ -978,6 +978,22 @@ class DrupalStack(core.Stack):
             "CloudFrontEnableCondition",
             expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
         )
+        cloudfront_aliases_certificate_rule = core.CfnRule(
+            self,
+            "CloudFrontAliasesAndCertificateRequiredRule",
+            assertions=[
+                core.CfnRuleAssertion(
+                    assert_=core.Fn.condition_not(
+                        core.Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
+                    ),
+                    assert_description="When providing a set of aliases for CloudFront, you must also supply a trusted CloudFrontCertificateArn parameter which validates your authorization to use those domain names"
+                )
+            ],
+            rule_condition=core.Fn.condition_not(
+                core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
+            )
+        )
+        # TODO: remove parameter? - determine http-only or https-only based on cert existence
         cloudfront_origin_access_policy_param = core.CfnParameter(
             self,
             "CloudFrontOriginAccessPolicyParam",
@@ -1001,7 +1017,6 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                aliases=cloudfront_aliases_param.value_as_list,
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[
@@ -1065,6 +1080,16 @@ class DrupalStack(core.Stack):
                     ).to_string()
                 )
             )
+        )
+        cloudfront_distribution.add_override(
+            "Properties.DistributionConfig.Aliases",
+            {
+                "Fn::If": [
+                    cloudfront_aliases_exist_condition.logical_id,
+                    cloudfront_aliases_param.value_as_list,
+                    core.Aws.NO_VALUE
+                ]
+            }
         )
         cloudfront_distribution_arn = core.Arn.format(
             components=core.ArnComponents(
