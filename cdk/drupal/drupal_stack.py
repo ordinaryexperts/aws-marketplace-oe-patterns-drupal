@@ -1045,6 +1045,7 @@ class DrupalStack(core.Stack):
                     min_ttl=0,
                     max_ttl=31536000,
                     target_origin_id="alb",
+                    # TODO: parameterize?
                     viewer_protocol_policy="allow-all"
                 ),
                 enabled=True,
@@ -1177,17 +1178,6 @@ class DrupalStack(core.Stack):
                                 "autoscaling:Describe*"
                             ],
                             resources=[ "*" ]
-                        )
-                    ]
-                ),
-                "AllowCloudfrontAccess": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "cloudfront:GetDistribution"
-                            ],
-                            resources=[ cloudfront_distribution_arn ]
                         )
                     ]
                 )
