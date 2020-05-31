@@ -1183,7 +1183,7 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-        with open('drupal/scripts/app_launch_config_user_data.sh') as f:
+        with open('drupal/app_launch_config_user_data.sh') as f:
             app_launch_config_user_data = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
@@ -1388,7 +1388,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        with open('drupal/scripts/codebuild_transform_project_buildspec.yml') as f:
+        with open('drupal/codebuild_transform_project_buildspec.yml') as f:
             codebuild_transform_project_buildspec = f.read()
         codebuild_transform_project = aws_codebuild.CfnProject(
             self,
