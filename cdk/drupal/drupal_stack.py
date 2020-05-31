@@ -75,6 +75,14 @@ class DrupalStack(core.Stack):
             mapping=ami_mapping
         )
 
+        # utility function to parse the unique id from the stack id for
+        # shorter resource names  using cloudformation functions
+        def append_stack_uuid(name):
+            return core.Fn.join("-", [
+                name,
+                core.Fn.select(0, core.Fn.split("-", core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))))
+            ])
+
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
@@ -775,7 +783,11 @@ class DrupalStack(core.Stack):
             encrypted=True,
             file_system_tags=[
                 aws_efs.CfnFileSystem.ElasticFileSystemTagProperty(
-                    key="{}-backup".format(core.Aws.STACK_NAME),
+                    key="stack-name",
+                    value=core.Aws.STACK_NAME
+                ),
+                aws_efs.CfnFileSystem.ElasticFileSystemTagProperty(
+                    key="drupal-backup",
                     value="true"
                 )
             ]
@@ -1728,7 +1740,7 @@ class DrupalStack(core.Stack):
         backup_vault = aws_backup.CfnBackupVault(
             self,
             "BackupVault",
-            backup_vault_name="{}-backup-vault".format(core.Aws.STACK_NAME),
+            backup_vault_name=append_stack_uuid("drupal-backup-vault"),
             notifications=aws_backup.CfnBackupVault.NotificationObjectTypeProperty(
                 backup_vault_events=[
                     "BACKUP_JOB_STARTED",
@@ -1744,7 +1756,7 @@ class DrupalStack(core.Stack):
             self,
             "BackupPlan",
             backup_plan=aws_backup.CfnBackupPlan.BackupPlanResourceTypeProperty(
-                backup_plan_name="{}-backup-plan".format(core.Aws.STACK_NAME),
+                backup_plan_name=append_stack_uuid("drupal-backup-plan"),
                 backup_plan_rule=[
                     aws_backup.CfnBackupPlan.BackupRuleResourceTypeProperty(
                         lifecycle=aws_backup.CfnBackupPlan.LifecycleResourceTypeProperty(
@@ -1784,13 +1796,18 @@ class DrupalStack(core.Stack):
             backup_selection=aws_backup.CfnBackupSelection.BackupSelectionResourceTypeProperty(
                 list_of_tags=[
                     aws_backup.CfnBackupSelection.ConditionResourceTypeProperty(
-                        condition_key="{}-backup".format(core.Aws.STACK_NAME),
+                        condition_key="stack-name",
+                        condition_type="STRINGEQUALS",
+                        condition_value=core.Aws.STACK_NAME
+                    ),
+                    aws_backup.CfnBackupSelection.ConditionResourceTypeProperty(
+                        condition_key="drupal-backup",
                         condition_type="STRINGEQUALS",
                         condition_value="true"
                     )
                 ],
                 iam_role_arn=backup_role.role_arn,
-                selection_name="{}-selection".format(core.Aws.STACK_NAME)
+                selection_name=append_stack_uuid("drupal-backup-selection")
             )
         )
 
