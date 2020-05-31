@@ -571,7 +571,10 @@ class DrupalStack(core.Stack):
                 core.Aws.NO_VALUE
             ).to_string(),
             storage_encrypted=True,
-            tags=[core.CfnTag(key="{}-backup".format(core.Aws.STACK_NAME), value="true")],
+            tags=[
+                core.CfnTag(key="drupal-backup", value="true"),
+                core.CfnTag(key="stack-name", value=core.Aws.STACK_NAME)
+            ],
             vpc_security_group_ids=[ db_sg.ref ]
         )
         alb_sg = aws_ec2.CfnSecurityGroup(
