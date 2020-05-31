@@ -1070,16 +1070,16 @@ class DrupalStack(core.Stack):
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
-            assumed_by=aws_iam.ServicePrincipal('ec2.amazonaws.com'),
+            assumed_by=aws_iam.ServicePrincipal("ec2.amazonaws.com"),
             inline_policies={
                 "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                'logs:CreateLogStream',
-                                'logs:DescribeLogStreams',
-                                'logs:PutLogEvents'
+                                "logs:CreateLogStream",
+                                "logs:DescribeLogStreams",
+                                "logs:PutLogEvents"
                             ],
                             resources=[
                                 access_log_group.attr_arn,
@@ -1094,13 +1094,13 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                'ec2:DescribeVolumes',
-                                'ec2:DescribeTags',
-                                'cloudwatch:GetMetricStatistics',
-                                'cloudwatch:ListMetrics',
-                                'cloudwatch:PutMetricData'
+                                "ec2:DescribeVolumes",
+                                "ec2:DescribeTags",
+                                "cloudwatch:GetMetricStatistics",
+                                "cloudwatch:ListMetrics",
+                                "cloudwatch:PutMetricData"
                             ],
-                            resources=['*']
+                            resources=[ "*" ]
                         )
                     ]
                 ),
@@ -1109,8 +1109,8 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:Get*',
-                                's3:Head*'
+                                "s3:Get*",
+                                "s3:Head*"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
@@ -1138,7 +1138,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'));
+        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"));
         app_instance_role.attach_inline_policy(secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
@@ -1149,9 +1149,9 @@ class DrupalStack(core.Stack):
         # autoscaling
         __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         allowed_instance_types = yaml.load(
-            open(os.path.join(__location__, 'allowed_instance_types.yaml')),
+            open(os.path.join(__location__, "allowed_instance_types.yaml")),
             Loader=yaml.SafeLoader
-        )['allowed_instance_types']
+        )["allowed_instance_types"]
         app_instance_type_param = core.CfnParameter(
             self,
             "AppLaunchConfigInstanceType",
@@ -1183,7 +1183,7 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-        with open('drupal/app_launch_config_user_data.sh') as f:
+        with open("drupal/app_launch_config_user_data.sh") as f:
             app_launch_config_user_data = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
@@ -1348,24 +1348,24 @@ class DrupalStack(core.Stack):
         codebuild_transform_service_role = aws_iam.Role(
             self,
             "CodeBuildTransformServiceRole",
-            assumed_by=aws_iam.ServicePrincipal('codebuild.amazonaws.com'),
+            assumed_by=aws_iam.ServicePrincipal("codebuild.amazonaws.com"),
             inline_policies={
                 "TransformRolePermssions": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                'logs:CreateLogGroup',
-                                'logs:CreateLogStream',
-                                'logs:PutLogEvents'
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
                             ],
-                            resources=['*']
+                            resources=[ "*" ]
                         ),
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:GetObject',
-                                's3:PutObject'
+                                "s3:GetObject",
+                                "s3:PutObject"
                             ],
                             resources=[
                                 core.Arn.format(
@@ -1388,7 +1388,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-        with open('drupal/codebuild_transform_project_buildspec.yml') as f:
+        with open("drupal/codebuild_transform_project_buildspec.yml") as f:
             codebuild_transform_project_buildspec = f.read()
         codebuild_transform_project = aws_codebuild.CfnProject(
             self,
@@ -1420,32 +1420,32 @@ class DrupalStack(core.Stack):
         pipeline_role = aws_iam.Role(
             self,
             "PipelineRole",
-            assumed_by=aws_iam.ServicePrincipal('codepipeline.amazonaws.com'),
+            assumed_by=aws_iam.ServicePrincipal("codepipeline.amazonaws.com"),
             inline_policies={
                 "CodePipelinePerms": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                'codebuild:BatchGetBuilds',
-                                'codebuild:StartBuild',
-                                'codedeploy:GetApplication',
-                                'codedeploy:GetDeploymentGroup',
-                                'codedeploy:ListApplications',
-                                'codedeploy:ListDeploymentGroups',
-                                'codepipeline:*',
-                                'iam:ListRoles',
-                                'iam:PassRole',
-                                'lambda:GetFunctionConfiguration',
-                                'lambda:ListFunctions',
-                                's3:CreateBucket',
-                                's3:GetBucketPolicy',
-                                's3:GetObject',
-                                's3:ListAllMyBuckets',
-                                's3:ListBucket',
-                                's3:PutBucketPolicy'
+                                "codebuild:BatchGetBuilds",
+                                "codebuild:StartBuild",
+                                "codedeploy:GetApplication",
+                                "codedeploy:GetDeploymentGroup",
+                                "codedeploy:ListApplications",
+                                "codedeploy:ListDeploymentGroups",
+                                "codepipeline:*",
+                                "iam:ListRoles",
+                                "iam:PassRole",
+                                "lambda:GetFunctionConfiguration",
+                                "lambda:ListFunctions",
+                                "s3:CreateBucket",
+                                "s3:GetBucketPolicy",
+                                "s3:GetObject",
+                                "s3:ListAllMyBuckets",
+                                "s3:ListBucket",
+                                "s3:PutBucketPolicy"
                             ],
-                            resources=['*']
+                            resources=[ "*" ]
                         )
                     ]
                 )
@@ -1462,8 +1462,8 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:Get*',
-                                's3:Head*'
+                                "s3:Get*",
+                                "s3:Head*"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/{}".format(
@@ -1476,7 +1476,7 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:GetBucketVersioning'
+                                "s3:GetBucketVersioning"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}".format(
@@ -1488,7 +1488,7 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:*'
+                                "s3:*"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
@@ -1523,16 +1523,16 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                'codedeploy:*'
+                                "codedeploy:*"
                             ],
-                            resources=['*']
+                            resources=[ "*" ]
                         ),
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:Get*',
-                                's3:Head*',
-                                's3:PutObject'
+                                "s3:Get*",
+                                "s3:Head*",
+                                "s3:PutObject"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
@@ -1566,8 +1566,8 @@ class DrupalStack(core.Stack):
                         aws_iam.PolicyStatement(
                             effect=aws_iam.Effect.ALLOW,
                             actions=[
-                                's3:GetObject',
-                                's3:PutObject'
+                                "s3:GetObject",
+                                "s3:PutObject"
                             ],
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
@@ -1583,7 +1583,7 @@ class DrupalStack(core.Stack):
                     ]
                 )
             },
-            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
+            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSCodeDeployRole")]
         )
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -1613,7 +1613,7 @@ class DrupalStack(core.Stack):
                     pipeline_artifact_bucket_name_param.value_as_string,
                     pipeline_artifact_bucket.ref
                 ).to_string(),
-                type='S3'
+                type="S3"
             ),
             role_arn=pipeline_role.role_arn,
             stages=[
@@ -1622,14 +1622,14 @@ class DrupalStack(core.Stack):
                     actions=[
                         aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
                             action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-                                category='Source',
-                                owner='AWS',
-                                provider='S3',
-                                version='1'
+                                category="Source",
+                                owner="AWS",
+                                provider="S3",
+                                version="1"
                             ),
                             configuration={
-                                'S3Bucket': source_artifact_s3_bucket_param.value_as_string,
-                                'S3ObjectKey': source_artifact_s3_object_key_param.value_as_string
+                                "S3Bucket": source_artifact_s3_bucket_param.value_as_string,
+                                "S3ObjectKey": source_artifact_s3_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -1673,14 +1673,14 @@ class DrupalStack(core.Stack):
                     actions=[
                         aws_codepipeline.CfnPipeline.ActionDeclarationProperty(
                             action_type_id=aws_codepipeline.CfnPipeline.ActionTypeIdProperty(
-                                category='Deploy',
-                                owner='AWS',
-                                provider='CodeDeploy',
-                                version='1'
+                                category="Deploy",
+                                owner="AWS",
+                                provider="CodeDeploy",
+                                version="1"
                             ),
                             configuration={
-                                'ApplicationName': code_deploy_application.ref,
-                                'DeploymentGroupName': code_deploy_deployment_group.ref,
+                                "ApplicationName": code_deploy_application.ref,
+                                "DeploymentGroupName": code_deploy_deployment_group.ref,
                             },
                             input_artifacts=[
                                 aws_codepipeline.CfnPipeline.InputArtifactProperty(
