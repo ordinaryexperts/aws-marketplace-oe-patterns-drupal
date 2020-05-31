@@ -1136,9 +1136,9 @@ class DrupalStack(core.Stack):
                         )
                     ]
                 )
-            }
+            },
+            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")]
         )
-        app_instance_role.add_managed_policy(aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"));
         app_instance_role.attach_inline_policy(secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
@@ -1259,13 +1259,23 @@ class DrupalStack(core.Stack):
                 ]
             }
         )
+        asg.cfn_options.creation_policy=core.CfnCreationPolicy(
+            resource_signal=core.CfnResourceSignal(
+                count=1,
+                timeout="PT15M"
+            )
+        )
+        asg.cfn_options.update_policy=core.CfnUpdatePolicy(
+            auto_scaling_rolling_update=core.CfnAutoScalingRollingUpdate(
+                min_instances_in_service=1,
+                pause_time="PT15M",
+                wait_on_resource_signals=True
+            ),
+            auto_scaling_scheduled_action=core.CfnAutoScalingScheduledAction(
+                ignore_unmodified_group_size_properties=True
+            )
+        )
         core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
-        asg.add_override("UpdatePolicy.AutoScalingScheduledAction.IgnoreUnmodifiedGroupSizeProperties", True)
-        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.MinInstancesInService", 1)
-        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.WaitOnResourceSignals", True)
-        asg.add_override("UpdatePolicy.AutoScalingRollingUpdate.PauseTime", "PT15M")
-        asg.add_override("CreationPolicy.ResourceSignal.Count", 1)
-        asg.add_override("CreationPolicy.ResourceSignal.Timeout", "PT15M")
         asg.add_depends_on(db_cluster)
         asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
             self,
