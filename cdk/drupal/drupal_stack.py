@@ -126,7 +126,6 @@ class DrupalStack(core.Stack):
             default="",
             description="Optional: Specify an email address to get emails about deploys and other system events."
         )
-
         certificate_arn_param = core.CfnParameter(
             self,
             "CertificateArn",
@@ -149,7 +148,7 @@ class DrupalStack(core.Stack):
             expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
 
-        # VPC
+        # vpc
         vpc_id_param = core.CfnParameter(
             self,
             "VpcId",
@@ -384,32 +383,22 @@ class DrupalStack(core.Stack):
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
-            group_description="App SG"
-        )
-        app_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            group_description="App SG",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
-            group_description="Database SG"
-        )
-        db_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            group_description="Database SG",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -420,6 +409,7 @@ class DrupalStack(core.Stack):
             source_security_group_id=app_sg.ref,
             to_port=3306
         )
+        # TODO: move to CfnDBSubnetGroup
         db_subnet_group = core.CfnResource(
             self,
             "DBSubnetGroup",
@@ -436,7 +426,6 @@ class DrupalStack(core.Stack):
                         [
                             vpc_private_subnet_id1_param.value_as_string,
                             vpc_private_subnet_id2_param.value_as_string
-
                         ]
                     ]
                 }
@@ -577,17 +566,12 @@ class DrupalStack(core.Stack):
         alb_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ALBSg",
-            group_description="ALB SG"
-        )
-        alb_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            group_description="ALB SG",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -646,54 +630,50 @@ class DrupalStack(core.Stack):
             health_check_interval_seconds=None,
             port=80,
             protocol="HTTP",
-            target_type="instance"
-        )
-        http_target_group.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            target_type="instance",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
         http_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpListener",
-            default_actions=[],
+            default_actions=[
+                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
+                    target_group_arn=http_target_group.ref,
+                    type="forward"
+                )
+            ],
             load_balancer_arn=alb.ref,
             port=80,
             protocol="HTTP"
         )
-        http_listener.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", http_target_group.ref
-        )
-        http_listener.add_override("Properties.DefaultActions.0.Type", "forward")
         http_listener.cfn_options.condition = certificate_arn_does_not_exist_condition
 
         # if there is a cert...
         http_redirect_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpRedirectListener",
-            default_actions=[],
+            default_actions=[
+                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
+                    redirect_config=aws_elasticloadbalancingv2.CfnListener.RedirectConfigProperty(
+                        host="#{host}",
+                        path="/#{path}",
+                        port="443",
+                        protocol="HTTPS",
+                        query="#{query}",
+                        status_code="HTTP_301"
+                    ),
+                    type="redirect"
+                ),
+            ],
             load_balancer_arn=alb.ref,
             port=80,
             protocol="HTTP"
         )
-        http_redirect_listener.add_override(
-            "Properties.DefaultActions.0.RedirectConfig",
-            {
-                "Host": "#{host}",
-                "Path": "/#{path}",
-                "Port": "443",
-                "Protocol": "HTTPS",
-                "Query": "#{query}",
-                "StatusCode": "HTTP_301"
-            }
-        )
-        http_redirect_listener.add_override("Properties.DefaultActions.0.Type", "redirect")
         http_redirect_listener.cfn_options.condition = certificate_arn_exists_condition
         https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
@@ -702,35 +682,32 @@ class DrupalStack(core.Stack):
             health_check_interval_seconds=None,
             port=443,
             protocol="HTTPS",
-            target_type="instance"
-        )
-        https_target_group.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            target_type="instance",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         https_target_group.cfn_options.condition = certificate_arn_exists_condition
         https_listener = aws_elasticloadbalancingv2.CfnListener(
             self,
             "HttpsListener",
-            certificates=[],
-            default_actions=[],
+            certificates=[
+                aws_elasticloadbalancingv2.CfnListener.CertificateProperty(
+                    certificate_arn=certificate_arn_param.value_as_string
+                )
+            ],
+            default_actions=[
+                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
+                    target_group_arn=https_target_group.ref,
+                    type="forward"
+                )
+            ],
             load_balancer_arn=alb.ref,
             port=443,
             protocol="HTTPS"
         )
-        https_listener.add_override(
-            "Properties.DefaultActions.0.TargetGroupArn", https_target_group.ref
-        )
-        https_listener.add_override(
-            "Properties.Certificates.0.CertificateArn", certificate_arn_param.value_as_string
-        )
-        https_listener.add_override("Properties.DefaultActions.0.Type", "forward")
         https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
@@ -773,17 +750,12 @@ class DrupalStack(core.Stack):
         efs_sg = aws_ec2.CfnSecurityGroup(
             self,
             "EfsSg",
-            group_description="EFS SG"
-        )
-        efs_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            group_description="EFS SG",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -804,34 +776,22 @@ class DrupalStack(core.Stack):
             "AppEfsMountTarget1",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id="" # will be overridden just below
-        )
-        efs_mount_target1.add_override(
-            "Properties.SubnetId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc_private_subnet1.ref,
-                    vpc_private_subnet_id1_param.value_as_string
-                ]
-            }
+            subnet_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc_private_subnet1.ref,
+                vpc_private_subnet_id1_param.value_as_string
+            ).to_string()
         )
         efs_mount_target2 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget2",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id="" # will be overridden just below
-        )
-        efs_mount_target2.add_override(
-            "Properties.SubnetId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc_private_subnet2.ref,
-                    vpc_private_subnet_id2_param.value_as_string
-                ]
-            }
+            subnet_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc_private_subnet2.ref,
+                vpc_private_subnet_id2_param.value_as_string
+            ).to_string()
         )
 
         # elasticache
@@ -873,17 +833,12 @@ class DrupalStack(core.Stack):
         elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ElastiCacheSg",
-            group_description="App SG"
-        )
-        elasticache_sg.add_override(
-            "Properties.VpcId",
-            {
-                "Fn::If": [
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                ]
-            }
+            group_description="App SG",
+            vpc_id=core.Fn.condition_if(
+                vpc_not_given_condition.logical_id,
+                vpc.ref,
+                vpc_id_param.value_as_string
+            ).to_string()
         )
         elasticache_sg.cfn_options.condition = elasticache_enable_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1279,7 +1234,14 @@ class DrupalStack(core.Stack):
             # using value.to_string() here because these parameters are Number type
             desired_capacity=asg_desired_capacity_param.value.to_string(),
             max_size=asg_max_size_param.value.to_string(),
-            min_size=asg_min_size_param.value.to_string()
+            min_size=asg_min_size_param.value.to_string(),
+            target_group_arns=[
+                core.Fn.condition_if(
+                    certificate_arn_exists_condition.logical_id,
+                    https_target_group.ref,
+                    http_target_group.ref
+                ).to_string()
+            ]
         )
         asg.add_override(
             "Properties.VPCZoneIdentifier",
@@ -1294,16 +1256,6 @@ class DrupalStack(core.Stack):
                         vpc_private_subnet1.ref,
                         vpc_private_subnet2.ref
                     ]
-                ]
-            }
-        )
-        asg.add_override(
-            "Properties.TargetGroupARNs",
-            {
-                "Fn::If": [
-                    certificate_arn_exists_condition.logical_id,
-                    [https_target_group.ref],
-                    [http_target_group.ref]
                 ]
             }
         )
@@ -1633,7 +1585,6 @@ class DrupalStack(core.Stack):
             },
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AWSCodeDeployRole')]
         )
-
         code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
             "CodeDeployDeploymentGroup",
@@ -1642,19 +1593,17 @@ class DrupalStack(core.Stack):
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=code_deploy_role.role_arn,
-            trigger_configurations=[]
+            trigger_configurations=[
+                aws_codedeploy.CfnDeploymentGroup.TriggerConfigProperty(
+                    trigger_events=[
+                        "DeploymentSuccess",
+                        "DeploymentRollback"
+                    ],
+                    trigger_name="DeploymentNotification",
+                    trigger_target_arn=notification_topic.topic_arn
+                )
+            ]
         )
-        code_deploy_deployment_group.add_override("Properties.TriggerConfigurations",[
-            {
-                "TriggerEvents": [
-                    "DeploymentSuccess",
-                    "DeploymentRollback"
-                ],
-                "TriggerName": "DeploymentNotification",
-                "TriggerTargetArn": notification_topic.topic_arn
-            }
-        ])
-
         pipeline = aws_codepipeline.CfnPipeline(
             self,
             "Pipeline",
