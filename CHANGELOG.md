@@ -4,6 +4,8 @@
 * Pass test buckets for each region
 * Update supported regions list
 * Pass creds in workflow to run clean script
+* Fix test params after rename
+* CloudFront fixes
 
 # 0.3.0
 

@@ -967,6 +967,13 @@ class DrupalStack(core.Stack):
             description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
             type="CommaDelimitedList"
         )
+        cloudfront_aliases_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontAliasesExist",
+            expression=core.Fn.condition_not(
+                core.Fn.condition_equals(core.Fn.select(0, cloudfront_aliases_param.value_as_list), "")
+            )
+        )
         cloudfront_certificate_arn_param = core.CfnParameter(
             self,
             "CloudFrontCertificateArn",
@@ -990,12 +997,20 @@ class DrupalStack(core.Stack):
             "CloudFrontEnableCondition",
             expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
         )
-        cloudfront_origin_access_policy_param = core.CfnParameter(
+        cloudfront_aliases_certificate_rule = core.CfnRule(
             self,
-            "CloudFrontOriginAccessPolicyParam",
-            allowed_values = [ "http-only", "https-only", "match-viewer" ],
-            default="match-viewer",
-            description="Required: CloudFront access policy for communicating with content origin (only applies when CloudFront enabled)."
+            "CloudFrontAliasesAndCertificateRequiredRule",
+            assertions=[
+                core.CfnRuleAssertion(
+                    assert_=core.Fn.condition_not(
+                        core.Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
+                    ),
+                    assert_description="When providing a set of aliases for CloudFront, you must also supply a trusted CloudFrontCertificateArn parameter which validates your authorization to use those domain names"
+                )
+            ],
+            rule_condition=core.Fn.condition_not(
+                core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
+            )
         )
         cloudfront_price_class_param = core.CfnParameter(
             self,
@@ -1013,28 +1028,52 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                aliases=cloudfront_aliases_param.value_as_list,
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
-                    allowed_methods=[ "HEAD", "GET" ],
-                    compress=False,
+                    allowed_methods=[
+                        "DELETE",
+                        "GET",
+                        "HEAD",
+                        "OPTIONS",
+                        "PATCH",
+                        "POST",
+                        "PUT"
+                    ],
+                    compress=True,
                     default_ttl=86400,
                     forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
-                        headers=[ "Host" ],
+                        cookies=aws_cloudfront.CfnDistribution.CookiesProperty(
+                            forward="whitelist",
+                            whitelisted_names=[ "SESS*" ]
+                        ),
+                        headers=[
+                            "CloudFront-Forwarded-Proto",
+                            "Host",
+                            "Origin"
+                        ],
                         query_string=True
                     ),
                     min_ttl=0,
                     max_ttl=31536000,
                     target_origin_id="alb",
-                    viewer_protocol_policy="allow-all"
+                    # when alb certificate is supplied, we automatically redirect http traffic to https.
+                    # using that as a best-practice pattern, we redirect all traffic at cloudfront as well,
+                    # covered either by the default AWS cloudfront cert when no aliases are supplied, or by the
+                    # cert of the CloudFrontCertificateArn parameter.
+                    viewer_protocol_policy="redirect-to-https"
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
                     domain_name=alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        origin_protocol_policy=cloudfront_origin_access_policy_param.value_as_string,
-                        origin_ssl_protocols=[ "TLSv1.2" ]
+                        # if there is an ssl cert on the alb, use https only
+                        origin_protocol_policy=core.Fn.condition_if(
+                            certificate_arn_exists_condition.logical_id,
+                            "https-only",
+                            "http-only"
+                        ).to_string(),
+                        origin_ssl_protocols=[ "TLSv1.1", "TLSv1.2" ]
                     )
                 )],
                 price_class=cloudfront_price_class_param.value_as_string,
@@ -1044,7 +1083,16 @@ class DrupalStack(core.Stack):
                         cloudfront_certificate_arn_param.value_as_string,
                         core.Aws.NO_VALUE
                     ).to_string(),
-                    minimum_protocol_version="TLSv1.2_2018",
+                    cloud_front_default_certificate=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        core.Aws.NO_VALUE,
+                        True
+                    ),
+                    minimum_protocol_version=core.Fn.condition_if(
+                        cloudfront_certificate_arn_exists_condition.logical_id,
+                        "TLSv1.2_2018",
+                        core.Aws.NO_VALUE
+                    ).to_string(),
                     ssl_support_method=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         "sni-only",
@@ -1054,14 +1102,24 @@ class DrupalStack(core.Stack):
             )
         )
         cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.ViewerCertificate.CloudFrontDefaultCertificate",
+            "Properties.DistributionConfig.Aliases",
             {
                 "Fn::If": [
-                    cloudfront_certificate_arn_exists_condition.logical_id,
-                    { "Ref": "AWS::NoValue" },
-                    True
+                    cloudfront_aliases_exist_condition.logical_id,
+                    cloudfront_aliases_param.value_as_list,
+                    core.Aws.NO_VALUE
                 ]
             }
+        )
+        cloudfront_distribution_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource="distribution",
+                resource_name=cloudfront_distribution.ref,
+                service="cloudfront"
+            ),
+            stack=self
         )
         cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
         cloudfront_distribution_endpoint_output = core.CfnOutput(
@@ -1205,7 +1263,11 @@ class DrupalStack(core.Stack):
                         {
                             "CloudFrontHost": core.Fn.condition_if(
                                 cloudfront_enable_condition.logical_id,
-                                cloudfront_distribution.attr_domain_name,
+                                core.Fn.condition_if(
+                                    cloudfront_aliases_exist_condition.logical_id,
+                                    core.Fn.select(0, cloudfront_aliases_param.value_as_list),
+                                    cloudfront_distribution.attr_domain_name
+                                ).to_string(),
                                 ""
                             ).to_string(),
                             "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
@@ -1827,7 +1889,6 @@ class DrupalStack(core.Stack):
                             cloudfront_enable_param.logical_id,
                             cloudfront_certificate_arn_param.logical_id,
                             cloudfront_aliases_param.logical_id,
-                            cloudfront_origin_access_policy_param.logical_id,
                             cloudfront_price_class_param.logical_id
                         ]
                     },
@@ -1876,9 +1937,6 @@ class DrupalStack(core.Stack):
                     },
                     cloudfront_enable_param.logical_id: {
                         "default": "Enable CloudFront"
-                    },
-                    cloudfront_origin_access_policy_param.logical_id: {
-                        "default": "CloudFront Origin Access Policy"
                     },
                     cloudfront_price_class_param.logical_id: {
                         "default": "CloudFront Price Class"
