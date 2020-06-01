@@ -15,6 +15,7 @@ from aws_cdk import (
     aws_elasticache,
     aws_elasticloadbalancingv2,
     aws_iam,
+    aws_lambda,
     aws_logs,
     aws_rds,
     aws_s3,
@@ -544,9 +545,9 @@ class DrupalStack(core.Stack):
             self,
             "DBCluster",
             backup_retention_period=db_backup_retention_period_param.value_as_number,
-            engine="aurora",
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
+            engine="aurora",
             engine_mode="serverless",
             master_username=core.Fn.condition_if(
                 db_snapshot_identifier_exists_condition.logical_id,
@@ -1820,6 +1821,58 @@ class DrupalStack(core.Stack):
                 iam_role_arn=backup_role.role_arn,
                 selection_name=append_stack_uuid("drupal-backup-selection")
             )
+        )
+        backup_db_lambda_function_role = aws_iam.Role(
+            self,
+            "BackupDBLambdaFunctionRole",
+            assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+            inline_policies={
+                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            resources=[ "*" ]
+                        )
+                    ]
+                ),
+                "DBCluster": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "rds:CreateDbClusterSnapshot",
+                                "rds:DeleteDbClusterSnapshot",
+                                "rds:DescribeDbClusterSnapshotAttributes",
+                                "rds:DescribeDbClusterSnapshots",
+                                "rds:ListTagsForResource"
+                            ],
+                            resources=[ "*" ]
+                        )
+                    ]
+                ),
+            }
+        )
+        with open("drupal/backup_db_lambda_function_code.py") as f:
+            backup_db_lambda_function_code = f.read()
+        backup_db_lambda_function = aws_lambda.CfnFunction(
+            self,
+            "BackupDBLambdaFunction",
+            code=aws_lambda.CfnFunction.CodeProperty(
+                zip_file=backup_db_lambda_function_code
+            ),
+            environment=aws_lambda.CfnFunction.EnvironmentProperty(
+                variables={
+                    "DBClusterIdentifier": db_cluster.ref,
+                    "StackName": core.Aws.STACK_NAME
+                }
+            ),
+            handler="index.lambda_handler",
+            role=backup_db_lambda_function_role.role_arn,
+            runtime="python3.7"
         )
 
         # AWS::CloudFormation::Interface
