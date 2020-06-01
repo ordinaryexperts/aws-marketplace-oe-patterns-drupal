@@ -12,12 +12,13 @@ This AWS Marketplace template was created by Amazon Web Services Partners at Ord
   - [Infrastructure](#infrastructure)
 * [Planning the Deployment](#planning-the-deployment)
 * [Deployment Options](#deployment-options)
-  - [Enable Routing via HTTPS](#to-enable-routing-via-https)
-  - [Use an Existing VPC](#to-use-an-existing-vpc)
-  - [Use Existing Snapshot and Secrets](#to-configure-database-with-existing-snapshot-and-secrets)
+  - [Application CI/CD](#to-set-up-the-deployment-pipeline)
+  - [Use Existing Snapshot](#to-configure-database-with-existing-snapshot)
+  - [Configure Application Settings](#to-configure-application-settings)
   - [Use and Configure ElastiCache](#to-use-elasticache-and-configure-resource)
   - [Use and Configure CloudFront](#to-use-cloudfront-and-configure-resource)
-  - [Configure Auto Scaling Groups](#to-configure-auto-scaling-groups)
+  - [Use an Existing VPC](#to-use-an-existing-vpc)
+  - [Template Development](#to-use-an-existing-pipeline-artifact-bucket)
 * [Security](#security)
 * [Troubleshooting](#troubleshooting)
 * [Additional Resources](#additional-resources)
@@ -103,37 +104,40 @@ As stated previously, our template will provision a VPC with all associated comp
 
 The following optional parameters are accepted by the template to further customize the application stack.
 
-#### To enable routing via HTTPS:
-* CertificateArn (*default: `''`*):
-  - The ARN of the SSL certificate from Certificate Manager
-  - e.g. `arn:aws:acm:{region}:{accountId}:certificate/{certificateId}`
+#### To set-up the deployment pipeline:
+* NotificationEmail (*default: `''`*):
+  - The email address to get emails about deploys and other system events
+* SourceArtifactS3Bucket (*default:* `github-user-and-bucket-githubartifactbucket-wl52dae3lyub`)
+  - AWS S3 Bucket name which contains the build artifacts for the application. By default, it will deploy the Ordinary Experts demo Drupal site.
+* SourceArtifactS3ObjectKey (*default:* `aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip`)
+  - AWS S3 Object key (path) for the build artifact for the application. By default, it will deploy Ordinary Experts demo Drupal site.
 
-#### To use an existing VPC:
-* CustomerVpcId (*default: `''`*):
-  - The ID of an existing VPC
-  - e.g. `vpc-{id}`
-* CustomerVpcPrivateSubnet1 (*default: `''`*):
-  - The ID of an existing VPC's private subnet
-  - e.g. `subnet-{id}`
-* CustomerVpcPrivateSubnet2 (*default: `''`*):
-  - The ID of an existing VPC's private subnet
-  - e.g. `subnet-{id}`
-* CustomerVpcPublicSubnet1 (*default: `''`*):
-  - The ID of an existing VPC's public subnet
-  - e.g. `subnet-{id}`
-* CustomerVpcPublicSubnet2 (*default: `''`*):
-  - The ID of an existing VPC's public subnet
-  - e.g. `subnet-{id}`
-
-#### To configure database with existing snapshot and secrets:
+#### To configure database with existing snapshot:
 * DBSnapshotIdentifier (*default: `''`*):
   - The ARN of the RDS snapshot to restore for database
   - e.g. `arn:aws:rds:{region}:{accountId}:cluster-snapshot:
 {snapshotIdentifier}`
+
+#### To configure Application Settings:
+* CertificateArn (*default: `''`*):
+  - The ARN of the SSL certificate from Certificate Manager
+  - e.g. `arn:aws:acm:{region}:{accountId}:certificate/{certificateId}`
 * SecretArn (*default: `''`*):
   - The ARN of the Secret Manager key
   - e.g. `arn:aws:secretsmanager:{region}:{accountId}:secret:
 {secretIdentifier}`
+* AppLaunchConfigInstanceType (*default:* `m5.xlarge`):
+  - The EC2 instance type for the Drupal server autoscaling group
+  - The full list of accepted values can be found [here](/cdk/drupal/allowed_instance_types.yaml)
+* AppAsgDesiredCapacity (*default:* `1`):
+  - The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain
+  - Min: `0`
+* AppAsgMaxSize (*default:* `2`):
+  - The maximum size of the Auto Scaling group
+  - Min: `0`
+* AppAsgMinSize (*default:* `1`):
+  - The minimum size of the Auto Scaling group
+  - Min: `0`
 
 #### To use ElastiCache and configure resource:
 * ElastiCacheEnableParam (*default:* `false`):
@@ -161,19 +165,26 @@ The following optional parameters are accepted by the template to further custom
   - The price class for CloudFront
   - Accepted values:<br>```[ "PriceClass_All", "PriceClass_200", "PriceClass_100" ]```
 
-#### To configure Auto Scaling Groups:
-* AppLaunchConfigInstanceType (*default:* `m5.xlarge`):
-  - The EC2 instance type for the Drupal server autoscaling group
-  - The full list of accepted values can be found [here](/cdk/drupal/allowed_instance_types.yaml)
-* AppAsgDesiredCapacity (*default:* `1`):
-  - The initial capacity of the application Auto Scaling group at the time of its creation and the capacity it attempts to maintain
-  - Min: `0`
-* AppAsgMaxSize (*default:* `2`):
-  - The maximum size of the Auto Scaling group
-  - Min: `0`
-* AppAsgMinSize (*default:* `1`):
-  - The minimum size of the Auto Scaling group
-  - Min: `0`
+#### To use an existing VPC:
+* CustomerVpcId (*default: `''`*):
+  - The ID of an existing VPC
+  - e.g. `vpc-{id}`
+* CustomerVpcPrivateSubnet1 (*default: `''`*):
+  - The ID of an existing VPC's private subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPrivateSubnet2 (*default: `''`*):
+  - The ID of an existing VPC's private subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPublicSubnet1 (*default: `''`*):
+  - The ID of an existing VPC's public subnet
+  - e.g. `subnet-{id}`
+* CustomerVpcPublicSubnet2 (*default: `''`*):
+  - The ID of an existing VPC's public subnet
+  - e.g. `subnet-{id}`
+
+#### To use an existing pipeline artifact bucket
+* PipelineArtifactBucketName (*default:`''`*):
+  - Specify a bucket name for the CodePipeline pipeline to use. This can be handy when re-creating this template many times.
 
 ## Security
 
