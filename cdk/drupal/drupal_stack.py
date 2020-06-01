@@ -467,6 +467,13 @@ class DrupalStack(core.Stack):
             "DBSnapshotIdentifierExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
+        db_backup_retention_period_param = core.CfnParameter(
+            self,
+            "DBBackupRetentionPeriod",
+            default=35,
+            description="Optional: RDS backup retention period in day for which automated backups are retained. Defaults to 35",
+            type="Number"
+        )
         secret_arn_param = core.CfnParameter(
             self,
             "SecretArn",
@@ -536,7 +543,7 @@ class DrupalStack(core.Stack):
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
-            backup_retention_period=35,
+            backup_retention_period=db_backup_retention_period_param.value_as_number,
             engine="aurora",
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
@@ -559,12 +566,13 @@ class DrupalStack(core.Stack):
                     core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
                 ).to_string(),
             ).to_string(),
-            scaling_configuration={
-                "auto_pause": True,
-                "min_capacity": 1,
-                "max_capacity": 2,
-                "seconds_until_auto_pause": 30
-            },
+            # TODO: parameterize
+            scaling_configuration=aws_rds.CfnDBCluster.ScalingConfigurationProperty(
+                auto_pause=True,
+                max_capacity=2,
+                min_capacity=1,
+                seconds_until_auto_pause=300
+            ),
             snapshot_identifier=core.Fn.condition_if(
                 db_snapshot_identifier_exists_condition.logical_id,
                 db_snapshot_identifier_param.value_as_string,
@@ -1851,6 +1859,14 @@ class DrupalStack(core.Stack):
                     },
                     {
                         "Label": {
+                            "default": "Database Config"
+                        },
+                        "Parameters": [
+                            db_backup_retention_period_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
                             "default": "ElastiCache memcached"
                         },
                         "Parameters": [
@@ -1919,6 +1935,9 @@ class DrupalStack(core.Stack):
                     },
                     cloudfront_price_class_param.logical_id: {
                         "default": "CloudFront Price Class"
+                    },
+                    db_backup_retention_period_param.logical_id: {
+                        "default": "Aurora Backup Retention Period"
                     },
                     db_snapshot_identifier_param.logical_id: {
                         "default": "RDS Snapshot Identifier"
