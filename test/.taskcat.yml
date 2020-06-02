@@ -58,8 +58,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
       VpcId: vpc-00425deda4c835455
@@ -85,14 +85,14 @@ tests:
       ElastiCacheClusterCacheNodeTypeParam: cache.t2.micro
       ElastiCacheClusterEngineVersionParam: 1.5.16
       ElastiCacheClusterNumCacheNodesParam: 2
-      ElastiCacheEnableParam: true
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
   cloudfrontConfigWithCertAndAlias:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontEnableParam: true
+      CloudFrontEnable: 'true'
       CloudFrontPriceClassParam: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       VpcId: vpc-00425deda4c835455
@@ -102,8 +102,8 @@ tests:
       VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   cloudfrontConfigNoCertOrAlias:
     parameters:
-      CloudFrontEnableParam: true
-      CloudFrontPriceClassParam: PriceClass_All
+      CloudFrontEnable: 'true'
+      CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
@@ -114,8 +114,8 @@ tests:
     parameters:
       CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontEnableParam: true
-      CloudFrontPriceClassParam: PriceClass_All
+      CloudFrontEnable: 'true'
+      CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
@@ -129,8 +129,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:us-east-2:992593896645:certificate/ff192222-3cee-4147-b892-036b506ed58d
       CloudFrontCertificationArn: arn:aws:acm:us-east-2:992593896645:certificate/ff192222-3cee-4147-b892-036b506ed58d
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1ez4gpd957ssw
     regions:
       - us-east-2
@@ -139,8 +139,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:us-west-1:992593896645:certificate/9a8d0ee2-9619-45b6-af09-0a78bb813d1a
       CloudFrontCertificationArn: arn:aws:acm:us-west-1:992593896645:certificate/9a8d0ee2-9619-45b6-af09-0a78bb813d1a
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-ho6mfquy2i0a
     regions:
       - us-west-1
@@ -149,8 +149,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:us-west-2:992593896645:certificate/e94d1a87-91d0-4fb8-89e1-dcaee6f420fd
       CloudFrontCertificationArn: arn:aws:acm:us-west-2:992593896645:certificate/e94d1a87-91d0-4fb8-89e1-dcaee6f420fd
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-849z7vrx6s8y
     regions:
       - us-west-2
@@ -159,8 +159,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:ca-central-1:992593896645:certificate/bb156460-ef6a-42f8-985b-e74c0e9dcb86
       CloudFrontCertificationArn: arn:aws:acm:ca-central-1:992593896645:certificate/bb156460-ef6a-42f8-985b-e74c0e9dcb86
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-ohedywzh1qgz
     regions:
       - ca-central-1
@@ -169,8 +169,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:eu-central-1:992593896645:certificate/4bf438f2-77fe-4f45-a863-3519410ebfdb
       CloudFrontCertificationArn: arn:aws:acm:eu-central-1:992593896645:certificate/4bf438f2-77fe-4f45-a863-3519410ebfdb
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-cpmt9o7e3kcr
     regions:
       - eu-central-1
@@ -179,8 +179,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:eu-west-1:992593896645:certificate/e4770223-c331-4661-9a4a-ccdf34a63c9a
       CloudFrontCertificationArn: arn:aws:acm:eu-west-1:992593896645:certificate/e4770223-c331-4661-9a4a-ccdf34a63c9a
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-k6hn1bp3o927
     regions:
       - eu-west-1
@@ -189,8 +189,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:eu-west-2:992593896645:certificate/6ed1fb4e-e000-4ea4-8008-6e4bbe98a12e
       CloudFrontCertificationArn: arn:aws:acm:eu-west-2:992593896645:certificate/6ed1fb4e-e000-4ea4-8008-6e4bbe98a12e
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1umlk8cxcn2z5
     regions:
       - eu-west-2
@@ -199,8 +199,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:eu-west-3:992593896645:certificate/23f603bf-db39-4033-b2e1-41539834e9e7
       CloudFrontCertificationArn: arn:aws:acm:eu-west-3:992593896645:certificate/23f603bf-db39-4033-b2e1-41539834e9e7
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1ie5iy4dcl6my
     regions:
       - eu-west-3
@@ -209,8 +209,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:ap-northeast-1:992593896645:certificate/d5dbe0e5-80e0-4f0b-a3bf-0ed622ab3285
       CloudFrontCertificationArn: arn:aws:acm:ap-northeast-1:992593896645:certificate/d5dbe0e5-80e0-4f0b-a3bf-0ed622ab3285
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2e12fa5839m7
     regions:
       - ap-northeast-1
@@ -219,8 +219,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:ap-south-1:992593896645:certificate/e59fcc9e-6f73-4c4f-9fe4-c09a49652fe2
       CloudFrontCertificationArn: arn:aws:acm:ap-south-1:992593896645:certificate/e59fcc9e-6f73-4c4f-9fe4-c09a49652fe2
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2x5mkltu15nc
     regions:
       - ap-south-1
@@ -229,8 +229,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:ap-southeast-1:992593896645:certificate/0a191f1e-2e7c-486c-8bbd-01edfab12670
       CloudFrontCertificationArn: arn:aws:acm:ap-southeast-1:992593896645:certificate/0a191f1e-2e7c-486c-8bbd-01edfab12670
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1tf0mq31uhu6s
     regions:
       - ap-southeast-1
@@ -239,8 +239,8 @@ tests:
       BackupEnable: true
       CertificateArn: arn:aws:acm:ap-southeast-2:992593896645:certificate/7957f101-1c55-4e25-91ec-ce010fe93e98
       CloudFrontCertificationArn: arn:aws:acm:ap-southeast-2:992593896645:certificate/7957f101-1c55-4e25-91ec-ce010fe93e98
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1fnshkw6aa7a0
     regions:
       - ap-southeast-2
