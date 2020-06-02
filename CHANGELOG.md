@@ -8,6 +8,7 @@
 * CloudFront fixes
 * Remove instance types that aren't supported in all regions
 * Bump taskcat version
+* Add deployment guide
 
 # 0.3.0
 
