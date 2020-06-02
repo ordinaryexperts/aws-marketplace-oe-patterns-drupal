@@ -6,6 +6,7 @@
 * Pass creds in workflow to run clean script
 * Fix test params after rename
 * CloudFront fixes
+* Backup support
 
 # 0.3.0
 

@@ -1750,6 +1750,18 @@ class DrupalStack(core.Stack):
         )
 
         # backup
+        backup_enable_param = core.CfnParameter(
+            self,
+            "BackupEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Required: Enable systems to backup the database and filesystem periodically via AWS Backup and scheduled snapshots."
+        )
+        backup_enable_condition = core.CfnCondition(
+            self,
+            "BackupEnableCondition",
+            expression=core.Fn.condition_equals(backup_enable_param.value, "true")
+        )
         backup_vault = aws_backup.CfnBackupVault(
             self,
             "BackupVault",
@@ -1765,6 +1777,7 @@ class DrupalStack(core.Stack):
                 sns_topic_arn=notification_topic.topic_arn
             )
         )
+        backup_vault.cfn_options.condition = backup_enable_condition
         backup_plan = aws_backup.CfnBackupPlan(
             self,
             "BackupPlan",
@@ -1793,6 +1806,7 @@ class DrupalStack(core.Stack):
                 ]
             )
         )
+        backup_plan.cfn_options.condition = backup_enable_condition
         backup_role = aws_iam.Role(
             self,
             "BackupRole",
@@ -1823,6 +1837,7 @@ class DrupalStack(core.Stack):
                 selection_name=append_stack_uuid("drupal-backup-selection")
             )
         )
+        backup_selection.cfn_options.condition = backup_enable_condition
         backup_db_lambda_function_role = aws_iam.Role(
             self,
             "BackupDBLambdaFunctionRole",
@@ -1864,6 +1879,7 @@ class DrupalStack(core.Stack):
             role=backup_db_lambda_function_role.role_arn,
             runtime="python3.7"
         )
+        backup_db_lambda_function.cfn_options.condition = backup_enable_condition
         backup_db_lambda_event_rule = aws_events.CfnRule(
             self,
             "BackupDBEventRule",
@@ -1877,6 +1893,7 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
+        backup_db_lambda_event_rule.cfn_options.condition = backup_enable_condition
         backup_db_lambda_permission = aws_lambda.CfnPermission(
             self,
             "BackupDBLambdaPermission",
@@ -1885,6 +1902,7 @@ class DrupalStack(core.Stack):
             principal="events.amazonaws.com",
             source_arn=backup_db_lambda_event_rule.attr_arn
         )
+        backup_db_lambda_permission.cfn_options.condition = backup_enable_condition
 
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
