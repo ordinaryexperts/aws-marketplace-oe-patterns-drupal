@@ -70,8 +70,7 @@ for header in column_headers:
                 plf_values[header] = "FALSE"
 
     price_match = re.search(r"(.+) (Hourly|Annual) Price", header)
-    do_price_match = True
-    if do_price_match and price_match:
+    if price_match:
         instance_type = price_match.groups()[0]
         if instance_type in allowed_instance_types:
             price_type = price_match.groups()[1]
