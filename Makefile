@@ -82,6 +82,9 @@ destroy:
 diff:
 	docker-compose run -w /code/cdk --rm drupal cdk diff
 
+gen-plf:
+	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py
+
 lint:
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
