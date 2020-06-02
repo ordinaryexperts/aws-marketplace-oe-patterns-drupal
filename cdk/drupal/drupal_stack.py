@@ -598,12 +598,8 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            type="application"
-        )
-        alb.add_override(
-            "Properties.Subnets",
-            {
-                "Fn::If": [
+            subnets=core.Token.as_list(
+                core.Fn.condition_if(
                     vpc_not_given_condition.logical_id,
                     [
                         vpc_public_subnet1.ref,
@@ -613,8 +609,9 @@ class DrupalStack(core.Stack):
                         vpc_public_subnet_id1_param.value_as_string,
                         vpc_public_subnet_id2_param.value_as_string
                     ]
-                ]
-            }
+                )
+            ),
+            type="application"
         )
         alb_dns_name_output = core.CfnOutput(
             self,
@@ -964,6 +961,13 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                aliases=core.Token.as_list(
+                    core.Fn.condition_if(
+                        cloudfront_aliases_exist_condition.logical_id,
+                        cloudfront_aliases_param.value_as_list,
+                        core.Aws.NO_VALUE
+                    )
+                ),
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[
@@ -1036,16 +1040,6 @@ class DrupalStack(core.Stack):
                     ).to_string()
                 )
             )
-        )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.Aliases",
-            {
-                "Fn::If": [
-                    cloudfront_aliases_exist_condition.logical_id,
-                    cloudfront_aliases_param.value_as_list,
-                    core.Aws.NO_VALUE
-                ]
-            }
         )
         cloudfront_distribution_arn = core.Arn.format(
             components=core.ArnComponents(
@@ -1231,22 +1225,18 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            # using value.to_string() here because these parameters are Number type
-            desired_capacity=asg_desired_capacity_param.value.to_string(),
-            max_size=asg_max_size_param.value.to_string(),
-            min_size=asg_min_size_param.value.to_string(),
-            target_group_arns=[
+            desired_capacity=core.Token.as_string(asg_desired_capacity_param.value),
+            max_size=core.Token.as_string(asg_max_size_param.value),
+            min_size=core.Token.as_string(asg_min_size_param.value),
+            target_group_arns=core.Token.as_list(
                 core.Fn.condition_if(
                     certificate_arn_exists_condition.logical_id,
                     https_target_group.ref,
                     http_target_group.ref
-                ).to_string()
-            ]
-        )
-        asg.add_override(
-            "Properties.VPCZoneIdentifier",
-            {
-                "Fn::If": [
+                )
+            ),
+            vpc_zone_identifier=core.Token.as_list(
+                core.Fn.condition_if(
                     vpc_given_condition.logical_id,
                     [
                         vpc_private_subnet_id1_param.value_as_string,
@@ -1256,8 +1246,8 @@ class DrupalStack(core.Stack):
                         vpc_private_subnet1.ref,
                         vpc_private_subnet2.ref
                     ]
-                ]
-            }
+                )
+            )
         )
         asg.cfn_options.creation_policy=core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(
