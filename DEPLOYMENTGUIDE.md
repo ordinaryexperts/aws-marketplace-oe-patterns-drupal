@@ -140,27 +140,27 @@ The following optional parameters are accepted by the template to further custom
   - Min: `0`
 
 #### To use ElastiCache and configure resource:
-* ElastiCacheEnableParam (*default:* `false`):
+* ElastiCacheEnable (*default:* `false`):
   - Boolean value to enable ElastiCache
-* ElastiCacheClusterEngineVersionParam (*default:* `1.5.16`):
+* ElastiCacheClusterEngineVersion (*default:* `1.5.16`):
   - The engine version for ElastiCache cluster
   - Accepted values:<br>```[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ]```
-* ElastiCacheClusterCacheNodeTypeParam (*default:* `cache.t2.micro`):
+* ElastiCacheClusterCacheNodeType (*default:* `cache.t2.micro`):
   - The node type for ElastiCache cluster
   - Accepted values:<br>```[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ]```
-* ElastiCacheClusterNumCacheNodesParam (*default:* `2`):
+* ElastiCacheClusterNumCacheNodes (*default:* `2`):
   - The number of cache nodes for ElastiCache cluster
   - Min: `1`, Max: `20`
 
 #### To use CloudFront and configure resource:
-* CloudFrontEnableParam (*default:* `false`):
+* CloudFrontEnable (*default:* `false`):
   - Boolean value to enable CloudFront
 * CloudFrontCertificateArn (*default:* `''`):
   - The ARN of the SSL certificate from Certificate Manager
   - e.g. `arn:aws:acm:{region}:{accountId}:certificate/{certificateId}`
 * CloudFrontAliases (*default:* `''`):
   - A CommaDelimitedList of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.
-* CloudFrontPriceClassParam (*default:* `PriceClass_All`):
+* CloudFrontPriceClass (*default:* `PriceClass_All`):
   - The price class for CloudFront
   - Accepted values:<br>```[ "PriceClass_All", "PriceClass_200", "PriceClass_100" ]```
 

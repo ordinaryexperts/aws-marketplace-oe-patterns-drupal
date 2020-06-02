@@ -797,21 +797,21 @@ class DrupalStack(core.Stack):
         # elasticache
         elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
-            "ElastiCacheClusterCacheNodeTypeParam",
+            "ElastiCacheClusterCacheNodeType",
             allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
             default="cache.t2.micro",
             description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
             self,
-            "ElastiCacheClusterEngineVersionParam",
+            "ElastiCacheClusterEngineVersion",
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
             description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
             self,
-            "ElastiCacheClusterNumCacheNodesParam",
+            "ElastiCacheClusterNumCacheNodes",
             default=2,
             description="Required: The number of cache nodes in the memcached cluster (only applies ElastiCache enabled).",
             min_value=1,
@@ -950,7 +950,7 @@ class DrupalStack(core.Stack):
         )
         cloudfront_price_class_param = core.CfnParameter(
             self,
-            "CloudFrontPriceClassParam",
+            "CloudFrontPriceClass",
             # possible to use a map to make the values more human readable
             allowed_values = [
                 "PriceClass_All",
