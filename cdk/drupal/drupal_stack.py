@@ -1272,13 +1272,15 @@ class DrupalStack(core.Stack):
             desired_capacity=core.Token.as_string(asg_desired_capacity_param.value),
             max_size=core.Token.as_string(asg_max_size_param.value),
             min_size=core.Token.as_string(asg_min_size_param.value),
-            target_group_arns=core.Token.as_list(
-                core.Fn.condition_if(
-                    certificate_arn_exists_condition.logical_id,
-                    https_target_group.ref,
-                    http_target_group.ref
+            target_group_arns=[
+                core.Token.as_string(
+                    core.Fn.condition_if(
+                        certificate_arn_exists_condition.logical_id,
+                        https_target_group.ref,
+                        http_target_group.ref
+                    )
                 )
-            ),
+            ],
             vpc_zone_identifier=core.Token.as_list(
                 core.Fn.condition_if(
                     vpc_given_condition.logical_id,
