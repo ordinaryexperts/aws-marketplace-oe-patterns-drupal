@@ -14,6 +14,7 @@ from aws_cdk import (
     aws_efs,
     aws_elasticache,
     aws_elasticloadbalancingv2,
+    aws_events,
     aws_iam,
     aws_lambda,
     aws_logs,
@@ -1827,18 +1828,6 @@ class DrupalStack(core.Stack):
             "BackupDBLambdaFunctionRole",
             assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),
             inline_policies={
-                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
-                ),
                 "DBCluster": aws_iam.PolicyDocument(
                     statements=[
                         aws_iam.PolicyStatement(
@@ -1854,7 +1843,8 @@ class DrupalStack(core.Stack):
                         )
                     ]
                 ),
-            }
+            },
+            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")]
         )
         with open("drupal/backup_db_lambda_function_code.py") as f:
             backup_db_lambda_function_code = f.read()
@@ -1873,6 +1863,27 @@ class DrupalStack(core.Stack):
             handler="index.lambda_handler",
             role=backup_db_lambda_function_role.role_arn,
             runtime="python3.7"
+        )
+        backup_db_lambda_event_rule = aws_events.CfnRule(
+            self,
+            "BackupDBEventRule",
+            description="Rule initiating backup of Drupal database cluster.",
+            name=append_stack_uuid("drupal-backup-rds-rule"),
+            schedule_expression="cron(0 0 * * ? *)",
+            targets=[
+                aws_events.CfnRule.TargetProperty(
+                    arn=backup_db_lambda_function.attr_arn,
+                    id=append_stack_uuid("drupal-backup-rds-rule-target")
+                )
+            ]
+        )
+        backup_db_lambda_permission = aws_lambda.CfnPermission(
+            self,
+            "BackupDBLambdaPermission",
+            action="lambda:InvokeFunction",
+            function_name=backup_db_lambda_function.attr_arn,
+            principal="events.amazonaws.com",
+            source_arn=backup_db_lambda_event_rule.attr_arn
         )
 
         # AWS::CloudFormation::Interface
