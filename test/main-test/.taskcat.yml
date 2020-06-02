@@ -11,8 +11,8 @@ tests:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
+      CloudFrontEnable: true
+      ElastiCacheEnable: true
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
       VpcId: vpc-00425deda4c835455
