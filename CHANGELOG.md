@@ -9,6 +9,7 @@
 * Remove instance types that aren't supported in all regions
 * Bump taskcat version
 * Add deployment guide
+* make gen-plf - generates Product Load Form info
 
 # 0.3.0
 
