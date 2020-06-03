@@ -5,7 +5,7 @@ ami-docker-build:
 	docker-compose build ami
 
 ami-docker-rebuild:
-	docker-compose build ami --no-cache
+	docker-compose build --no-cache ami
 
 ami-ec2-build:
 	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
@@ -83,6 +83,9 @@ destroy:
 diff:
 	docker-compose run -w /code/cdk --rm drupal cdk diff
 
+gen-plf:
+	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py
+
 lint:
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
@@ -90,7 +93,7 @@ publish:
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
 rebuild:
-	docker-compose build drupal --no-cache
+	docker-compose build --no-cache drupal
 
 synth:
 	docker-compose run -w /code/cdk --rm drupal cdk synth \

@@ -395,21 +395,25 @@ class DrupalStack(core.Stack):
             self,
             "AppSg",
             group_description="App SG",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DBSg",
             group_description="Database SG",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -514,11 +518,13 @@ class DrupalStack(core.Stack):
                         "secretsmanager:GetSecretValue"
                     ],
                     resources=[
-                        core.Fn.condition_if(
-                            secret_arn_exists_condition.logical_id,
-                            secret_arn_param.value_as_string,
-                            secret.ref
-                        ).to_string()
+                        core.Token.as_string(
+                            core.Fn.condition_if(
+                                secret_arn_exists_condition.logical_id,
+                                secret_arn_param.value_as_string,
+                                secret.ref
+                            )
+                        )
                     ]
                 ),
                 aws_iam.PolicyStatement(
@@ -550,24 +556,24 @@ class DrupalStack(core.Stack):
             db_subnet_group_name=db_subnet_group.ref,
             engine="aurora",
             engine_mode="serverless",
-            master_username=core.Fn.condition_if(
-                db_snapshot_identifier_exists_condition.logical_id,
-                core.Aws.NO_VALUE,
+            master_username=core.Token.as_string(
                 core.Fn.condition_if(
-                    secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
-                ).to_string(),
-            ).to_string(),
-            master_user_password=core.Fn.condition_if(
-                db_snapshot_identifier_exists_condition.logical_id,
-                core.Aws.NO_VALUE,
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    core.Aws.NO_VALUE,
+                    core.Fn.condition_if(
+                        secret_arn_exists_condition.logical_id,
+                        core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
+                        core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
+                    ),
+                )
+            ),
+            master_user_password=core.Token.as_string(
                 core.Fn.condition_if(
                     secret_arn_exists_condition.logical_id,
                     core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
                     core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
-                ).to_string(),
-            ).to_string(),
+                ),
+            ),
             # TODO: parameterize
             scaling_configuration=aws_rds.CfnDBCluster.ScalingConfigurationProperty(
                 auto_pause=True,
@@ -575,11 +581,13 @@ class DrupalStack(core.Stack):
                 min_capacity=1,
                 seconds_until_auto_pause=300
             ),
-            snapshot_identifier=core.Fn.condition_if(
-                db_snapshot_identifier_exists_condition.logical_id,
-                db_snapshot_identifier_param.value_as_string,
-                core.Aws.NO_VALUE
-            ).to_string(),
+            snapshot_identifier=core.Token.as_string(
+                core.Fn.condition_if(
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    db_snapshot_identifier_param.value_as_string,
+                    core.Aws.NO_VALUE
+                )
+            ),
             storage_encrypted=True,
             tags=[
                 core.CfnTag(key="drupal-backup", value="true"),
@@ -591,11 +599,13 @@ class DrupalStack(core.Stack):
             self,
             "ALBSg",
             group_description="ALB SG",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -622,12 +632,8 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            type="application"
-        )
-        alb.add_override(
-            "Properties.Subnets",
-            {
-                "Fn::If": [
+            subnets=core.Token.as_list(
+                core.Fn.condition_if(
                     vpc_not_given_condition.logical_id,
                     [
                         vpc_public_subnet1.ref,
@@ -637,8 +643,9 @@ class DrupalStack(core.Stack):
                         vpc_public_subnet_id1_param.value_as_string,
                         vpc_public_subnet_id2_param.value_as_string
                     ]
-                ]
-            }
+                )
+            ),
+            type="application"
         )
         alb_dns_name_output = core.CfnOutput(
             self,
@@ -655,11 +662,13 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
         http_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -707,11 +716,13 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         https_target_group.cfn_options.condition = certificate_arn_exists_condition
         https_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -775,11 +786,13 @@ class DrupalStack(core.Stack):
             self,
             "EfsSg",
             group_description="EFS SG",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -820,22 +833,26 @@ class DrupalStack(core.Stack):
             "AppEfsMountTarget1",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc_private_subnet1.ref,
-                vpc_private_subnet_id1_param.value_as_string
-            ).to_string()
+            subnet_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc_private_subnet1.ref,
+                    vpc_private_subnet_id1_param.value_as_string
+                )
+            )
         )
         efs_mount_target2 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget2",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc_private_subnet2.ref,
-                vpc_private_subnet_id2_param.value_as_string
-            ).to_string()
+            subnet_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc_private_subnet2.ref,
+                    vpc_private_subnet_id2_param.value_as_string
+                )
+            )
         )
 
         # elasticache
@@ -878,11 +895,13 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSg",
             group_description="App SG",
-            vpc_id=core.Fn.condition_if(
-                vpc_not_given_condition.logical_id,
-                vpc.ref,
-                vpc_id_param.value_as_string
-            ).to_string()
+            vpc_id=core.Token.as_string(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    vpc.ref,
+                    vpc_id_param.value_as_string
+                )
+            )
         )
         elasticache_sg.cfn_options.condition = elasticache_enable_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -1008,6 +1027,13 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
+                aliases=core.Token.as_list(
+                    core.Fn.condition_if(
+                        cloudfront_aliases_exist_condition.logical_id,
+                        cloudfront_aliases_param.value_as_list,
+                        core.Aws.NO_VALUE
+                    )
+                ),
                 comment=core.Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[
@@ -1048,48 +1074,46 @@ class DrupalStack(core.Stack):
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         # if there is an ssl cert on the alb, use https only
-                        origin_protocol_policy=core.Fn.condition_if(
-                            certificate_arn_exists_condition.logical_id,
-                            "https-only",
-                            "http-only"
-                        ).to_string(),
+                        origin_protocol_policy=core.Token.as_string(
+                            core.Fn.condition_if(
+                                certificate_arn_exists_condition.logical_id,
+                                "https-only",
+                                "http-only"
+                            )
+                        ),
                         origin_ssl_protocols=[ "TLSv1.1", "TLSv1.2" ]
                     )
                 )],
                 price_class=cloudfront_price_class_param.value_as_string,
                 viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        cloudfront_certificate_arn_param.value_as_string,
-                        core.Aws.NO_VALUE
-                    ).to_string(),
+                    acm_certificate_arn=core.Token.as_string(
+                        core.Fn.condition_if(
+                            cloudfront_certificate_arn_exists_condition.logical_id,
+                            cloudfront_certificate_arn_param.value_as_string,
+                            core.Aws.NO_VALUE
+                        )
+                    ),
                     cloud_front_default_certificate=core.Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
                         core.Aws.NO_VALUE,
                         True
                     ),
-                    minimum_protocol_version=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "TLSv1.2_2018",
-                        core.Aws.NO_VALUE
-                    ).to_string(),
-                    ssl_support_method=core.Fn.condition_if(
-                        cloudfront_certificate_arn_exists_condition.logical_id,
-                        "sni-only",
-                        core.Aws.NO_VALUE
-                    ).to_string()
+                    minimum_protocol_version=core.Token.as_string(
+                        core.Fn.condition_if(
+                            cloudfront_certificate_arn_exists_condition.logical_id,
+                            "TLSv1.2_2018",
+                            core.Aws.NO_VALUE
+                        )
+                    ),
+                    ssl_support_method=core.Token.as_string(
+                        core.Fn.condition_if(
+                            cloudfront_certificate_arn_exists_condition.logical_id,
+                            "sni-only",
+                            core.Aws.NO_VALUE
+                        )
+                    )
                 )
             )
-        )
-        cloudfront_distribution.add_override(
-            "Properties.DistributionConfig.Aliases",
-            {
-                "Fn::If": [
-                    cloudfront_aliases_exist_condition.logical_id,
-                    cloudfront_aliases_param.value_as_list,
-                    core.Aws.NO_VALUE
-                ]
-            }
         )
         cloudfront_distribution_arn = core.Arn.format(
             components=core.ArnComponents(
@@ -1159,11 +1183,13 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    core.Fn.condition_if(
-                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                        pipeline_artifact_bucket_name_param.value_as_string,
-                                        pipeline_artifact_bucket.ref
-                                    ).to_string()
+                                    core.Token.as_string(
+                                        core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        )
+                                    )
                                 )
                             ]
                         )
@@ -1241,31 +1267,39 @@ class DrupalStack(core.Stack):
                     core.Fn.sub(
                         app_launch_config_user_data,
                         {
-                            "CloudFrontHost": core.Fn.condition_if(
-                                cloudfront_enable_condition.logical_id,
+                            "CloudFrontHost": core.Token.as_string(
                                 core.Fn.condition_if(
-                                    cloudfront_aliases_exist_condition.logical_id,
-                                    core.Fn.select(0, cloudfront_aliases_param.value_as_list),
-                                    cloudfront_distribution.attr_domain_name
-                                ).to_string(),
-                                ""
-                            ).to_string(),
+                                    cloudfront_enable_condition.logical_id,
+                                    core.Fn.condition_if(
+                                        cloudfront_aliases_exist_condition.logical_id,
+                                        core.Fn.select(0, cloudfront_aliases_param.value_as_list),
+                                        cloudfront_distribution.attr_domain_name
+                                    ),
+                                    ""
+                                )
+                            ),
                             "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
-                            "ElastiCacheClusterHost": core.Fn.condition_if(
-                                elasticache_enable_condition.logical_id,
-                                elasticache_cluster.attr_configuration_endpoint_address,
-                                ""
-                            ).to_string(),
-                            "ElastiCacheClusterPort": core.Fn.condition_if(
-                                elasticache_enable_condition.logical_id,
-                                elasticache_cluster.attr_configuration_endpoint_port,
-                                ""
-                            ).to_string(),
-                            "SecretArn": core.Fn.condition_if(
-                                secret_arn_exists_condition.logical_id,
-                                secret_arn_param.value_as_string,
-                                secret.ref
-                            ).to_string()
+                            "ElastiCacheClusterHost": core.Token.as_string(
+                                core.Fn.condition_if(
+                                    elasticache_enable_condition.logical_id,
+                                    elasticache_cluster.attr_configuration_endpoint_address,
+                                    ""
+                                )
+                            ),
+                            "ElastiCacheClusterPort": core.Token.as_string(
+                                core.Fn.condition_if(
+                                    elasticache_enable_condition.logical_id,
+                                    elasticache_cluster.attr_configuration_endpoint_port,
+                                    ""
+                                )
+                            ),
+                            "SecretArn": core.Token.as_string(
+                                core.Fn.condition_if(
+                                    secret_arn_exists_condition.logical_id,
+                                    secret_arn_param.value_as_string,
+                                    secret.ref
+                                )
+                            )
                         }
                     )
                 )
@@ -1275,22 +1309,20 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            # using value.to_string() here because these parameters are Number type
-            desired_capacity=asg_desired_capacity_param.value.to_string(),
-            max_size=asg_max_size_param.value.to_string(),
-            min_size=asg_min_size_param.value.to_string(),
+            desired_capacity=core.Token.as_string(asg_desired_capacity_param.value),
+            max_size=core.Token.as_string(asg_max_size_param.value),
+            min_size=core.Token.as_string(asg_min_size_param.value),
             target_group_arns=[
+                core.Token.as_string(
+                    core.Fn.condition_if(
+                        certificate_arn_exists_condition.logical_id,
+                        https_target_group.ref,
+                        http_target_group.ref
+                    )
+                )
+            ],
+            vpc_zone_identifier=core.Token.as_list(
                 core.Fn.condition_if(
-                    certificate_arn_exists_condition.logical_id,
-                    https_target_group.ref,
-                    http_target_group.ref
-                ).to_string()
-            ]
-        )
-        asg.add_override(
-            "Properties.VPCZoneIdentifier",
-            {
-                "Fn::If": [
                     vpc_given_condition.logical_id,
                     [
                         vpc_private_subnet_id1_param.value_as_string,
@@ -1300,8 +1332,8 @@ class DrupalStack(core.Stack):
                         vpc_private_subnet1.ref,
                         vpc_private_subnet2.ref
                     ]
-                ]
-            }
+                )
+            )
         )
         asg.cfn_options.creation_policy=core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(
@@ -1426,11 +1458,13 @@ class DrupalStack(core.Stack):
                                     components=core.ArnComponents(
                                         account="",
                                         region="",
-                                        resource=core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
-                                        ).to_string(),
+                                        resource=core.Token.as_string(
+                                            core.Fn.condition_if(
+                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                                pipeline_artifact_bucket_name_param.value_as_string,
+                                                pipeline_artifact_bucket.ref
+                                            )
+                                        ),
                                         resource_name="*",
                                         service="s3"
                                     ),
@@ -1547,11 +1581,13 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    core.Fn.condition_if(
-                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                        pipeline_artifact_bucket_name_param.value_as_string,
-                                        pipeline_artifact_bucket.ref
-                                    ).to_string()
+                                    core.Token.as_string(
+                                        core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        )
+                                    )
                                 )
                             ]
                         )
@@ -1591,11 +1627,13 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    core.Fn.condition_if(
-                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                        pipeline_artifact_bucket_name_param.value_as_string,
-                                        pipeline_artifact_bucket.ref
-                                    ).to_string()
+                                    core.Token.as_string(
+                                        core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        )
+                                    )
                                 )
                             ]
                         )
@@ -1626,11 +1664,13 @@ class DrupalStack(core.Stack):
                             resources=[
                                 "arn:{}:s3:::{}/*".format(
                                     core.Aws.PARTITION,
-                                    core.Fn.condition_if(
-                                        pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                        pipeline_artifact_bucket_name_param.value_as_string,
-                                        pipeline_artifact_bucket.ref
-                                    ).to_string()
+                                    core.Token.as_string(
+                                        core.Fn.condition_if(
+                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                            pipeline_artifact_bucket_name_param.value_as_string,
+                                            pipeline_artifact_bucket.ref
+                                        )
+                                    )
                                 )
                             ]
                         ),
@@ -1662,11 +1702,13 @@ class DrupalStack(core.Stack):
             self,
             "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-                location=core.Fn.condition_if(
-                    pipeline_artifact_bucket_name_exists_condition.logical_id,
-                    pipeline_artifact_bucket_name_param.value_as_string,
-                    pipeline_artifact_bucket.ref
-                ).to_string(),
+                location=core.Token.as_string(
+                    core.Fn.condition_if(
+                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                        pipeline_artifact_bucket_name_param.value_as_string,
+                        pipeline_artifact_bucket.ref
+                    )
+                ),
                 type="S3"
             ),
             role_arn=pipeline_role.role_arn,
