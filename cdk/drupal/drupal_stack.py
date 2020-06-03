@@ -569,10 +569,14 @@ class DrupalStack(core.Stack):
             ),
             master_user_password=core.Token.as_string(
                 core.Fn.condition_if(
-                    secret_arn_exists_condition.logical_id,
-                    core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
-                    core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
-                ),
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    core.Aws.NO_VALUE,
+                    core.Fn.condition_if(
+                        secret_arn_exists_condition.logical_id,
+                        core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
+                        core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
+                    ),
+                )
             ),
             # TODO: parameterize
             scaling_configuration=aws_rds.CfnDBCluster.ScalingConfigurationProperty(
