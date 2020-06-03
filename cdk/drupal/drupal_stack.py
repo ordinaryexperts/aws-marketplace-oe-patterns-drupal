@@ -1900,6 +1900,17 @@ class DrupalStack(core.Stack):
                         )
                     ]
                 ),
+                "SnsPublishToNotificationTopic": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "sns:Publish",
+                            ],
+                            resources=[ notification_topic.topic_arn ]
+                        )
+                    ]
+                )
             },
             managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")]
         )
@@ -1910,6 +1921,9 @@ class DrupalStack(core.Stack):
             "BackupDBLambdaFunction",
             code=aws_lambda.CfnFunction.CodeProperty(
                 zip_file=backup_db_lambda_function_code
+            ),
+            dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
+                target_arn=notification_topic.topic_arn
             ),
             environment=aws_lambda.CfnFunction.EnvironmentProperty(
                 variables={
