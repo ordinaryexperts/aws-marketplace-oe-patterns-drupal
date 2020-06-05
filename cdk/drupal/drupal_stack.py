@@ -1879,7 +1879,7 @@ class DrupalStack(core.Stack):
                                     "Category": "Invoke",
                                     "Owner": "AWS",
                                     "Provider": "Lambda",
-                                    "Version": 1
+                                    "Version": "1"
                                 },
                                 "Configuration": {
                                     "FunctionName": cloudfront_invalidation_lambda_function.ref
