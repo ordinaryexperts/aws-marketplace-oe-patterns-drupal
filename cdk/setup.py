@@ -5,7 +5,7 @@ with open("README.md") as fp:
     long_description = fp.read()
 
 
-CDK_VERSION="1.36.1"
+CDK_VERSION="1.42.1"
 
 setuptools.setup(
     name="drupal",
