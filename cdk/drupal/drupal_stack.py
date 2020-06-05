@@ -1866,7 +1866,7 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        # TODO: open issue
+        # https://github.com/aws/aws-cdk/issues/8396
         codepipeline.add_override(
             "Properties.Stages.3",
             {
