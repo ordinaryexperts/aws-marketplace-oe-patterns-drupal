@@ -13,8 +13,8 @@ apt-get -y update && apt-get -y upgrade
 apt-get -y install curl git jq ntp unzip vim wget zip
 
 # install latest CFN utilities
-apt-get -y install python-pip
-pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+apt-get -y install python3-pip
+pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
 
 # install aws cli
 cd /tmp
@@ -56,24 +56,24 @@ cd -
 # install apache and php
 apt-get -y install            \
         apache2               \
-        libapache2-mod-php7.2 \
-        mysql-client-5.7      \
-        mysql-client-core-5.7 \
+        libapache2-mod-php7.4 \
+        mysql-client-8.0      \
+        mysql-client-core-8.0 \
         nfs-common            \
         php-mysql             \
-        php7.2                \
-        php7.2-cgi            \
-        php7.2-curl           \
-        php7.2-dev            \
-        php7.2-gd             \
-        php7.2-mbstring       \
-        php7.2-xml            \
+        php7.4                \
+        php7.4-cgi            \
+        php7.4-curl           \
+        php7.4-dev            \
+        php7.4-gd             \
+        php7.4-mbstring       \
+        php7.4-xml            \
         zlib1g-dev
 
 # memcache
 printf "\n" | pecl install memcache
-echo "extension=memcache.so" > /etc/php/7.2/apache2/conf.d/20-memcache.ini
-echo "extension=memcache.so" > /etc/php/7.2/cli/conf.d/20-memcache.ini
+echo "extension=memcache.so" > /etc/php/7.4/apache2/conf.d/20-memcache.ini
+echo "extension=memcache.so" > /etc/php/7.4/cli/conf.d/20-memcache.ini
 
 # configure apache
 a2enmod rewrite
