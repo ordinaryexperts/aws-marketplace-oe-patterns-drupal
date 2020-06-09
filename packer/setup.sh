@@ -13,8 +13,10 @@ apt-get -y update && apt-get -y upgrade
 apt-get -y install curl git jq ntp unzip vim wget zip
 
 # install latest CFN utilities
-apt-get -y install python3-pip
-pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+apt-get -y install python2.7
+curl https://bootstrap.pypa.io/get-pip.py --output /tmp/get-pip.py
+python2.7 /tmp/get-pip.py
+pip2 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
 
 # install aws cli
 cd /tmp
