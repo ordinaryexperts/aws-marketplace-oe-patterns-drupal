@@ -53,6 +53,11 @@ cd /opt/aws/rds
 wget https://www.amazontrust.com/repository/AmazonRootCA1.pem
 cd -
 
+# install RDS SSL CA for MySQL instance
+cd /opt/aws/rds
+wget https://s3.amazonaws.com/rds-downloads/rds-ca-2019-root.pem
+cd -
+
 # custom php ppa
 add-apt-repository ppa:ondrej/php
 apt-get update
