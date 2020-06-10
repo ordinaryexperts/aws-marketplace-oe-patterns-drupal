@@ -435,21 +435,12 @@ class DrupalStack(core.Stack):
                 }
             }
         )
-        db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
+        db_parameter_group = aws_rds.CfnDBParameterGroup(
             self,
-            "DBClusterParameterGroup",
-            description="test",
+            "DBParameterGroup",
+            description="Drupal RDS parameter group.",
             family="aurora-mysql5.7",
-            parameters={
-                "character_set_client": "utf8",
-                "character_set_connection": "utf8",
-                "character_set_database": "utf8",
-                "character_set_filesystem": "utf8",
-                "character_set_results": "utf8",
-                "character_set_server": "utf8",
-                "collation_connection": "utf8_general_ci",
-                "collation_server": "utf8_general_ci"
-            }
+            parameters={}
         )
         db_snapshot_identifier_param = core.CfnParameter(
             self,
@@ -530,13 +521,24 @@ class DrupalStack(core.Stack):
             )
         )
 
-        db_cluster = aws_rds.CfnDBCluster(
+        db_instance = aws_rds.CfnDBInstance(
             self,
-            "DBCluster",
-            engine="aurora",
-            db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
+            "DBInstance",
+            allocated_storage="100",
+            # TODO: parameterize
+            db_instance_class="db.r5.large",
+            db_name="drupal",
+            db_parameter_group_name=db_parameter_group.ref,
+            db_snapshot_identifier=core.Token.as_string(
+                core.Fn.condition_if(
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    db_snapshot_identifier_param.value_as_string,
+                    core.Aws.NO_VALUE
+                )
+            ),
             db_subnet_group_name=db_subnet_group.ref,
-            engine_mode="serverless",
+            engine="aurora-mysql",
+            engine_version="5.7.12",
             master_username=core.Token.as_string(
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
@@ -559,21 +561,9 @@ class DrupalStack(core.Stack):
                     ),
                 )
             ),
-            scaling_configuration={
-                "auto_pause": True,
-                "min_capacity": 1,
-                "max_capacity": 2,
-                "seconds_until_auto_pause": 30
-            },
-            snapshot_identifier=core.Token.as_string(
-                core.Fn.condition_if(
-                    db_snapshot_identifier_exists_condition.logical_id,
-                    db_snapshot_identifier_param.value_as_string,
-                    core.Aws.NO_VALUE
-                )
-            ),
+            multi_az=True,
             storage_encrypted=True,
-            vpc_security_group_ids=[ db_sg.ref ]
+            vpc_security_groups=[ db_sg.ref ]
         )
         alb_sg = aws_ec2.CfnSecurityGroup(
             self,
@@ -1312,7 +1302,7 @@ class DrupalStack(core.Stack):
             )
         )
         core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
-        asg.add_depends_on(db_cluster)
+        asg.add_depends_on(db_instance)
         asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
             self,
             "WebServerScaleUpPolicy",

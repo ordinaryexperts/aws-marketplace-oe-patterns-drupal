@@ -151,7 +151,7 @@ aws ssm get-parameter \
 | jq -r . >> /opt/oe/patterns/drupal/secret.json
 
 # database values
-jq -n --arg host "${DBCluster.Endpoint.Address}" --arg port "${DBCluster.Endpoint.Port}" \
+jq -n --arg host "${DBInstance.Endpoint.Address}" --arg port "${DBInstance.Endpoint.Port}" \
    '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
 
 # elasticache values
