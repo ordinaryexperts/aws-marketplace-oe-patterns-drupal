@@ -69,6 +69,14 @@ class DrupalStack(core.Stack):
             mapping=ami_mapping
         )
 
+        # utility function to parse the unique id from the stack id for
+        # shorter resource names  using cloudformation functions
+        def append_stack_uuid(name):
+            return core.Fn.join("-", [
+                name,
+                core.Fn.select(0, core.Fn.split("-", core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))))
+            ])
+
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
@@ -535,7 +543,7 @@ class DrupalStack(core.Stack):
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
                     core.Aws.NO_VALUE,
-                    core.Aws.STACK_NAME
+                    append_stack_uuid("drupal")
                 )
             ),
             db_parameter_group_name=db_parameter_group.ref,
