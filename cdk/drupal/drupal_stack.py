@@ -533,10 +533,11 @@ class DrupalStack(core.Stack):
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DBCluster",
-            engine="aurora",
+            engine="aurora-mysql",
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
-            engine_mode="serverless",
+            engine_mode="provisioned",
+            engine_version="5.7.12",
             master_username=core.Token.as_string(
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
@@ -559,12 +560,6 @@ class DrupalStack(core.Stack):
                     ),
                 )
             ),
-            scaling_configuration={
-                "auto_pause": True,
-                "min_capacity": 1,
-                "max_capacity": 2,
-                "seconds_until_auto_pause": 30
-            },
             snapshot_identifier=core.Token.as_string(
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
