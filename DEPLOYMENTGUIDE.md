@@ -36,7 +36,7 @@ You can use this template to:
 * Deploy Drupal using your existing VPC
 * Optionally configure AWS resources to better suit your requirements
 
-This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
+This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
 Regions supported by Ordinary Experts' stack:
 
@@ -58,7 +58,7 @@ The core AWS components in our architecture include the following AWS services:
 * **AWS Auto Scaling Groups** — Automatically provision EC2 instances based on CPU load in order to maintain high availability and optimal resource utilization
 * **Elastic Load Balancing** — Automatically distribute traffic across available healthy EC2 instances to provide low latency and optimal performance
 * **Amazon Virtual Public Cloud (Amazon VPC)** — Provision a private section of the AWS Cloud to launch AWS resources in a customized environment. By default, our stack creates two private and two public subnets, NAT Gateways, Internet Gateways, and associated route tables but it can also accept existing VPC and subnet IDs.
-* **Amazon Aurora Serverless** — Automatically scales compute and capacity resources needed for the MySQL database. By default, our stack creates a new database but it can also accept an existing snapshot ARN.
+* **Amazon Aurora** — High performance and scalable MySQL database that is fault-tolerant and allows automatic disaster recovery. By default, our stack creates a new database but it can also accept an existing snapshot ARN.
 * **Amazon Elastic File System (Amazon EFS)** — Used to share user generated content between application servers.
 * **Amazon Simple Storage System (Amazon S3)** — Used to hold pipeline artifacts and store the source artifact for AWS CodePipeline. The source zip is your compressed Drupal project which is either uploaded manually or via another pipeline to the S3 bucket. When the source zip file is changed, the pipeline will be triggered to run.
 * **AWS CodePipeline** — Stack CI/CD polls the source zip in S3 for changes and uses CodeDeploy to deploy the updated source zip into Auto Scaling Group.
@@ -76,7 +76,7 @@ Deploying this template for a new virtual private cloud (VPC) with all optional 
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
-Automatically configured to support auto-scaling through AWS Autoscaling Groups, our solution leverages an EFS file system to share user generated content between application servers. We support multiple availability zones using an RDS Aurora serverless cluster and Amazon's integrated options to distribute infrastructure. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
+Automatically configured to support auto-scaling through AWS Autoscaling Groups, our solution leverages an EFS file system to share user generated content between application servers. We support multiple availability zones using an RDS Aurora MySQL instance and Amazon's integrated options to distribute infrastructure. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
 
 Optional configurations include the following:
 
@@ -100,7 +100,7 @@ Prior to deploying your Drupal application, the stack needs the following resour
 
 ## Deployment Options
 
-As stated previously, our template will provision a VPC with all associated components, AWS ASGs to launch EC2 instances, an ELB to manage web traffic, a fully auto-scaling Aurora Serverless MySQL database, AWS EFS for server-shared file storage, a complete CI/CD pipeline using S3 and CodeDeploy, and comprehensive application logging and resource monitoring via CloudWatch.
+As stated previously, our template will provision a VPC with all associated components, AWS ASGs to launch EC2 instances, an ELB to manage web traffic, a fully scalable Aurora MySQL database, AWS EFS for server-shared file storage, a complete CI/CD pipeline using S3 and CodeDeploy, and comprehensive application logging and resource monitoring via CloudWatch.
 
 The following optional parameters are accepted by the template to further customize the application stack.
 
@@ -189,7 +189,7 @@ The following optional parameters are accepted by the template to further custom
 
 The template follows best practice rules for AWS access by using IAM roles to grant the least privilege need to run the associated AWS resources. Each resource has assigned roles to dictate the performable actions and no resource has full privileges.
 
-The stack also includes built-in support for encrypting data at rest and in transport using default AWS managed keys. Both the Aurora Serverless database cluster and EFS file system are encrypted and if the CodePipeline artifact S3 bucket is created by our stack, it enforces encryption as well.
+The stack also includes built-in support for encrypting data at rest and in transport using default AWS managed keys. Both the Aurora database instance and EFS file system are encrypted and if the CodePipeline artifact S3 bucket is created by our stack, it enforces encryption as well.
 
 The CloudFormation CDN accepts both HTTP and HTTPS traffic, communicating with the origin server as requested. However, if a certificate ARN is provided for SSL, the application load balancer redirects all traffic to HTTPS.
 
@@ -209,7 +209,7 @@ If you have any questions, problems deploying, or feature requests, please use t
 * [AWS Auto Scaling Groups](https://aws.amazon.com/ec2/autoscaling/)
 * [Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/)
 * [Amazon Virtual Public Cloud (Amazon VPC)](https://aws.amazon.com/vpc/)
-* [Amazon Aurora Serverless](https://aws.amazon.com/rds/aurora/serverless/)
+* [Amazon Aurora](https://aws.amazon.com/rds/aurora/)
 * [Amazon Elastic File System (Amazon EFS)](https://aws.amazon.com/efs/)
 * [Amazon Simple Storage System (Amazon S3)](https://aws.amazon.com/s3/)
 * [AWS CodePipeline](https://aws.amazon.com/codepipeline/)
