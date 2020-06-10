@@ -531,8 +531,13 @@ class DrupalStack(core.Stack):
             allocated_storage="100",
             # TODO: parameterize?
             db_instance_class="db.r5.large",
-            db_instance_identifier=core.Aws.STACK_NAME,
-            db_name="drupal",
+            db_instance_identifier=core.Token.as_string(
+                core.Fn.condition_if(
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    core.Aws.NO_VALUE,
+                    core.Aws.STACK_NAME
+                )
+            ),
             db_parameter_group_name=db_parameter_group.ref,
             db_snapshot_identifier=core.Token.as_string(
                 core.Fn.condition_if(

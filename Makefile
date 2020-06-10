@@ -65,11 +65,11 @@ deploy:
 	--parameters CloudFrontCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4 \
 	--parameters CloudFrontAliases=cdn-oe-patterns-drupal-${USER}.dev.patterns.ordinaryexperts.com \
 	--parameters CloudFrontEnable=true \
-	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200520 \
 	--parameters ElastiCacheEnable=true \
+	--parameters DBSnapshotIdentifier=arn:aws:rds:us-east-1:992593896645:snapshot:oe-patterns-drupal-default-20200610 \
 	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx \
-	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
-	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip \
+	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/rds-instance/secret-HXBSLp \
+	--parameters SourceArtifactS3ObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/DP-97--drupal-upgrade.zip \
 	--parameters VpcId=vpc-00425deda4c835455 \
 	--parameters VpcPrivateSubnetId1=subnet-030c94b9795c6cb96 \
 	--parameters VpcPrivateSubnetId2=subnet-079290412ce63c4d5 \
