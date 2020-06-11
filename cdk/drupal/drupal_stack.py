@@ -454,6 +454,20 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
+        db_allocated_storage_param = core.CfnParameter(
+            self,
+            "DBAllocatedStorage",
+            default="100",
+            description="Required: The initial amount of allocated storage in gigabytes for the database instance."
+        )
+        db_instance_class_param = core.CfnParameter(
+            self,
+            "DBInstanceClass",
+            # https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
+            allowed_values=[ "db.m5.large", "db.m5.xlarge", "db.m5.2xlarge", "db.m5.4xlarge", "db.m5.12xlarge", "db.m5.24xlarge", "db.m4.large", "db.m4.xlarge", "db.m4.2xlarge", "db.m4.4xlarge", "db.m4.10xlarge", "db.m4.16xlarge", "db.r4.large", "db.m3.medium", "db.m3.large", "db.m3.xlarge", "db.m3.2xlarge", "db.r5.large", "db.r5.xlarge", "db.r5.2xlarge", "db.r5.4xlarge", "db.r5.12xlarge", "db.r5.24xlarge", "db.r4.xlarge", "db.r4.2xlarge", "db.r4.4xlarge", "db.r4.8xlarge", "db.r4.16xlarge", "db.r3.large", "db.r3.xlarge", "db.r3.2xlarge", "db.r3.4xlarge", "db.r3.8xlarge", "db.t3.micro", "db.t3.small", "db.t3.medium", "db.t3.large", "db.t3.xlarge", "db.t3.2xlarge", "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large", "db.t2.xlarge", "db.t2.2xlarge" ],
+            default="db.t3.large",
+            description="Required: The class profile for memory and compute capacity for the database instance."
+        )
         db_snapshot_identifier_param = core.CfnParameter(
             self,
             "DBSnapshotIdentifier",
@@ -536,9 +550,8 @@ class DrupalStack(core.Stack):
         db_instance = aws_rds.CfnDBInstance(
             self,
             "DBInstance",
-            allocated_storage="100",
-            # TODO: parameterize?
-            db_instance_class="db.r5.large",
+            allocated_storage=db_allocated_storage_param.value_as_string,
+            db_instance_class=db_instance_class_param.value_as_string,
             db_instance_identifier=core.Token.as_string(
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
