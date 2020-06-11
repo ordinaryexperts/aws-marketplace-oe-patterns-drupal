@@ -15,12 +15,10 @@
 "Product Category3": "Content Management"
 "Search Keywords": "Drupal, development, infrastructure"
 "Resource1_Name": "Deployment Guide"
-# TODO: update to master branch after merge?
-"Resource1_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/blob/develop/DEPLOYMENTGUIDE.md"
+"Resource1_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/blob/develop/DEPLOYMENTGUIDE.md" # TODO: update to master branch after merge?
 "Resource2_Name": "Github Source Code and Documentation"
 "Resource2_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal"
-# TODO: replace with product page?
-"Resource3_Name": "Ordinary Experts Homepage"
+"Resource3_Name": "Ordinary Experts Homepage" # TODO: replace with product page?
 "Resource3_URL": "https://www.ordinaryexperts.com"
 "Image URL": "TODO"
 "Product Video": "TODO"
