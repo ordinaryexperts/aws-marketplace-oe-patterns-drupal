@@ -61,6 +61,11 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        current_directory = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        allowed_values = yaml.load(
+            open(os.path.join(current_directory, "allowed_values.yaml")),
+            Loader=yaml.SafeLoader
+        )
         ami_mapping={
             "AMI": {
                 "OEDRUPAL": AMI_NAME
@@ -73,6 +78,14 @@ class DrupalStack(core.Stack):
             "AWSAMIRegionMap",
             mapping=ami_mapping
         )
+
+        # utility function to parse the unique id from the stack id for
+        # shorter resource names  using cloudformation functions
+        def append_stack_uuid(name):
+            return core.Fn.join("-", [
+                name,
+                core.Fn.select(0, core.Fn.split("-", core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))))
+            ])
 
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
@@ -394,7 +407,7 @@ class DrupalStack(core.Stack):
         )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
-            "DBSg",
+            "DbSg",
             group_description="Database SG",
             vpc_id=core.Token.as_string(
                 core.Fn.condition_if(
@@ -406,7 +419,7 @@ class DrupalStack(core.Stack):
         )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "DBSgIngress",
+            "DbSgIngress",
             from_port=3306,
             group_id=db_sg.ref,
             ip_protocol="tcp",
@@ -416,7 +429,7 @@ class DrupalStack(core.Stack):
         # TODO: move to CfnDBSubnetGroup
         db_subnet_group = core.CfnResource(
             self,
-            "DBSubnetGroup",
+            "DbSubnetGroup",
             type="AWS::RDS::DBSubnetGroup",
             properties={
                 "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
@@ -437,7 +450,7 @@ class DrupalStack(core.Stack):
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
-            "DBClusterParameterGroup",
+            "DbClusterParameterGroup",
             description="test",
             family="aurora-mysql5.7",
             parameters={
@@ -451,15 +464,35 @@ class DrupalStack(core.Stack):
                 "collation_server": "utf8_general_ci"
             }
         )
+        db_parameter_group = aws_rds.CfnDBParameterGroup(
+            self,
+            "DbParameterGroup",
+            description="Aurora DB Instance Parameter Group",
+            family="aurora-mysql5.7",
+            parameters={
+                "general_log": "1",
+                "log_output": "FILE",
+                "log_queries_not_using_indexes": "1",
+                "long_query_time": "10",
+                "slow_query_log": "1"
+            }
+        )
         db_snapshot_identifier_param = core.CfnParameter(
             self,
-            "DBSnapshotIdentifier",
+            "DbSnapshotIdentifier",
             default="",
             description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
         )
+        db_instance_class_param = core.CfnParameter(
+            self,
+            "DbInstanceClass",
+            allowed_values=allowed_values["allowed_db_instance_types"],
+            default="db.r5.large",
+            description="Required: The class profile for memory and compute capacity for the database instance."
+        )
         db_snapshot_identifier_exists_condition = core.CfnCondition(
             self,
-            "DBSnapshotIdentifierExistsCondition",
+            "DbSnapshotIdentifierExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
         secret_arn_param = core.CfnParameter(
@@ -532,12 +565,12 @@ class DrupalStack(core.Stack):
 
         db_cluster = aws_rds.CfnDBCluster(
             self,
-            "DBCluster",
-            engine="aurora-mysql",
+            "DbCluster",
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
+            engine="aurora-mysql",
             engine_mode="provisioned",
-            engine_version="5.7.12",
+            engine_version="5.7.mysql_aurora.2.08.0",
             master_username=core.Token.as_string(
                 core.Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
@@ -570,10 +603,28 @@ class DrupalStack(core.Stack):
             storage_encrypted=True,
             vpc_security_group_ids=[ db_sg.ref ]
         )
+        db_primary_instance = aws_rds.CfnDBInstance(
+            self,
+            "DbPrimaryInstance",
+            db_cluster_identifier=db_cluster.ref,
+            db_instance_class=db_instance_class_param.value_as_string,
+            db_instance_identifier=core.Token.as_string(
+                core.Fn.condition_if(
+                    db_snapshot_identifier_exists_condition.logical_id,
+                    core.Aws.NO_VALUE,
+                    append_stack_uuid("drupal")
+                )
+            ),
+            db_parameter_group_name=db_parameter_group.ref,
+            db_subnet_group_name=db_subnet_group.ref,
+            engine="aurora-mysql",
+            # option_group_name="TODO",
+            publicly_accessible=False
+        )
         alb_sg = aws_ec2.CfnSecurityGroup(
             self,
-            "ALBSg",
-            group_description="ALB SG",
+            "AlbSg",
+            group_description="Alb Sg",
             vpc_id=core.Token.as_string(
                 core.Fn.condition_if(
                     vpc_not_given_condition.logical_id,
@@ -814,7 +865,7 @@ class DrupalStack(core.Stack):
         elasticache_cluster_cache_node_type_param = core.CfnParameter(
             self,
             "ElastiCacheClusterCacheNodeType",
-            allowed_values=[ "cache.m5.large", "cache.m5.xlarge", "cache.m5.2xlarge", "cache.m5.4xlarge", "cache.m5.12xlarge", "cache.m5.24xlarge", "cache.m4.large", "cache.m4.xlarge", "cache.m4.2xlarge", "cache.m4.4xlarge", "cache.m4.10xlarge", "cache.t3.micro", "cache.t3.small", "cache.t3.medium", "cache.t2.micro", "cache.t2.small", "cache.t2.medium" ],
+            allowed_values=allowed_values["allowed_cache_instance_types"],
             default="cache.t2.micro",
             description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
@@ -1172,15 +1223,10 @@ class DrupalStack(core.Stack):
         )
 
         # autoscaling
-        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        allowed_instance_types = yaml.load(
-            open(os.path.join(__location__, "allowed_instance_types.yaml")),
-            Loader=yaml.SafeLoader
-        )["allowed_instance_types"]
         app_instance_type_param = core.CfnParameter(
             self,
             "AppLaunchConfigInstanceType",
-            allowed_values=allowed_instance_types,
+            allowed_values=allowed_values["allowed_instance_types"],
             default="m5.xlarge",
             description="Required: The EC2 instance type for the application Auto Scaling Group."
         )
