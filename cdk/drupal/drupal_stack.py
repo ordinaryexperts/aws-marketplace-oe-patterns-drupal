@@ -14,6 +14,7 @@ from aws_cdk import (
     aws_elasticache,
     aws_elasticloadbalancingv2,
     aws_iam,
+    aws_lambda,
     aws_logs,
     aws_rds,
     aws_s3,
@@ -738,6 +739,17 @@ class DrupalStack(core.Stack):
             endpoint=notification_email_param.value_as_string
         )
         notification_subscription.cfn_options.condition = notification_email_exists_condition
+        iam_notification_publish_policy =aws_iam.PolicyDocument(
+            statements=[
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[
+                        "sns:Publish",
+                    ],
+                    resources=[ notification_topic.topic_arn ]
+                )
+            ]
+        )
 
         system_log_group = aws_logs.CfnLogGroup(
             self,
@@ -1077,7 +1089,7 @@ class DrupalStack(core.Stack):
         )
         cloudfront_distribution_arn = core.Arn.format(
             components=core.ArnComponents(
-                account="",
+                account=core.Aws.ACCOUNT_ID,
                 region="",
                 resource="distribution",
                 resource_name=cloudfront_distribution.ref,
@@ -1086,6 +1098,79 @@ class DrupalStack(core.Stack):
             stack=self
         )
         cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+        cloudfront_invalidation_lambda_function_role = aws_iam.CfnRole(
+            self,
+            "CloudFrontInvalidationLambdaFunctionRole",
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("lambda.amazonaws.com") ]
+                    )
+                ]
+            ),
+            managed_policy_arns=[
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ],
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "cloudfront:CreateInvalidation",
+                                ],
+                                resources=[ cloudfront_distribution_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="CloudFrontInvalidation"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "codepipeline:PutJobSuccessResult",
+                                    "codepipeline:PutJobFailureResult"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="CodePipelineResult"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=iam_notification_publish_policy,
+                    policy_name="SnsPublishToNotificationTopic"
+                )
+            ]
+        )
+        cloudfront_invalidation_lambda_function_role.cfn_options.condition = cloudfront_enable_condition
+        with open("drupal/cloudfront_invalidation_lambda_function_code.py") as f:
+            cloudfront_invalidation_lambda_function_code = f.read()
+        cloudfront_invalidation_lambda_function = aws_lambda.CfnFunction(
+            self,
+            "CloudFrontInvalidationLambdaFunction",
+            code=aws_lambda.CfnFunction.CodeProperty(
+                zip_file=cloudfront_invalidation_lambda_function_code
+            ),
+            dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
+                target_arn=notification_topic.topic_arn
+            ),
+            environment=aws_lambda.CfnFunction.EnvironmentProperty(
+                variables={
+                    "CloudFrontDistributionId": cloudfront_distribution.ref,
+                }
+            ),
+            handler="index.lambda_handler",
+            role=cloudfront_invalidation_lambda_function_role.attr_arn,
+            runtime="python3.7"
+        )
+        cloudfront_invalidation_lambda_function.cfn_options.condition = cloudfront_enable_condition
         cloudfront_distribution_endpoint_output = core.CfnOutput(
             self,
             "CloudFrontDistributionEndpointOutput",
@@ -1463,9 +1548,9 @@ class DrupalStack(core.Stack):
             )
         )
 
-        # cicd pipeline
+        # codepipeline
         # TODO: Tighten role / use managed roles?
-        pipeline_role = aws_iam.Role(
+        codepipeline_role = aws_iam.Role(
             self,
             "PipelineRole",
             assumed_by=aws_iam.ServicePrincipal("codepipeline.amazonaws.com"),
@@ -1499,11 +1584,10 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-
-        source_stage_role = aws_iam.Role(
+        codepipeline_source_stage_role = aws_iam.Role(
             self,
             "SourceStageRole",
-            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
             inline_policies={
                 "SourceRolePerms": aws_iam.PolicyDocument(
                     statements=[
@@ -1555,18 +1639,10 @@ class DrupalStack(core.Stack):
                 )
             }
         )
-
-        codedeploy_transform_stage_role = aws_iam.Role(
-            self,
-            "TransformStageRole",
-            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
-            inline_policies={}
-        )
-
-        deploy_stage_role = aws_iam.Role(
+        codepipeline_deploy_stage_role = aws_iam.Role(
             self,
             "DeployStageRole",
-            assumed_by=aws_iam.ArnPrincipal(pipeline_role.role_arn),
+            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
             inline_policies={
                 "DeployRolePerms": aws_iam.PolicyDocument(
                     statements=[
@@ -1601,14 +1677,54 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        codepipeline_finalize_stage_role = aws_iam.CfnRole(
+           self,
+           "CodePipelineFinalizeStageRole",
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ArnPrincipal(arn=codepipeline_role.role_arn) ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "codedeploy:*" ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="CodeDeploy"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "lambda:InvokeFunction" ],
+                                resources=[ cloudfront_invalidation_lambda_function.attr_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="InvokeCloudFrontInvalidationLambdaFunction",
+                )
+            ]
+        )
+        codepipeline_finalize_stage_role.cfn_options.condition = cloudfront_enable_condition
 
-        code_deploy_application = aws_codedeploy.CfnApplication(
+        codedeploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
-        code_deploy_role = aws_iam.Role(
+        codedeploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
             assumed_by=aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)),
@@ -1637,16 +1753,16 @@ class DrupalStack(core.Stack):
                     ]
                 )
             },
-            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSCodeDeployRole")]
+            managed_policies=[ aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSCodeDeployRole") ]
         )
-        code_deploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
+        codedeploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
             "CodeDeployDeploymentGroup",
-            application_name=code_deploy_application.application_name,
-            auto_scaling_groups=[asg.ref],
+            application_name=codedeploy_application.application_name,
+            auto_scaling_groups=[ asg.ref ],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=code_deploy_role.role_arn,
+            service_role_arn=codedeploy_role.role_arn,
             trigger_configurations=[
                 aws_codedeploy.CfnDeploymentGroup.TriggerConfigProperty(
                     trigger_events=[
@@ -1658,7 +1774,7 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        pipeline = aws_codepipeline.CfnPipeline(
+        codepipeline = aws_codepipeline.CfnPipeline(
             self,
             "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
@@ -1671,7 +1787,7 @@ class DrupalStack(core.Stack):
                 ),
                 type="S3"
             ),
-            role_arn=pipeline_role.role_arn,
+            role_arn=codepipeline_role.role_arn,
             stages=[
                 aws_codepipeline.CfnPipeline.StageDeclarationProperty(
                     name="Source",
@@ -1693,7 +1809,7 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="SourceAction",
-                            role_arn=source_stage_role.role_arn
+                            role_arn=codepipeline_source_stage_role.role_arn
                         )
                     ]
                 ),
@@ -1735,8 +1851,8 @@ class DrupalStack(core.Stack):
                                 version="1"
                             ),
                             configuration={
-                                "ApplicationName": code_deploy_application.ref,
-                                "DeploymentGroupName": code_deploy_deployment_group.ref,
+                                "ApplicationName": codedeploy_application.ref,
+                                "DeploymentGroupName": codedeploy_deployment_group.ref,
                             },
                             input_artifacts=[
                                 aws_codepipeline.CfnPipeline.InputArtifactProperty(
@@ -1744,12 +1860,49 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="DeployAction",
-                            role_arn=deploy_stage_role.role_arn
+                            role_arn=codepipeline_deploy_stage_role.role_arn
                         )
                     ]
                 )
             ]
         )
+        # https://github.com/aws/aws-cdk/issues/8396
+        codepipeline.add_override(
+            "Properties.Stages.3",
+            {
+                "Fn::If": [
+                    cloudfront_enable_condition.logical_id,
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Invoke",
+                                    "Owner": "AWS",
+                                    "Provider": "Lambda",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "FunctionName": cloudfront_invalidation_lambda_function.ref
+                                },
+                                "Name": "CloudFrontInvalidationAction",
+                                "RoleArn": codepipeline_finalize_stage_role.attr_arn
+                            }
+                        ],
+                        "Name": "Finalize"
+                    },
+                    core.Aws.NO_VALUE
+                ]
+            }
+        )
+        cloudfront_invalidation_lambda_permission = aws_lambda.CfnPermission(
+            self,
+            "CloudFrontInvalidationLambdaPermission",
+            action="lambda:InvokeFunction",
+            function_name=cloudfront_invalidation_lambda_function.attr_arn,
+            principal="events.amazonaws.com",
+            source_arn=codepipeline_role.role_arn
+        )
+        cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {

@@ -11,6 +11,7 @@
 * Add deployment guide
 * Parameter name consistency
 * make gen-plf - generates Product Load Form info
+* CloudFront cache invalidation
 
 # 0.3.0
 
