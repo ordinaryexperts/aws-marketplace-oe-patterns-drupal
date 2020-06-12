@@ -12,6 +12,7 @@
 * Parameter name consistency
 * make gen-plf - generates Product Load Form info
 * CloudFront cache invalidation
+* Switch to Aurora MySQL provisioned instead of serverless
 
 # 0.3.0
 
