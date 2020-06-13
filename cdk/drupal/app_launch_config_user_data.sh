@@ -154,6 +154,19 @@ aws ssm get-parameter \
 jq -n --arg host "${DbCluster.Endpoint.Address}" --arg port "${DbCluster.Endpoint.Port}" \
    '{host: $host, port: $port}' > /opt/oe/patterns/drupal/db.json
 
+# db connect helper
+cat <<'EOF' > /usr/local/bin/connect-to-db
+#!/usr/bin/env bash
+
+host=`jq -r '.host' /opt/oe/patterns/drupal/db.json`
+port=`jq -r '.port' /opt/oe/patterns/drupal/db.json`
+username=`jq -r '.username' /opt/oe/patterns/drupal/secret.json`
+password=`jq -r '.password' /opt/oe/patterns/drupal/secret.json`
+
+mysql -u $username -P $port -h $host --password=$password
+EOF
+chmod 755 /usr/local/bin/connect-to-db
+
 # elasticache values
 if [[ "${ElastiCacheEnable}" == "true" ]]
 then
