@@ -13,6 +13,7 @@
 * make gen-plf - generates Product Load Form info
 * CloudFront cache invalidation
 * Switch to Aurora MySQL provisioned instead of serverless
+* Backup support
 
 # 0.3.0
 

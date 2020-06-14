@@ -55,6 +55,7 @@ tests:
       VpcPublicSubnetId2: ''
   allResources:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontEnable: 'true'
@@ -125,6 +126,7 @@ tests:
   # region compatibility testing
   allResourcesUsEast2:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:us-east-2:992593896645:certificate/ff192222-3cee-4147-b892-036b506ed58d
       CloudFrontCertificationArn: arn:aws:acm:us-east-2:992593896645:certificate/ff192222-3cee-4147-b892-036b506ed58d
       CloudFrontEnable: 'true'
@@ -134,6 +136,7 @@ tests:
       - us-east-2
   allResourcesUsWest1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:us-west-1:992593896645:certificate/9a8d0ee2-9619-45b6-af09-0a78bb813d1a
       CloudFrontCertificationArn: arn:aws:acm:us-west-1:992593896645:certificate/9a8d0ee2-9619-45b6-af09-0a78bb813d1a
       CloudFrontEnable: 'true'
@@ -143,6 +146,7 @@ tests:
       - us-west-1
   allResourcesUsWest2:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:us-west-2:992593896645:certificate/e94d1a87-91d0-4fb8-89e1-dcaee6f420fd
       CloudFrontCertificationArn: arn:aws:acm:us-west-2:992593896645:certificate/e94d1a87-91d0-4fb8-89e1-dcaee6f420fd
       CloudFrontEnable: 'true'
@@ -152,6 +156,7 @@ tests:
       - us-west-2
   allResourcesCaCentral1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:ca-central-1:992593896645:certificate/bb156460-ef6a-42f8-985b-e74c0e9dcb86
       CloudFrontCertificationArn: arn:aws:acm:ca-central-1:992593896645:certificate/bb156460-ef6a-42f8-985b-e74c0e9dcb86
       CloudFrontEnable: 'true'
@@ -161,6 +166,7 @@ tests:
       - ca-central-1
   allResourcesEuCentral1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:eu-central-1:992593896645:certificate/4bf438f2-77fe-4f45-a863-3519410ebfdb
       CloudFrontCertificationArn: arn:aws:acm:eu-central-1:992593896645:certificate/4bf438f2-77fe-4f45-a863-3519410ebfdb
       CloudFrontEnable: 'true'
@@ -170,6 +176,7 @@ tests:
       - eu-central-1
   allResourcesEuWest1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:eu-west-1:992593896645:certificate/e4770223-c331-4661-9a4a-ccdf34a63c9a
       CloudFrontCertificationArn: arn:aws:acm:eu-west-1:992593896645:certificate/e4770223-c331-4661-9a4a-ccdf34a63c9a
       CloudFrontEnable: 'true'
@@ -179,6 +186,7 @@ tests:
       - eu-west-1
   allResourcesEuWest2:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:eu-west-2:992593896645:certificate/6ed1fb4e-e000-4ea4-8008-6e4bbe98a12e
       CloudFrontCertificationArn: arn:aws:acm:eu-west-2:992593896645:certificate/6ed1fb4e-e000-4ea4-8008-6e4bbe98a12e
       CloudFrontEnable: 'true'
@@ -188,6 +196,7 @@ tests:
       - eu-west-2
   allResourcesEuWest3:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:eu-west-3:992593896645:certificate/23f603bf-db39-4033-b2e1-41539834e9e7
       CloudFrontCertificationArn: arn:aws:acm:eu-west-3:992593896645:certificate/23f603bf-db39-4033-b2e1-41539834e9e7
       CloudFrontEnable: 'true'
@@ -197,6 +206,7 @@ tests:
       - eu-west-3
   allResourcesApNorthEast1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:ap-northeast-1:992593896645:certificate/d5dbe0e5-80e0-4f0b-a3bf-0ed622ab3285
       CloudFrontCertificationArn: arn:aws:acm:ap-northeast-1:992593896645:certificate/d5dbe0e5-80e0-4f0b-a3bf-0ed622ab3285
       CloudFrontEnable: 'true'
@@ -206,6 +216,7 @@ tests:
       - ap-northeast-1
   allResourcesApSouth1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:ap-south-1:992593896645:certificate/e59fcc9e-6f73-4c4f-9fe4-c09a49652fe2
       CloudFrontCertificationArn: arn:aws:acm:ap-south-1:992593896645:certificate/e59fcc9e-6f73-4c4f-9fe4-c09a49652fe2
       CloudFrontEnable: 'true'
@@ -215,6 +226,7 @@ tests:
       - ap-south-1
   allResourcesApSouthEast1:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:ap-southeast-1:992593896645:certificate/0a191f1e-2e7c-486c-8bbd-01edfab12670
       CloudFrontCertificationArn: arn:aws:acm:ap-southeast-1:992593896645:certificate/0a191f1e-2e7c-486c-8bbd-01edfab12670
       CloudFrontEnable: 'true'
@@ -224,6 +236,7 @@ tests:
       - ap-southeast-1
   allResourcesApSouthEast2:
     parameters:
+      BackupEnable: 'true'
       CertificateArn: arn:aws:acm:ap-southeast-2:992593896645:certificate/7957f101-1c55-4e25-91ec-ce010fe93e98
       CloudFrontCertificationArn: arn:aws:acm:ap-southeast-2:992593896645:certificate/7957f101-1c55-4e25-91ec-ce010fe93e98
       CloudFrontEnable: 'true'

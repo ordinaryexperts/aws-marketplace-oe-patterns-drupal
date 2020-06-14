@@ -3,6 +3,7 @@ import os
 import yaml
 from aws_cdk import (
     aws_autoscaling,
+    aws_backup,
     aws_cloudfront,
     aws_cloudwatch,
     aws_codebuild,
@@ -13,6 +14,7 @@ from aws_cdk import (
     aws_efs,
     aws_elasticache,
     aws_elasticloadbalancingv2,
+    aws_events,
     aws_iam,
     aws_lambda,
     aws_logs,
@@ -496,6 +498,13 @@ class DrupalStack(core.Stack):
             "DbSnapshotIdentifierExistsCondition",
             expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
+        db_backup_retention_period_param = core.CfnParameter(
+            self,
+            "DBBackupRetentionPeriod",
+            default=35,
+            description="Optional: RDS backup retention period in day for which automated backups are retained. Defaults to 35",
+            type="Number"
+        )
         secret_arn_param = core.CfnParameter(
             self,
             "SecretArn",
@@ -567,6 +576,7 @@ class DrupalStack(core.Stack):
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DbCluster",
+            backup_retention_period=db_backup_retention_period_param.value_as_number,
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
             engine="aurora-mysql",
@@ -602,6 +612,10 @@ class DrupalStack(core.Stack):
                 )
             ),
             storage_encrypted=True,
+            tags=[
+                core.CfnTag(key="drupal-backup", value="true"),
+                core.CfnTag(key="stack-name", value=core.Aws.STACK_NAME)
+            ],
             vpc_security_group_ids=[ db_sg.ref ]
         )
         db_primary_instance = aws_rds.CfnDBInstance(
@@ -844,7 +858,27 @@ class DrupalStack(core.Stack):
         efs = aws_efs.CfnFileSystem(
             self,
             "AppEfs",
-            encrypted=True
+            encrypted=True,
+            file_system_tags=[
+                aws_efs.CfnFileSystem.ElasticFileSystemTagProperty(
+                    key="stack-name",
+                    value=core.Aws.STACK_NAME
+                ),
+                aws_efs.CfnFileSystem.ElasticFileSystemTagProperty(
+                    key="drupal-backup",
+                    value="true"
+                )
+            ]
+        )
+        efs_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource="file-system",
+                resource_name=efs.ref,
+                service="elasticfilesystem"
+            ),
+            stack=self
         )
         efs_mount_target1 = aws_efs.CfnMountTarget(
             self,
@@ -1945,6 +1979,175 @@ class DrupalStack(core.Stack):
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
+        # backup
+        backup_enable_param = core.CfnParameter(
+            self,
+            "BackupEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Required: Enable systems to backup the database and filesystem periodically via AWS Backup and scheduled snapshots."
+        )
+        backup_enable_condition = core.CfnCondition(
+            self,
+            "BackupEnableCondition",
+            expression=core.Fn.condition_equals(backup_enable_param.value, "true")
+        )
+        backup_vault = aws_backup.CfnBackupVault(
+            self,
+            "BackupVault",
+            backup_vault_name=append_stack_uuid("drupal-backup-vault"),
+            notifications=aws_backup.CfnBackupVault.NotificationObjectTypeProperty(
+                backup_vault_events=[
+                    "BACKUP_JOB_STARTED",
+                    "BACKUP_JOB_COMPLETED",
+                    "RESTORE_JOB_STARTED",
+                    "RESTORE_JOB_COMPLETED",
+                    "RECOVERY_POINT_MODIFIED"
+                ],
+                sns_topic_arn=notification_topic.topic_arn
+            )
+        )
+        backup_vault.cfn_options.condition = backup_enable_condition
+        backup_plan = aws_backup.CfnBackupPlan(
+            self,
+            "BackupPlan",
+            backup_plan=aws_backup.CfnBackupPlan.BackupPlanResourceTypeProperty(
+                backup_plan_name=append_stack_uuid("drupal-backup-plan"),
+                backup_plan_rule=[
+                    aws_backup.CfnBackupPlan.BackupRuleResourceTypeProperty(
+                        lifecycle=aws_backup.CfnBackupPlan.LifecycleResourceTypeProperty(
+                            delete_after_days=31,
+                        ),
+                        rule_name="Daily",
+                        schedule_expression="cron(0 0 * * ? *)",
+                        start_window_minutes=480,
+                        target_backup_vault=backup_vault.ref
+                    ),
+                    aws_backup.CfnBackupPlan.BackupRuleResourceTypeProperty(
+                        lifecycle=aws_backup.CfnBackupPlan.LifecycleResourceTypeProperty(
+                            delete_after_days=365,
+                            move_to_cold_storage_after_days=31
+                        ),
+                        rule_name="Monthly",
+                        schedule_expression="cron(0 0 1 * ? *)",
+                        start_window_minutes=480,
+                        target_backup_vault=backup_vault.ref
+                    )
+                ]
+            )
+        )
+        backup_plan.cfn_options.condition = backup_enable_condition
+        backup_role = aws_iam.Role(
+            self,
+            "BackupRole",
+            assumed_by=aws_iam.ServicePrincipal("backup.amazonaws.com"),
+            managed_policies=[
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForBackup"),
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSBackupServiceRolePolicyForRestores")
+            ]
+        )
+        backup_selection = aws_backup.CfnBackupSelection(
+            self,
+            "BackupSelection",
+            backup_plan_id=backup_plan.ref,
+            backup_selection=aws_backup.CfnBackupSelection.BackupSelectionResourceTypeProperty(
+                list_of_tags=[
+                    aws_backup.CfnBackupSelection.ConditionResourceTypeProperty(
+                        condition_key="stack-name",
+                        condition_type="STRINGEQUALS",
+                        condition_value=core.Aws.STACK_NAME
+                    ),
+                    aws_backup.CfnBackupSelection.ConditionResourceTypeProperty(
+                        condition_key="drupal-backup",
+                        condition_type="STRINGEQUALS",
+                        condition_value="true"
+                    )
+                ],
+                iam_role_arn=backup_role.role_arn,
+                selection_name=append_stack_uuid("drupal-backup-selection")
+            )
+        )
+        backup_selection.cfn_options.condition = backup_enable_condition
+        backup_db_lambda_function_role = aws_iam.Role(
+            self,
+            "BackupDBLambdaFunctionRole",
+            assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+            inline_policies={
+                "DBCluster": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "rds:CreateDbClusterSnapshot",
+                                "rds:DeleteDbClusterSnapshot",
+                                "rds:DescribeDbClusterSnapshotAttributes",
+                                "rds:DescribeDbClusterSnapshots",
+                                "rds:ListTagsForResource"
+                            ],
+                            resources=[ "*" ]
+                        )
+                    ]
+                ),
+                "SnsPublishToNotificationTopic": aws_iam.PolicyDocument(
+                    statements=[
+                        aws_iam.PolicyStatement(
+                            effect=aws_iam.Effect.ALLOW,
+                            actions=[
+                                "sns:Publish",
+                            ],
+                            resources=[ notification_topic.topic_arn ]
+                        )
+                    ]
+                )
+            },
+            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")]
+        )
+        with open("drupal/backup_db_lambda_function_code.py") as f:
+            backup_db_lambda_function_code = f.read()
+        backup_db_lambda_function = aws_lambda.CfnFunction(
+            self,
+            "BackupDBLambdaFunction",
+            code=aws_lambda.CfnFunction.CodeProperty(
+                zip_file=backup_db_lambda_function_code
+            ),
+            dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
+                target_arn=notification_topic.topic_arn
+            ),
+            environment=aws_lambda.CfnFunction.EnvironmentProperty(
+                variables={
+                    "DBClusterIdentifier": db_cluster.ref,
+                    "StackName": core.Aws.STACK_NAME
+                }
+            ),
+            handler="index.lambda_handler",
+            role=backup_db_lambda_function_role.role_arn,
+            runtime="python3.7"
+        )
+        backup_db_lambda_function.cfn_options.condition = backup_enable_condition
+        backup_db_lambda_event_rule = aws_events.CfnRule(
+            self,
+            "BackupDBEventRule",
+            description="Rule initiating backup of Drupal database cluster.",
+            name=append_stack_uuid("drupal-backup-rds-rule"),
+            schedule_expression="cron(0 0 * * ? *)",
+            targets=[
+                aws_events.CfnRule.TargetProperty(
+                    arn=backup_db_lambda_function.attr_arn,
+                    id=append_stack_uuid("drupal-backup-rds-rule-target")
+                )
+            ]
+        )
+        backup_db_lambda_event_rule.cfn_options.condition = backup_enable_condition
+        backup_db_lambda_permission = aws_lambda.CfnPermission(
+            self,
+            "BackupDBLambdaPermission",
+            action="lambda:InvokeFunction",
+            function_name=backup_db_lambda_function.attr_arn,
+            principal="events.amazonaws.com",
+            source_arn=backup_db_lambda_event_rule.attr_arn
+        )
+        backup_db_lambda_permission.cfn_options.condition = backup_enable_condition
+
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
             "AWS::CloudFormation::Interface": {
@@ -1978,6 +2181,14 @@ class DrupalStack(core.Stack):
                             asg_min_size_param.logical_id,
                             asg_max_size_param.logical_id,
                             asg_desired_capacity_param.logical_id
+                        ]
+                    },
+                    {
+                        "Label": {
+                            "default": "Database Config"
+                        },
+                        "Parameters": [
+                            db_backup_retention_period_param.logical_id
                         ]
                     },
                     {
@@ -2050,6 +2261,9 @@ class DrupalStack(core.Stack):
                     },
                     cloudfront_price_class_param.logical_id: {
                         "default": "CloudFront Price Class"
+                    },
+                    db_backup_retention_period_param.logical_id: {
+                        "default": "Aurora Backup Retention Period"
                     },
                     db_snapshot_identifier_param.logical_id: {
                         "default": "RDS Snapshot Identifier"
