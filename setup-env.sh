@@ -2,7 +2,7 @@
 
 echo "$(date): Starting setup-env.sh"
 
-export CDK_VERSION=1.36.1
+export CDK_VERSION=1.42.1
 export PACKER_VERSION=1.5.5
 export TASKCAT_VERSION=0.9.18
 
