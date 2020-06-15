@@ -834,7 +834,7 @@ class DrupalStack(core.Stack):
         )
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "EFSSgIngress",
+            "EfsSgIngress",
             from_port=2049,
             group_id=efs_sg.ref,
             ip_protocol="tcp",
@@ -1459,7 +1459,7 @@ class DrupalStack(core.Stack):
         # cloudwatch alarms
         cpu_alarm_high = aws_cloudwatch.CfnAlarm(
             self,
-            "CPUAlarmHigh",
+            "CpuAlarmHigh",
             comparison_operator="GreaterThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
@@ -1477,7 +1477,7 @@ class DrupalStack(core.Stack):
         )
         cpu_alarm_low = aws_cloudwatch.CfnAlarm(
             self,
-            "CPUAlarmLow",
+            "CpuAlarmLow",
             comparison_operator="LessThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
