@@ -12,7 +12,7 @@ Automatically configured to support auto-scaling through AWS Autoscaling Groups,
 
 The template ensure multi-level security by incorporating AWS IAM for federated access to resources with least privilege and AWS managed keys and Secret Manager to manage secrets for encryption of data at rest and in transit. More information regarding the security features are available in the [deployment guide](DEPLOYMENTGUIDE.md/#security).
 
-We support multiple availability zones using an RDS Aurora MySQL instance and Amazon's integrated options to distribute infrastructure.
+We support multiple availability zones using an RDS Aurora MySQL cluster and Amazon's integrated options to distribute infrastructure.
 
 Regions supported by Ordinary Experts' stack:
 
