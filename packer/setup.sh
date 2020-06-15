@@ -71,6 +71,7 @@ apt-get -y install            \
         nfs-common            \
         php-mysql             \
         php7.4                \
+        php7.4-apcu           \
         php7.4-cgi            \
         php7.4-curl           \
         php7.4-dev            \
@@ -84,6 +85,11 @@ apt-get -y install            \
 printf "\n" | pecl install memcache
 echo "extension=memcache.so" > /etc/php/7.4/apache2/conf.d/20-memcache.ini
 echo "extension=memcache.so" > /etc/php/7.4/cli/conf.d/20-memcache.ini
+
+# uploadprogress
+printf "\n" | pecl install uploadprogress
+echo "extension=uploadprogress.so" > /etc/php/7.4/apache2/conf.d/20-uploadprogress.ini
+echo "extension=uploadprogress.so" > /etc/php/7.4/cli/conf.d/20-uploadprogress.ini
 
 # configure apache
 a2enmod php7.4
