@@ -880,7 +880,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheClusterCacheNodeType",
             allowed_values=allowed_values["allowed_cache_instance_types"],
-            default="cache.t2.micro",
+            default="cache.t3.micro",
             description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
         elasticache_cluster_engine_version_param = core.CfnParameter(
