@@ -16,6 +16,8 @@
 * Add apcu and uploadprogress PECL packages
 * Update supported regions and taskcat tests
 * Fix CloudFront aliases failing in tests
+* Update Drupal 9 information in documentation
+* Update environment configurations for Drupal in documentation
 
 # 0.3.0
 

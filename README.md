@@ -1,10 +1,19 @@
 ![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
 
-# Drupal 8 on AWS Pattern
+# Drupal on AWS Pattern
 
-The Ordinary Experts Drupal 8 Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal 8 project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal 8 app in the AWS cloud.
+The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal app in the AWS cloud.
 
-Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal 8 application or can be provided with an existing Drupal project.
+Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
+
+###### Current Drupal Environment Configurations
+* Apache 2.4.7
+* MySQL 5.7.8
+* PHP 7.3.0
+* Drupal 9.0.0
+* Composer 1.9
+* Memcache 2.1
+* Drush 10.2
 
 The AWS stack uses Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
@@ -19,7 +28,6 @@ Regions supported by Ordinary Experts' stack:
 | Fully Supported | Unsupported |
 | -------------- | ----------- |
 | <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-north-1 (Stockholm)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-northeast-2 (Seoul)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li><li>sa-east-1 (Sao Paolo)</li></ul> | <ul><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li></ul> |
-
 
 Optional configurations include the following:
 * Integration of CloudFront as a CDN solution

@@ -1,6 +1,6 @@
 ![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
 
-# Drupal 8 on AWS Deployment Guide
+# Drupal on AWS Deployment Guide
 
 This AWS Marketplace template was created by Amazon Web Services Partners at Ordinary Experts with the aim of providing cloud developers a comprehensive AWS infrastructure that follows AWS best practices.
 
@@ -27,9 +27,20 @@ This AWS Marketplace template was created by Amazon Web Services Partners at Ord
 
 ### Amazon Web Services and Drupal
 
-The Ordinary Experts Drupal 8 Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal 8 project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal 8 application in the AWS cloud.
+The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal application in the AWS cloud.
 
-Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal 8 application which can be customized or can be provided with an existing Drupal project. For more information about Drupal and installation guides, please refer to the official [Drupal documentation](https://www.drupal.org/documentation).
+Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application which can be customized or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
+
+###### Current Drupal Environment Configurations
+* Apache 2.4.7
+* MySQL 5.7.8
+* PHP 7.3.0
+* Drupal 9.0.0
+* Composer 1.9
+* Memcache 2.1
+* Drush 10.2
+
+For more information about Drupal and installation guides, please refer to the official [Drupal documentation](https://www.drupal.org/documentation). For more information about the environment requirements for Drupal 9, please refer to the [Drupal resource](https://www.drupal.org/docs/understanding-drupal/how-drupal-9-is-made-and-what-is-included/environment-requirements-of).
 
 You can use this template to:
 * Deploy a full-scale AWS infrastructure to create all necessary components for running a Drupal project
@@ -46,7 +57,7 @@ Regions supported by Ordinary Experts' stack:
 
 ### Cost and Licenses
 
-This deployment launches Drupal 8 automatically into a configuration of your choice. Drupal is open-source software licensed under GNU GPL version 2. For information about Drupal’s licensing, please refer to [Drupal’s license documentation](https://www.drupal.org/about/licensing#q1). You are responsible for the cost of AWS services used while running this template and a subscription fee for using our template. For a detailed cost breakdown and estimate, please refer to the infrastructure pricing estimation calculator on our Marketplace product page. Prices are subject to change.
+This deployment launches Drupal automatically into a configuration of your choice. Drupal is open-source software licensed under GNU GPL version 2. For information about Drupal’s licensing, please refer to [Drupal’s license documentation](https://www.drupal.org/about/licensing#q1). You are responsible for the cost of AWS services used while running this template and a subscription fee for using our template. For a detailed cost breakdown and estimate, please refer to the infrastructure pricing estimation calculator on our Marketplace product page. Prices are subject to change.
 
 ## Architecture
 
@@ -72,7 +83,7 @@ The core AWS components in our architecture include the following AWS services:
 
 ### Infrastructure
 
-Deploying this template for a new virtual private cloud (VPC) with all optional resources provisioned builds the following Drupal 8 environment in the AWS Cloud.
+Deploying this template for a new virtual private cloud (VPC) with all optional resources provisioned builds the following Drupal environment in the AWS Cloud.
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
@@ -206,7 +217,7 @@ If you have any questions, problems deploying, or feature requests, please use t
 
 ## Additional Resources
 
-* [Drupal 8](https://www.drupal.org/docs)
+* [Drupal](https://www.drupal.org/docs)
 * [AWS Identity Access Management (AWS IAM)](https://aws.amazon.com/iam/)
 * [Amazon Elastic Compute Cloud (Amazon EC2)](https://aws.amazon.com/ec2/)
 * [AWS Auto Scaling Groups](https://aws.amazon.com/ec2/autoscaling/)
