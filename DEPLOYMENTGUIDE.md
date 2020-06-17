@@ -112,11 +112,14 @@ The following optional parameters are accepted by the template to further custom
 * SourceArtifactS3ObjectKey (*default:* `aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip`)
   - AWS S3 Object key (path) for the build artifact for the application. By default, it will deploy Ordinary Experts demo Drupal site.
 
-#### To configure database with existing snapshot:
+#### To configure database settings:
 * DBSnapshotIdentifier (*default: `''`*):
   - The ARN of the RDS snapshot to restore for database
   - e.g. `arn:aws:rds:{region}:{accountId}:cluster-snapshot:
 {snapshotIdentifier}`
+* DbInstanceClass (*default:* `db.r5.large`):
+  - The DB instance type for the Aurora MySQL database
+  - The full list of accepted values can be found [here](/cdk/drupal/allowed_instance_types.yaml)
 
 #### To configure Application Settings:
 * CertificateArn (*default: `''`*):
