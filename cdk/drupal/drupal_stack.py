@@ -1966,7 +1966,8 @@ class DrupalStack(core.Stack):
                             "default": "Data Snapshots"
                         },
                         "Parameters": [
-                            db_snapshot_identifier_param.logical_id
+                            db_snapshot_identifier_param.logical_id,
+                            db_instance_class_param.logical_id
                         ]
                     },
                     {
@@ -2055,6 +2056,9 @@ class DrupalStack(core.Stack):
                     },
                     db_snapshot_identifier_param.logical_id: {
                         "default": "RDS Snapshot Identifier"
+                    },
+                    db_instance_class_param.logical_id: {
+                        "default": "RDS Instance Class"
                     },
                     elasticache_cluster_cache_node_type_param.logical_id: {
                         "default": "ElastiCache Cache Node Type"
