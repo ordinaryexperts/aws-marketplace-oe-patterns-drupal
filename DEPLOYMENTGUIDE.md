@@ -1,6 +1,6 @@
 ![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
 
-# Drupal 8 on AWS Deployment Guide
+# Drupal on AWS Deployment Guide
 
 This AWS Marketplace template was created by Amazon Web Services Partners at Ordinary Experts with the aim of providing cloud developers a comprehensive AWS infrastructure that follows AWS best practices.
 
@@ -27,26 +27,37 @@ This AWS Marketplace template was created by Amazon Web Services Partners at Ord
 
 ### Amazon Web Services and Drupal
 
-The Ordinary Experts Drupal 8 Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal 8 project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal 8 application in the AWS cloud.
+The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal application in the AWS cloud.
 
-Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal 8 application which can be customized or can be provided with an existing Drupal project. For more information about Drupal and installation guides, please refer to the official [Drupal documentation](https://www.drupal.org/documentation).
+Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application which can be customized or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
+
+###### Current Drupal Environment Configurations
+* Apache 2.4.7
+* MySQL 5.7.8
+* PHP 7.3.0
+* Drupal 9.0.0
+* Composer 1.9
+* Memcache 2.1
+* Drush 10.2
+
+For more information about Drupal and installation guides, please refer to the official [Drupal documentation](https://www.drupal.org/documentation). For more information about the environment requirements for Drupal 9, please refer to the [Drupal resource](https://www.drupal.org/docs/understanding-drupal/how-drupal-9-is-made-and-what-is-included/environment-requirements-of).
 
 You can use this template to:
 * Deploy a full-scale AWS infrastructure to create all necessary components for running a Drupal project
 * Deploy Drupal using your existing VPC
 * Optionally configure AWS resources to better suit your requirements
 
-This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
+This guide discusses best practices for deploying Drupal on AWS using the specific resources in our infrastructure architecture. These resources include Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
 Regions supported by Ordinary Experts' stack:
 
 | Fully Supported | Unsupported |
 | -------------- | ----------- |
-| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li></ul> | <ul><li>eu-north-1 (Stockholm)</li><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li><li>sa-east-1 (Sao Paolo)</li><li>ap-northeast-2 (Seoul):</br>requires subnets in<br>specific AZs to run<br> Aurora Serverless.</li></ul> |
+| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-north-1 (Stockholm)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-northeast-2 (Seoul)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li><li>sa-east-1 (Sao Paolo)</li></ul> | <ul><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li></ul> |
 
 ### Cost and Licenses
 
-This deployment launches Drupal 8 automatically into a configuration of your choice. Drupal is open-source software licensed under GNU GPL version 2. For information about Drupal’s licensing, please refer to [Drupal’s license documentation](https://www.drupal.org/about/licensing#q1). You are responsible for the cost of AWS services used while running this template and a subscription fee for using our template. For a detailed cost breakdown and estimate, please refer to the infrastructure pricing estimation calculator on our Marketplace product page. Prices are subject to change.
+This deployment launches Drupal automatically into a configuration of your choice. Drupal is open-source software licensed under GNU GPL version 2. For information about Drupal’s licensing, please refer to [Drupal’s license documentation](https://www.drupal.org/about/licensing#q1). You are responsible for the cost of AWS services used while running this template and a subscription fee for using our template. For a detailed cost breakdown and estimate, please refer to the infrastructure pricing estimation calculator on our Marketplace product page. Prices are subject to change.
 
 ## Architecture
 
@@ -58,7 +69,7 @@ The core AWS components in our architecture include the following AWS services:
 * **AWS Auto Scaling Groups** — Automatically provision EC2 instances based on CPU load in order to maintain high availability and optimal resource utilization
 * **Elastic Load Balancing** — Automatically distribute traffic across available healthy EC2 instances to provide low latency and optimal performance
 * **Amazon Virtual Public Cloud (Amazon VPC)** — Provision a private section of the AWS Cloud to launch AWS resources in a customized environment. By default, our stack creates two private and two public subnets, NAT Gateways, Internet Gateways, and associated route tables but it can also accept existing VPC and subnet IDs.
-* **Amazon Aurora Serverless** — Automatically scales compute and capacity resources needed for the MySQL database. By default, our stack creates a new database but it can also accept an existing snapshot ARN.
+* **Amazon Aurora** — High performance and scalable MySQL database that is fault-tolerant and allows automatic disaster recovery. By default, our stack creates a new database but it can also accept an existing snapshot ARN.
 * **Amazon Elastic File System (Amazon EFS)** — Used to share user generated content between application servers.
 * **Amazon Simple Storage System (Amazon S3)** — Used to hold pipeline artifacts and store the source artifact for AWS CodePipeline. The source zip is your compressed Drupal project which is either uploaded manually or via another pipeline to the S3 bucket. When the source zip file is changed, the pipeline will be triggered to run.
 * **AWS CodePipeline** — Stack CI/CD polls the source zip in S3 for changes and uses CodeDeploy to deploy the updated source zip into Auto Scaling Group.
@@ -72,11 +83,11 @@ The core AWS components in our architecture include the following AWS services:
 
 ### Infrastructure
 
-Deploying this template for a new virtual private cloud (VPC) with all optional resources provisioned builds the following Drupal 8 environment in the AWS Cloud.
+Deploying this template for a new virtual private cloud (VPC) with all optional resources provisioned builds the following Drupal environment in the AWS Cloud.
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
-Automatically configured to support auto-scaling through AWS Autoscaling Groups, our solution leverages an EFS file system to share user generated content between application servers. We support multiple availability zones using an RDS Aurora serverless cluster and Amazon's integrated options to distribute infrastructure. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
+Automatically configured to support auto-scaling through AWS Autoscaling Groups, our solution leverages an EFS file system to share user generated content between application servers. We support multiple availability zones using an RDS Aurora MySQL cluster and Amazon's integrated options to distribute infrastructure. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
 
 Optional configurations include the following:
 
@@ -100,7 +111,7 @@ Prior to deploying your Drupal application, the stack needs the following resour
 
 ## Deployment Options
 
-As stated previously, our template will provision a VPC with all associated components, AWS ASGs to launch EC2 instances, an ELB to manage web traffic, a fully auto-scaling Aurora Serverless MySQL database, AWS EFS for server-shared file storage, a complete CI/CD pipeline using S3 and CodeDeploy, and comprehensive application logging and resource monitoring via CloudWatch.
+As stated previously, our template will provision a VPC with all associated components, AWS ASGs to launch EC2 instances, an ELB to manage web traffic, a fully scalable Aurora MySQL database, AWS EFS for server-shared file storage, a complete CI/CD pipeline using S3 and CodeDeploy, and comprehensive application logging and resource monitoring via CloudWatch.
 
 The following optional parameters are accepted by the template to further customize the application stack.
 
@@ -112,11 +123,14 @@ The following optional parameters are accepted by the template to further custom
 * SourceArtifactS3ObjectKey (*default:* `aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip`)
   - AWS S3 Object key (path) for the build artifact for the application. By default, it will deploy Ordinary Experts demo Drupal site.
 
-#### To configure database with existing snapshot:
+#### To configure database settings:
 * DBSnapshotIdentifier (*default: `''`*):
   - The ARN of the RDS snapshot to restore for database
   - e.g. `arn:aws:rds:{region}:{accountId}:cluster-snapshot:
 {snapshotIdentifier}`
+* DbInstanceClass (*default:* `db.r5.large`):
+  - The DB instance type for the Aurora MySQL database
+  - The full list of accepted values can be found [here](/cdk/drupal/allowed_instance_types.yaml)
 
 #### To configure Application Settings:
 * CertificateArn (*default: `''`*):
@@ -189,7 +203,7 @@ The following optional parameters are accepted by the template to further custom
 
 The template follows best practice rules for AWS access by using IAM roles to grant the least privilege need to run the associated AWS resources. Each resource has assigned roles to dictate the performable actions and no resource has full privileges.
 
-The stack also includes built-in support for encrypting data at rest and in transport using default AWS managed keys. Both the Aurora Serverless database cluster and EFS file system are encrypted and if the CodePipeline artifact S3 bucket is created by our stack, it enforces encryption as well.
+The stack also includes built-in support for encrypting data at rest and in transport using default AWS managed keys. Both the Aurora database cluster and EFS file system are encrypted and if the CodePipeline artifact S3 bucket is created by our stack, it enforces encryption as well.
 
 The CloudFormation CDN accepts both HTTP and HTTPS traffic, communicating with the origin server as requested. However, if a certificate ARN is provided for SSL, the application load balancer redirects all traffic to HTTPS.
 
@@ -203,13 +217,13 @@ If you have any questions, problems deploying, or feature requests, please use t
 
 ## Additional Resources
 
-* [Drupal 8](https://www.drupal.org/docs)
+* [Drupal](https://www.drupal.org/docs)
 * [AWS Identity Access Management (AWS IAM)](https://aws.amazon.com/iam/)
 * [Amazon Elastic Compute Cloud (Amazon EC2)](https://aws.amazon.com/ec2/)
 * [AWS Auto Scaling Groups](https://aws.amazon.com/ec2/autoscaling/)
 * [Elastic Load Balancing](https://aws.amazon.com/elasticloadbalancing/)
 * [Amazon Virtual Public Cloud (Amazon VPC)](https://aws.amazon.com/vpc/)
-* [Amazon Aurora Serverless](https://aws.amazon.com/rds/aurora/serverless/)
+* [Amazon Aurora](https://aws.amazon.com/rds/aurora/)
 * [Amazon Elastic File System (Amazon EFS)](https://aws.amazon.com/efs/)
 * [Amazon Simple Storage System (Amazon S3)](https://aws.amazon.com/s3/)
 * [AWS CodePipeline](https://aws.amazon.com/codepipeline/)
