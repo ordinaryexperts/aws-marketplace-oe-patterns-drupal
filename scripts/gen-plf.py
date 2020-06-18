@@ -37,6 +37,7 @@ allowed_regions = [
     "us-west-2",
     "ca-central-1",
     "eu-central-1",
+    "eu-north-1",
     "eu-west-1",
     "eu-west-2",
     "eu-west-3",
@@ -45,6 +46,7 @@ allowed_regions = [
     "ap-south-1",
     "ap-southeast-1",
     "ap-southeast-2",
+    "sa-east-1"
 ]
 # plus our default region
 allowed_regions.append(DEFAULT_REGION)
