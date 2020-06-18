@@ -81,7 +81,7 @@ tests:
       VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   elasticacheConfiguration:
     parameters:
-      ElastiCacheClusterCacheNodeType: cache.t2.micro
+      ElastiCacheClusterCacheNodeType: cache.t3.micro
       ElastiCacheClusterEngineVersion: 1.5.16
       ElastiCacheClusterNumCacheNodes: 2
       ElastiCacheEnable: 'true'
