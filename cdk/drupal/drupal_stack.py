@@ -1616,135 +1616,195 @@ class DrupalStack(core.Stack):
 
         # codepipeline
         # TODO: Tighten role / use managed roles?
-        # TODO: convert to CfnRole
-        codepipeline_role = aws_iam.Role(
+        codepipeline_role = aws_iam.CfnRole(
             self,
             "PipelineRole",
-            assumed_by=aws_iam.ServicePrincipal("codepipeline.amazonaws.com"),
-            inline_policies={
-                "CodePipelinePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "codebuild:BatchGetBuilds",
-                                "codebuild:StartBuild",
-                                "codedeploy:GetApplication",
-                                "codedeploy:GetDeploymentGroup",
-                                "codedeploy:ListApplications",
-                                "codedeploy:ListDeploymentGroups",
-                                "codepipeline:*",
-                                "iam:ListRoles",
-                                "iam:PassRole",
-                                "lambda:GetFunctionConfiguration",
-                                "lambda:ListFunctions",
-                                "s3:CreateBucket",
-                                "s3:GetBucketPolicy",
-                                "s3:GetObject",
-                                "s3:ListAllMyBuckets",
-                                "s3:ListBucket",
-                                "s3:PutBucketPolicy"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codepipeline.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "codebuild:BatchGetBuilds",
+                                    "codebuild:StartBuild",
+                                    "codedeploy:GetApplication",
+                                    "codedeploy:GetDeploymentGroup",
+                                    "codedeploy:ListApplications",
+                                    "codedeploy:ListDeploymentGroups",
+                                    "codepipeline:*",
+                                    "iam:ListRoles",
+                                    "iam:PassRole",
+                                    "lambda:GetFunctionConfiguration",
+                                    "lambda:ListFunctions",
+                                    "s3:CreateBucket",
+                                    "s3:GetBucketPolicy",
+                                    "s3:GetObject",
+                                    "s3:ListAllMyBuckets",
+                                    "s3:ListBucket",
+                                    "s3:PutBucketPolicy"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="CodePipelinePerms"
                 )
-            }
+            ]
         )
-        # TODO: convert to CfnRole
-        codepipeline_source_stage_role = aws_iam.Role(
+        codepipeline_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
+        codepipeline_source_stage_role = aws_iam.CfnRole(
             self,
             "SourceStageRole",
-            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
-            inline_policies={
-                "SourceRolePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/{}".format(
-                                    core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value_as_string,
-                                    source_artifact_s3_object_key_param.value_as_string
-                                )
-                            ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetBucketVersioning"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}".format(
-                                    core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value_as_string
-                                )
-                            ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
+                    )
+                ],
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*"
+                                ],
+                                resources=[
+                                    "arn:{}:s3:::{}/{}".format(
+                                        core.Aws.PARTITION,
+                                        source_artifact_s3_bucket_param.value_as_string,
+                                        source_artifact_s3_object_key_param.value_as_string
+                                    )
+                                ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:GetBucketVersioning"
+                                ],
+                                resources=[
+                                    "arn:{}:s3:::{}".format(
+                                        core.Aws.PARTITION,
+                                        source_artifact_s3_bucket_param.value_as_string
+                                    )
+                                ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:*"
+                                ],
+                                resources=[
+                                    "arn:{}:s3:::{}/*".format(
+                                        core.Aws.PARTITION,
+                                        core.Token.as_string(
+                                            core.Fn.condition_if(
+                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                                pipeline_artifact_bucket_name_param.value_as_string,
+                                                pipeline_artifact_bucket.ref
+                                            )
                                         )
                                     )
-                                )
-                            ]
-                        )
-                    ]
+                                ]
+                            )
+                        ]
+                    ),
+                    policy_name="SourceRolePerms"
                 )
-            }
+            ]
         )
-        # TODO: convert to CfnRole
-        codepipeline_deploy_stage_role = aws_iam.Role(
+        codepipeline_source_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_source_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
+        codepipeline_deploy_stage_role = aws_iam.CfnRole(
             self,
             "DeployStageRole",
-            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
-            inline_policies={
-                "DeployRolePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "codedeploy:*"
-                            ],
-                            resources=[ "*" ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*",
-                                "s3:PutObject"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals= [ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "codedeploy:*"
+                                ],
+                                resources=[ "*" ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*",
+                                    "s3:PutObject"
+                                ],
+                                resources=[
+                                    "arn:{}:s3:::{}/*".format(
+                                        core.Aws.PARTITION,
+                                        core.Token.as_string(
+                                            core.Fn.condition_if(
+                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                                pipeline_artifact_bucket_name_param.value_as_string,
+                                                pipeline_artifact_bucket.ref
+                                            )
                                         )
                                     )
-                                )
-                            ]
-                        )
-                    ]
+                                ]
+                            )
+                        ]
+                    ),
+                    policy_name="DeployRolePerms"
                 )
-            }
+            ]
+        )
+        codepipeline_deploy_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_deploy_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         codepipeline_finalize_stage_role = aws_iam.CfnRole(
            self,
@@ -1754,7 +1814,7 @@ class DrupalStack(core.Stack):
                     aws_iam.PolicyStatement(
                         effect=aws_iam.Effect.ALLOW,
                         actions=[ "sts:AssumeRole" ],
-                        principals=[ aws_iam.ArnPrincipal(arn=codepipeline_role.role_arn) ]
+                        principals=[ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
                     )
                 ]
             ),
@@ -1786,6 +1846,16 @@ class DrupalStack(core.Stack):
             ]
         )
         codepipeline_finalize_stage_role.cfn_options.condition = cloudfront_enable_condition
+        codepipeline_finalize_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_finalize_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
 
         codedeploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -1793,7 +1863,6 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
-        # TODO: convert to CfnRole
         codedeploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
@@ -1857,7 +1926,7 @@ class DrupalStack(core.Stack):
                 ),
                 type="S3"
             ),
-            role_arn=codepipeline_role.role_arn,
+            role_arn=codepipeline_role_arn,
             stages=[
                 aws_codepipeline.CfnPipeline.StageDeclarationProperty(
                     name="Source",
@@ -1879,7 +1948,7 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="SourceAction",
-                            role_arn=codepipeline_source_stage_role.role_arn
+                            role_arn=codepipeline_source_stage_role_arn
                         )
                     ]
                 ),
@@ -1930,7 +1999,7 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="DeployAction",
-                            role_arn=codepipeline_deploy_stage_role.role_arn
+                            role_arn=codepipeline_deploy_stage_role_arn
                         )
                     ]
                 )
@@ -1955,7 +2024,7 @@ class DrupalStack(core.Stack):
                                     "FunctionName": cloudfront_invalidation_lambda_function.ref
                                 },
                                 "Name": "CloudFrontInvalidationAction",
-                                "RoleArn": codepipeline_finalize_stage_role.attr_arn
+                                "RoleArn": codepipeline_finalize_stage_role_arn
                             }
                         ],
                         "Name": "Finalize"
@@ -1970,7 +2039,7 @@ class DrupalStack(core.Stack):
             action="lambda:InvokeFunction",
             function_name=cloudfront_invalidation_lambda_function.attr_arn,
             principal="events.amazonaws.com",
-            source_arn=codepipeline_role.role_arn
+            source_arn=codepipeline_role.ref
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
