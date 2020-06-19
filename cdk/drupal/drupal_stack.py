@@ -429,27 +429,23 @@ class DrupalStack(core.Stack):
             source_security_group_id=app_sg.ref,
             to_port=3306
         )
-        # TODO: move to CfnDBSubnetGroup
-        db_subnet_group = core.CfnResource(
+        db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DbSubnetGroup",
-            type="AWS::RDS::DBSubnetGroup",
-            properties={
-                "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
-                "SubnetIds":  {
-                    "Fn::If": [
-                        vpc_not_given_condition.logical_id,
-                        [
-                            vpc_private_subnet1.ref,
-                            vpc_private_subnet2.ref
-                        ],
-                        [
-                            vpc_private_subnet_id1_param.value_as_string,
-                            vpc_private_subnet_id2_param.value_as_string
-                        ]
+            db_subnet_group_description="MySQL Aurora DB Subnet Group",
+            subnet_ids=core.Token.as_list(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    [
+                        vpc_private_subnet1.ref,
+                        vpc_private_subnet2.ref
+                    ],
+                    [
+                        vpc_private_subnet_id1_param.value_as_string,
+                        vpc_private_subnet_id2_param.value_as_string
                     ]
-                }
-            }
+                )
+            )
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -526,6 +522,7 @@ class DrupalStack(core.Stack):
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
+        # TODO: convert to CfnPolicy
         secret_policy = aws_iam.Policy(
             self,
             "SecretPolicy",
@@ -775,6 +772,7 @@ class DrupalStack(core.Stack):
         https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
+        # TODO: convert to CfnTopic
         notification_topic = aws_sns.Topic(
             self,
             "NotificationTopic"
@@ -787,6 +785,7 @@ class DrupalStack(core.Stack):
             endpoint=notification_email_param.value_as_string
         )
         notification_subscription.cfn_options.condition = notification_email_exists_condition
+        # TODO: convert to CfnPolicyDocument
         iam_notification_publish_policy =aws_iam.PolicyDocument(
             statements=[
                 aws_iam.PolicyStatement(
@@ -1228,6 +1227,7 @@ class DrupalStack(core.Stack):
         )
 
         # app
+        # TODO: convert to CfnRole
         app_instance_role = aws_iam.Role(
             self,
             "AppInstanceRole",
@@ -1593,6 +1593,7 @@ class DrupalStack(core.Stack):
 
         # codepipeline
         # TODO: Tighten role / use managed roles?
+        # TODO: convert to CfnRole
         codepipeline_role = aws_iam.Role(
             self,
             "PipelineRole",
@@ -1627,6 +1628,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        # TODO: convert to CfnRole
         codepipeline_source_stage_role = aws_iam.Role(
             self,
             "SourceStageRole",
@@ -1682,6 +1684,7 @@ class DrupalStack(core.Stack):
                 )
             }
         )
+        # TODO: convert to CfnRole
         codepipeline_deploy_stage_role = aws_iam.Role(
             self,
             "DeployStageRole",
@@ -1767,6 +1770,7 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
+        # TODO: convert to CfnRole
         codedeploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
