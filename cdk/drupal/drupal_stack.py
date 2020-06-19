@@ -522,32 +522,34 @@ class DrupalStack(core.Stack):
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
-        # TODO: convert to CfnPolicy
-        secret_policy = aws_iam.Policy(
+        secret_policy = aws_iam.CfnManagedPolicy(
             self,
             "SecretPolicy",
-            statements=[
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[
-                        "secretsmanager:GetSecretValue"
-                    ],
-                    resources=[
-                        core.Token.as_string(
-                            core.Fn.condition_if(
-                                secret_arn_exists_condition.logical_id,
-                                secret_arn_param.value_as_string,
-                                secret.ref
+            policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[
+                            "secretsmanager:GetSecretValue"
+                        ],
+                        resources=[
+                            core.Token.as_string(
+                                core.Fn.condition_if(
+                                    secret_arn_exists_condition.logical_id,
+                                    secret_arn_param.value_as_string,
+                                    secret.ref
+                                )
                             )
-                        )
-                    ]
-                ),
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[ "secretsmanager:ListSecrets" ],
-                    resources=[ "*" ],
-                ),
-            ]
+                        ]
+                    ),
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "secretsmanager:ListSecrets" ],
+                        resources=[ "*" ],
+                    ),
+                ]
+            ),
+            managed_policy_name="DrupalSecretAccessPolicy"
         )
         db_snapshot_secret_rule = core.CfnRule(
             self,
@@ -1227,86 +1229,107 @@ class DrupalStack(core.Stack):
         )
 
         # app
-        # TODO: convert to CfnRole
-        app_instance_role = aws_iam.Role(
+        app_instance_role = aws_iam.CfnRole(
             self,
             "AppInstanceRole",
-            assumed_by=aws_iam.ServicePrincipal("ec2.amazonaws.com"),
-            inline_policies={
-                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "logs:CreateLogStream",
-                                "logs:DescribeLogStreams",
-                                "logs:PutLogEvents"
-                            ],
-                            resources=[
-                                access_log_group.attr_arn,
-                                error_log_group.attr_arn,
-                                system_log_group.attr_arn
-                            ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("ec2.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "logs:CreateLogStream",
+                                    "logs:DescribeLogStreams",
+                                    "logs:PutLogEvents"
+                                ],
+                                resources=[
+                                    access_log_group.attr_arn,
+                                    error_log_group.attr_arn,
+                                    system_log_group.attr_arn
+                                ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowStreamLogsToCloudWatch"
                 ),
-                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "ec2:DescribeVolumes",
-                                "ec2:DescribeTags",
-                                "cloudwatch:GetMetricStatistics",
-                                "cloudwatch:ListMetrics",
-                                "cloudwatch:PutMetricData"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "ec2:DescribeVolumes",
+                                    "ec2:DescribeTags",
+                                    "cloudwatch:GetMetricStatistics",
+                                    "cloudwatch:ListMetrics",
+                                    "cloudwatch:PutMetricData"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowStreamMetricsToCloudWatch"
                 ),
-                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*"
+                                ],
+                                resources=[
+                                    "arn:{}:s3:::{}/*".format(
+                                        core.Aws.PARTITION,
+                                        core.Token.as_string(
+                                            core.Fn.condition_if(
+                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
+                                                pipeline_artifact_bucket_name_param.value_as_string,
+                                                pipeline_artifact_bucket.ref
+                                            )
                                         )
                                     )
-                                )
-                            ]
-                        )
-                    ]
+                                ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowGetFromArtifactBucket",
                 ),
-                "AllowDescribeAutoScaling": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "autoscaling:Describe*"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "autoscaling:Describe*"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowDescribeAutoScaling"
                 )
-            },
-            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")]
+            ],
+            managed_policy_arns=[
+                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+                secret_policy.ref
+            ]
         )
-        app_instance_role.attach_inline_policy(secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
-            roles=[app_instance_role.role_name]
+            roles=[ app_instance_role.ref ]
         )
 
         # autoscaling
