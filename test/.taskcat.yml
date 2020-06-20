@@ -67,18 +67,18 @@ tests:
       VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
       VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   # resources configurations with default values as fillers
-  autoscalingConfiguration:
-    parameters:
-      AppAsgDesiredCapacity: 1
-      AppAsgMaxSize: 2
-      AppAsgMinSize: 1
-      AppLaunchConfigInstanceType: t3.micro
-      PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
-      VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+  # autoscalingConfiguration:
+  #   parameters:
+  #     AppAsgDesiredCapacity: 1
+  #     AppAsgMaxSize: 2
+  #     AppAsgMinSize: 1
+  #     AppLaunchConfigInstanceType: m5.xlarge
+  #     PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+  #     VpcId: vpc-00425deda4c835455
+  #     VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
+  #     VpcPrivateSubnetId2: subnet-079290412ce63c4d5
+  #     VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
+  #     VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   elasticacheConfiguration:
     parameters:
       ElastiCacheClusterCacheNodeType: cache.t3.micro
@@ -86,6 +86,11 @@ tests:
       ElastiCacheClusterNumCacheNodes: 2
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      VpcId: vpc-00425deda4c835455
+      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
+      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
+      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   cloudfrontConfigWithCertAndAlias:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
@@ -121,7 +126,6 @@ tests:
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
       VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
       VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
-
   # region compatibility testing
   allResourcesUsEast2:
     parameters:
@@ -242,7 +246,7 @@ tests:
       - ap-northeast-2
   allResourcesSaEast1:
     parameters:
-      CertificateArn: arn:aws:acm:sa-east-1:992593896645:certificate/58f16d81-9e64-4dc4-ab7e-c7368aed811f
+      CertificateArn: arn:aws:acm:sa-east-1:992593896645:certificate/b54ce8c8-6d39-4ec7-9471-9707b2f1c4ba
       CloudFrontCertificationArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
