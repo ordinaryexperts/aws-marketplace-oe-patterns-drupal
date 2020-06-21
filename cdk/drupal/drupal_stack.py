@@ -774,20 +774,19 @@ class DrupalStack(core.Stack):
         https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
-        # TODO: convert to CfnTopic
-        notification_topic = aws_sns.Topic(
+        notification_topic = aws_sns.CfnTopic(
             self,
-            "NotificationTopic"
+            "NotificationTopic",
+            topic_name="{}-notifications".format(core.Aws.STACK_NAME)
         )
         notification_subscription = aws_sns.CfnSubscription(
             self,
             "NotificationSubscription",
             protocol="email",
-            topic_arn=notification_topic.topic_arn,
+            topic_arn=notification_topic.ref,
             endpoint=notification_email_param.value_as_string
         )
         notification_subscription.cfn_options.condition = notification_email_exists_condition
-        # TODO: convert to CfnPolicyDocument
         iam_notification_publish_policy =aws_iam.PolicyDocument(
             statements=[
                 aws_iam.PolicyStatement(
@@ -795,7 +794,7 @@ class DrupalStack(core.Stack):
                     actions=[
                         "sns:Publish",
                     ],
-                    resources=[ notification_topic.topic_arn ]
+                    resources=[ notification_topic.ref ]
                 )
             ]
         )
@@ -1208,7 +1207,7 @@ class DrupalStack(core.Stack):
                 zip_file=cloudfront_invalidation_lambda_function_code
             ),
             dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
-                target_arn=notification_topic.topic_arn
+                target_arn=notification_topic.ref
             ),
             environment=aws_lambda.CfnFunction.EnvironmentProperty(
                 variables={
@@ -1488,7 +1487,7 @@ class DrupalStack(core.Stack):
             comparison_operator="GreaterThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.topic_arn ],
+            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.ref ],
             alarm_description="Scale-up if CPU > 90% for 10mins",
             dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
                 name="AutoScalingGroupName",
@@ -1506,7 +1505,7 @@ class DrupalStack(core.Stack):
             comparison_operator="LessThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.topic_arn ],
+            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.ref ],
             alarm_description="Scale-down if CPU < 70% for 10mins",
             dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
                 name="AutoScalingGroupName",
@@ -1909,7 +1908,7 @@ class DrupalStack(core.Stack):
                         "DeploymentRollback"
                     ],
                     trigger_name="DeploymentNotification",
-                    trigger_target_arn=notification_topic.topic_arn
+                    trigger_target_arn=notification_topic.ref
                 )
             ]
         )
