@@ -549,33 +549,6 @@ class DrupalStack(core.Stack):
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
-        secret_policy = aws_iam.CfnManagedPolicy(
-            self,
-            "SecretPolicy",
-            policy_document=aws_iam.PolicyDocument(
-                statements=[
-                    aws_iam.PolicyStatement(
-                        effect=aws_iam.Effect.ALLOW,
-                        actions=[ "secretsmanager:GetSecretValue" ],
-                        resources=[
-                            core.Token.as_string(
-                                core.Fn.condition_if(
-                                    secret_arn_exists_condition.logical_id,
-                                    secret_arn_param.value_as_string,
-                                    secret.ref
-                                )
-                            )
-                        ]
-                    ),
-                    aws_iam.PolicyStatement(
-                        effect=aws_iam.Effect.ALLOW,
-                        actions=[ "secretsmanager:ListSecrets" ],
-                        resources=[ "*" ],
-                    ),
-                ]
-            ),
-            managed_policy_name="DrupalSecretAccessPolicy"
-        )
         db_snapshot_secret_rule = core.CfnRule(
             self,
             "DbSnapshotIdentifierAndSecretRequiredRule",
@@ -1326,11 +1299,35 @@ class DrupalStack(core.Stack):
                         ]
                     ),
                     policy_name="AllowDescribeAutoScaling"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "secretsmanager:GetSecretValue" ],
+                                resources=[
+                                    core.Token.as_string(
+                                        core.Fn.condition_if(
+                                            secret_arn_exists_condition.logical_id,
+                                            secret_arn_param.value_as_string,
+                                            secret.ref
+                                        )
+                                    )
+                                ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "secretsmanager:ListSecrets" ],
+                                resources=[ "*" ],
+                            ),
+                        ]
+                    ),
+                    policy_name="DrupalSecretAccessPolicy"
                 )
             ],
             managed_policy_arns=[
-                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-                secret_policy.ref
+                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
             ]
         )
         instance_profile = aws_iam.CfnInstanceProfile(
