@@ -7,7 +7,7 @@
 "Title": "TODO"
 "Short Description": "TODO"
 "Full Description": "TODO"
-"Highlight1": "Features a CodePipeline for continuous integration and deployment. Automatic deployment across all application servers by uploading your code archive to an S3 location. Install a fresh version of Drupal 9 or import an existing site by supplying a RDS snapshot ARN."
+"Highlight1": "Features a CodePipeline for continuous integration and deployment. Automatic deployment across all application servers by uploading your code archive to an S3 location. Install a fresh version of Drupal or import an existing site by supplying a RDS snapshot ARN."
 "Highlight2": "Optionally include built-in, seamless support for SSL/HTTPS traffic, CloudFront as a content delivery network, ElastiCache memcache layer. You can even easily choose to deploy your stack into a brand new VPC, or an existing VPC you specify."
 "Highlight3": "AWS and Drupal hosting best practices. Multi-AZ support. All data encrypted at rest and in transit."
 "Product Category1": "Application Stacks"
@@ -19,7 +19,7 @@
 "Resource2_Name": "Github Source Code and Documentation"
 "Resource2_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal"
 "Resource3_Name": "Ordinary Experts Homepage" # TODO: replace with product page?
-"Resource3_URL": "https://www.ordinaryexperts.com"
+"Resource3_URL": "https://ordinaryexperts.com"
 "Image URL": "TODO"
 "Product Video": "TODO"
 "Support Offered": "TODO"
@@ -148,8 +148,8 @@
 "FCP Dimension24 Rate": ""
 "Clusters and AWS Resources Topology 1: Title": "Ordinary Experts Drupal Pattern"
 "Clusters and AWS Resources Topology 1: AWS Calculator Link": "TODO"
-"Clusters and AWS Resources Topology 1: Short Description": "Ordinary Experts Drupal 8 Pattern AWS Architecture Diagram"
-"Clusters and AWS Resources Topology 1: Long Description": "The Ordinary Experts Drupal 8 Patterns AWS Architecture Diagram shows the total flow of services from when the developer updates the project code to when the customer accesses the Drupal application. The diagram shows the following AWS Services: Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeDeploy, Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora Serverless, Amazon Elastic File System (Amazon EFS), Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront"
+"Clusters and AWS Resources Topology 1: Short Description": "Ordinary Experts Drupal Pattern AWS Architecture Diagram"
+"Clusters and AWS Resources Topology 1: Long Description": "The Ordinary Experts Drupal Patterns AWS Architecture Diagram shows the total flow of services from when the developer updates the project code to when the customer accesses the Drupal application. The diagram shows the following AWS Services: Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeDeploy, Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora MySQL, Amazon Elastic File System (Amazon EFS), Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront."
 "Clusters and AWS Resources Topology 1: CloudFormation Template URL": "TODO"
 "Clusters and AWS Resources Topology 1: Architecture Diagram URL": https://ordinaryexperts.com/img/services/oe_drupal_patterns_topology_diagram.png
 "Clusters and AWS Resources Topology 2: Title": ""
