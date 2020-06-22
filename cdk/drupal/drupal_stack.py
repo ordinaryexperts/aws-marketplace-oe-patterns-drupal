@@ -1845,26 +1845,46 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
-        # TODO: convert to CfnRole
-        codedeploy_role = aws_iam.Role(
+        codedeploy_role = aws_iam.CfnRole(
              self,
             "CodeDeployRole",
-            assumed_by=aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)),
-            inline_policies={
-                "DeployRolePermssions": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetObject",
-                                "s3:PutObject"
-                            ],
-                            resources=[ pipeline_artifact_bucket_arn ]
-                        ),
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)) ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:GetObject",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            ),
+                        ]
+                    ),
+                    policy_name="DeployRolePermssions"
                 )
-            },
-            managed_policies=[ aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSCodeDeployRole") ]
+            ],
+            managed_policy_arns=[ "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole" ]
+        )
+        codedeploy_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codedeploy_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         codedeploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -1873,7 +1893,7 @@ class DrupalStack(core.Stack):
             auto_scaling_groups=[ asg.ref ],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=codedeploy_role.role_arn,
+            service_role_arn=codedeploy_role_arn,
             trigger_configurations=[
                 aws_codedeploy.CfnDeploymentGroup.TriggerConfigProperty(
                     trigger_events=[
