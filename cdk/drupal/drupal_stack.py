@@ -124,6 +124,22 @@ class DrupalStack(core.Stack):
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
         pipeline_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
         pipeline_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=core.Token.as_string(
+                    core.Fn.condition_if(
+                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                        pipeline_artifact_bucket_name_param.value_as_string,
+                        pipeline_artifact_bucket.ref
+                    )
+                ),
+                resource_name="*",
+                service="s3"
+            ),
+            stack=self
+        )
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -136,6 +152,17 @@ class DrupalStack(core.Stack):
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
             description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
+        source_artifact_s3_object_key_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=source_artifact_s3_bucket_param.value_as_string,
+                resource_name=source_artifact_s3_object_key_param.value_as_string,
+                service="s3"
+            ),
+            stack=self
+        )
+
         notification_email_param = core.CfnParameter(
             self,
             "NotificationEmail",
@@ -255,9 +282,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(0, core.Fn.get_azs()),
             map_public_ip_on_launch=True,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_public_subnet1.cfn_options.condition=vpc_not_given_condition
@@ -292,9 +317,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(1, core.Fn.get_azs()),
             map_public_ip_on_launch=True,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_public_subnet2.cfn_options.condition=vpc_not_given_condition
@@ -329,9 +352,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(0, core.Fn.get_azs()),
             map_public_ip_on_launch=False,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_private_subnet1.cfn_options.condition=vpc_not_given_condition
@@ -367,9 +388,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(1, core.Fn.get_azs()),
             map_public_ip_on_launch=False,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_private_subnet2.cfn_options.condition=vpc_not_given_condition
@@ -429,27 +448,23 @@ class DrupalStack(core.Stack):
             source_security_group_id=app_sg.ref,
             to_port=3306
         )
-        # TODO: move to CfnDBSubnetGroup
-        db_subnet_group = core.CfnResource(
+        db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
             "DbSubnetGroup",
-            type="AWS::RDS::DBSubnetGroup",
-            properties={
-                "DBSubnetGroupDescription": "MySQL Aurora DB Subnet Group",
-                "SubnetIds":  {
-                    "Fn::If": [
-                        vpc_not_given_condition.logical_id,
-                        [
-                            vpc_private_subnet1.ref,
-                            vpc_private_subnet2.ref
-                        ],
-                        [
-                            vpc_private_subnet_id1_param.value_as_string,
-                            vpc_private_subnet_id2_param.value_as_string
-                        ]
+            db_subnet_group_description="MySQL Aurora DB Subnet Group",
+            subnet_ids=core.Token.as_list(
+                core.Fn.condition_if(
+                    vpc_not_given_condition.logical_id,
+                    [
+                        vpc_private_subnet1.ref,
+                        vpc_private_subnet2.ref
+                    ],
+                    [
+                        vpc_private_subnet_id1_param.value_as_string,
+                        vpc_private_subnet_id2_param.value_as_string
                     ]
-                }
-            }
+                )
+            )
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -526,32 +541,6 @@ class DrupalStack(core.Stack):
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
-        secret_policy = aws_iam.Policy(
-            self,
-            "SecretPolicy",
-            statements=[
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[
-                        "secretsmanager:GetSecretValue"
-                    ],
-                    resources=[
-                        core.Token.as_string(
-                            core.Fn.condition_if(
-                                secret_arn_exists_condition.logical_id,
-                                secret_arn_param.value_as_string,
-                                secret.ref
-                            )
-                        )
-                    ]
-                ),
-                aws_iam.PolicyStatement(
-                    effect=aws_iam.Effect.ALLOW,
-                    actions=[ "secretsmanager:ListSecrets" ],
-                    resources=[ "*" ],
-                ),
-            ]
-        )
         db_snapshot_secret_rule = core.CfnRule(
             self,
             "DbSnapshotIdentifierAndSecretRequiredRule",
@@ -775,15 +764,16 @@ class DrupalStack(core.Stack):
         https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
-        notification_topic = aws_sns.Topic(
+        notification_topic = aws_sns.CfnTopic(
             self,
-            "NotificationTopic"
+            "NotificationTopic",
+            topic_name="{}-notifications".format(core.Aws.STACK_NAME)
         )
         notification_subscription = aws_sns.CfnSubscription(
             self,
             "NotificationSubscription",
             protocol="email",
-            topic_arn=notification_topic.topic_arn,
+            topic_arn=notification_topic.ref,
             endpoint=notification_email_param.value_as_string
         )
         notification_subscription.cfn_options.condition = notification_email_exists_condition
@@ -791,10 +781,8 @@ class DrupalStack(core.Stack):
             statements=[
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
-                    actions=[
-                        "sns:Publish",
-                    ],
-                    resources=[ notification_topic.topic_arn ]
+                    actions=[ "sns:Publish" ],
+                    resources=[ notification_topic.ref ]
                 )
             ]
         )
@@ -1167,9 +1155,7 @@ class DrupalStack(core.Stack):
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "cloudfront:CreateInvalidation",
-                                ],
+                                actions=[ "cloudfront:CreateInvalidation" ],
                                 resources=[ cloudfront_distribution_arn ]
                             )
                         ]
@@ -1207,7 +1193,7 @@ class DrupalStack(core.Stack):
                 zip_file=cloudfront_invalidation_lambda_function_code
             ),
             dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
-                target_arn=notification_topic.topic_arn
+                target_arn=notification_topic.ref
             ),
             environment=aws_lambda.CfnFunction.EnvironmentProperty(
                 variables={
@@ -1228,85 +1214,118 @@ class DrupalStack(core.Stack):
         )
 
         # app
-        app_instance_role = aws_iam.Role(
+        app_instance_role = aws_iam.CfnRole(
             self,
             "AppInstanceRole",
-            assumed_by=aws_iam.ServicePrincipal("ec2.amazonaws.com"),
-            inline_policies={
-                "AllowStreamLogsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "logs:CreateLogStream",
-                                "logs:DescribeLogStreams",
-                                "logs:PutLogEvents"
-                            ],
-                            resources=[
-                                access_log_group.attr_arn,
-                                error_log_group.attr_arn,
-                                system_log_group.attr_arn
-                            ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("ec2.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "logs:CreateLogStream",
+                                    "logs:DescribeLogStreams",
+                                    "logs:PutLogEvents"
+                                ],
+                                resources=[
+                                    access_log_group.attr_arn,
+                                    error_log_group.attr_arn,
+                                    system_log_group.attr_arn
+                                ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowStreamLogsToCloudWatch"
                 ),
-                "AllowStreamMetricsToCloudWatch": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "ec2:DescribeVolumes",
-                                "ec2:DescribeTags",
-                                "cloudwatch:GetMetricStatistics",
-                                "cloudwatch:ListMetrics",
-                                "cloudwatch:PutMetricData"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "ec2:DescribeVolumes",
+                                    "ec2:DescribeTags",
+                                    "cloudwatch:GetMetricStatistics",
+                                    "cloudwatch:ListMetrics",
+                                    "cloudwatch:PutMetricData"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowStreamMetricsToCloudWatch"
                 ),
-                "AllowGetFromArtifactBucket": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowGetFromArtifactBucket",
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "autoscaling:Describe*" ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="AllowDescribeAutoScaling"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "secretsmanager:GetSecretValue" ],
+                                resources=[
                                     core.Token.as_string(
                                         core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
+                                            secret_arn_exists_condition.logical_id,
+                                            secret_arn_param.value_as_string,
+                                            secret.ref
                                         )
                                     )
-                                )
-                            ]
-                        )
-                    ]
-                ),
-                "AllowDescribeAutoScaling": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "autoscaling:Describe*"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+                                ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "secretsmanager:ListSecrets" ],
+                                resources=[ "*" ],
+                            ),
+                        ]
+                    ),
+                    policy_name="DrupalSecretAccessPolicy"
                 )
-            },
-            managed_policies=[aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore")]
+            ],
+            managed_policy_arns=[
+                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+            ]
         )
-        app_instance_role.attach_inline_policy(secret_policy)
         instance_profile = aws_iam.CfnInstanceProfile(
             self,
             "AppInstanceProfile",
-            roles=[app_instance_role.role_name]
+            roles=[ app_instance_role.ref ]
         )
 
         # autoscaling
@@ -1465,7 +1484,7 @@ class DrupalStack(core.Stack):
             comparison_operator="GreaterThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.topic_arn ],
+            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.ref ],
             alarm_description="Scale-up if CPU > 90% for 10mins",
             dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
                 name="AutoScalingGroupName",
@@ -1483,7 +1502,7 @@ class DrupalStack(core.Stack):
             comparison_operator="LessThanThreshold",
             evaluation_periods=2,
             actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.topic_arn ],
+            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.ref ],
             alarm_description="Scale-down if CPU < 70% for 10mins",
             dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
                 name="AutoScalingGroupName",
@@ -1519,50 +1538,54 @@ class DrupalStack(core.Stack):
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # codebuild
-        codebuild_transform_service_role = aws_iam.Role(
+        codebuild_transform_service_role = aws_iam.CfnRole(
             self,
             "CodeBuildTransformServiceRole",
-            assumed_by=aws_iam.ServicePrincipal("codebuild.amazonaws.com"),
-            inline_policies={
-                "TransformRolePermssions": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "logs:CreateLogGroup",
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ],
-                            resources=[ "*" ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetObject",
-                                "s3:PutObject"
-                            ],
-                            resources=[
-                                core.Arn.format(
-                                    components=core.ArnComponents(
-                                        account="",
-                                        region="",
-                                        resource=core.Token.as_string(
-                                            core.Fn.condition_if(
-                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                                pipeline_artifact_bucket_name_param.value_as_string,
-                                                pipeline_artifact_bucket.ref
-                                            )
-                                        ),
-                                        resource_name="*",
-                                        service="s3"
-                                    ),
-                                    stack=self
-                                )
-                            ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codebuild.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ],
+                                resources=[ "*" ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:GetObject",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="TransformRolePermssions"
                 )
-            }
+            ]
+        )
+        codebuild_transform_service_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codebuild_transform_service_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         with open("drupal/codebuild_transform_project_buildspec.yml") as f:
             codebuild_transform_project_buildspec = f.read()
@@ -1584,7 +1607,7 @@ class DrupalStack(core.Stack):
                 type="LINUX_CONTAINER"
             ),
             name="{}-transform".format(core.Aws.STACK_NAME),
-            service_role=codebuild_transform_service_role.role_arn,
+            service_role=codebuild_transform_service_role_arn,
             source=aws_codebuild.CfnProject.SourceProperty(
                 build_spec=codebuild_transform_project_buildspec,
                 type="CODEPIPELINE"
@@ -1593,132 +1616,166 @@ class DrupalStack(core.Stack):
 
         # codepipeline
         # TODO: Tighten role / use managed roles?
-        codepipeline_role = aws_iam.Role(
+        codepipeline_role = aws_iam.CfnRole(
             self,
             "PipelineRole",
-            assumed_by=aws_iam.ServicePrincipal("codepipeline.amazonaws.com"),
-            inline_policies={
-                "CodePipelinePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "codebuild:BatchGetBuilds",
-                                "codebuild:StartBuild",
-                                "codedeploy:GetApplication",
-                                "codedeploy:GetDeploymentGroup",
-                                "codedeploy:ListApplications",
-                                "codedeploy:ListDeploymentGroups",
-                                "codepipeline:*",
-                                "iam:ListRoles",
-                                "iam:PassRole",
-                                "lambda:GetFunctionConfiguration",
-                                "lambda:ListFunctions",
-                                "s3:CreateBucket",
-                                "s3:GetBucketPolicy",
-                                "s3:GetObject",
-                                "s3:ListAllMyBuckets",
-                                "s3:ListBucket",
-                                "s3:PutBucketPolicy"
-                            ],
-                            resources=[ "*" ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codepipeline.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "codebuild:BatchGetBuilds",
+                                    "codebuild:StartBuild",
+                                    "codedeploy:GetApplication",
+                                    "codedeploy:GetDeploymentGroup",
+                                    "codedeploy:ListApplications",
+                                    "codedeploy:ListDeploymentGroups",
+                                    "codepipeline:*",
+                                    "iam:ListRoles",
+                                    "iam:PassRole",
+                                    "lambda:GetFunctionConfiguration",
+                                    "lambda:ListFunctions",
+                                    "s3:CreateBucket",
+                                    "s3:GetBucketPolicy",
+                                    "s3:GetObject",
+                                    "s3:ListAllMyBuckets",
+                                    "s3:ListBucket",
+                                    "s3:PutBucketPolicy"
+                                ],
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="CodePipelinePerms"
                 )
-            }
+            ]
         )
-        codepipeline_source_stage_role = aws_iam.Role(
+        codepipeline_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
+        codepipeline_source_stage_role = aws_iam.CfnRole(
             self,
             "SourceStageRole",
-            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
-            inline_policies={
-                "SourceRolePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/{}".format(
-                                    core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value_as_string,
-                                    source_artifact_s3_object_key_param.value_as_string
-                                )
-                            ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetBucketVersioning"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}".format(
-                                    core.Aws.PARTITION,
-                                    source_artifact_s3_bucket_param.value_as_string
-                                )
-                            ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:*"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
-                                        )
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
+                    )
+                ],
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*"
+                                ],
+                                resources=[ source_artifact_s3_object_key_arn ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:GetBucketVersioning" ],
+                                resources=[
+                                    core.Arn.format(
+                                        components=core.ArnComponents(
+                                            account="",
+                                            region="",
+                                            resource=source_artifact_s3_bucket_param.value_as_string,
+                                            service="s3"
+                                        ),
+                                        stack=self
                                     )
-                                )
-                            ]
-                        )
-                    ]
+                                ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:*" ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="SourceRolePerms"
                 )
-            }
+            ]
         )
-        codepipeline_deploy_stage_role = aws_iam.Role(
+        codepipeline_source_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_source_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
+        codepipeline_deploy_stage_role = aws_iam.CfnRole(
             self,
             "DeployStageRole",
-            assumed_by=aws_iam.ArnPrincipal(codepipeline_role.role_arn),
-            inline_policies={
-                "DeployRolePerms": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "codedeploy:*"
-                            ],
-                            resources=[ "*" ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:Get*",
-                                "s3:Head*",
-                                "s3:PutObject"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
-                                        )
-                                    )
-                                )
-                            ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals= [ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "codedeploy:*" ],
+                                resources=[ "*" ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:Get*",
+                                    "s3:Head*",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="DeployRolePerms"
                 )
-            }
+            ]
+        )
+        codepipeline_deploy_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_deploy_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         codepipeline_finalize_stage_role = aws_iam.CfnRole(
            self,
@@ -1728,7 +1785,7 @@ class DrupalStack(core.Stack):
                     aws_iam.PolicyStatement(
                         effect=aws_iam.Effect.ALLOW,
                         actions=[ "sts:AssumeRole" ],
-                        principals=[ aws_iam.ArnPrincipal(arn=codepipeline_role.role_arn) ]
+                        principals=[ aws_iam.ArnPrincipal(codepipeline_role_arn) ]
                     )
                 ]
             ),
@@ -1760,6 +1817,16 @@ class DrupalStack(core.Stack):
             ]
         )
         codepipeline_finalize_stage_role.cfn_options.condition = cloudfront_enable_condition
+        codepipeline_finalize_stage_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codepipeline_finalize_stage_role.ref,
+                service="iam"
+            ),
+            stack=self
+        )
 
         codedeploy_application = aws_codedeploy.CfnApplication(
             self,
@@ -1767,36 +1834,46 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
-        codedeploy_role = aws_iam.Role(
+        codedeploy_role = aws_iam.CfnRole(
              self,
             "CodeDeployRole",
-            assumed_by=aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)),
-            inline_policies={
-                "DeployRolePermssions": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetObject",
-                                "s3:PutObject"
-                            ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
-                                        )
-                                    )
-                                )
-                            ]
-                        ),
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)) ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:GetObject",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            ),
+                        ]
+                    ),
+                    policy_name="DeployRolePermssions"
                 )
-            },
-            managed_policies=[ aws_iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSCodeDeployRole") ]
+            ],
+            managed_policy_arns=[ "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole" ]
+        )
+        codedeploy_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codedeploy_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         codedeploy_deployment_group = aws_codedeploy.CfnDeploymentGroup(
             self,
@@ -1805,7 +1882,7 @@ class DrupalStack(core.Stack):
             auto_scaling_groups=[ asg.ref ],
             deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
-            service_role_arn=codedeploy_role.role_arn,
+            service_role_arn=codedeploy_role_arn,
             trigger_configurations=[
                 aws_codedeploy.CfnDeploymentGroup.TriggerConfigProperty(
                     trigger_events=[
@@ -1813,7 +1890,7 @@ class DrupalStack(core.Stack):
                         "DeploymentRollback"
                     ],
                     trigger_name="DeploymentNotification",
-                    trigger_target_arn=notification_topic.topic_arn
+                    trigger_target_arn=notification_topic.ref
                 )
             ]
         )
@@ -1830,7 +1907,7 @@ class DrupalStack(core.Stack):
                 ),
                 type="S3"
             ),
-            role_arn=codepipeline_role.role_arn,
+            role_arn=codepipeline_role_arn,
             stages=[
                 aws_codepipeline.CfnPipeline.StageDeclarationProperty(
                     name="Source",
@@ -1852,7 +1929,7 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="SourceAction",
-                            role_arn=codepipeline_source_stage_role.role_arn
+                            role_arn=codepipeline_source_stage_role_arn
                         )
                     ]
                 ),
@@ -1903,7 +1980,7 @@ class DrupalStack(core.Stack):
                                 )
                             ],
                             name="DeployAction",
-                            role_arn=codepipeline_deploy_stage_role.role_arn
+                            role_arn=codepipeline_deploy_stage_role_arn
                         )
                     ]
                 )
@@ -1928,7 +2005,7 @@ class DrupalStack(core.Stack):
                                     "FunctionName": cloudfront_invalidation_lambda_function.ref
                                 },
                                 "Name": "CloudFrontInvalidationAction",
-                                "RoleArn": codepipeline_finalize_stage_role.attr_arn
+                                "RoleArn": codepipeline_finalize_stage_role_arn
                             }
                         ],
                         "Name": "Finalize"
@@ -1943,7 +2020,7 @@ class DrupalStack(core.Stack):
             action="lambda:InvokeFunction",
             function_name=cloudfront_invalidation_lambda_function.attr_arn,
             principal="events.amazonaws.com",
-            source_arn=codepipeline_role.role_arn
+            source_arn=codepipeline_role_arn
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 

@@ -18,6 +18,7 @@
 * Fix CloudFront aliases failing in tests
 * Update Drupal 9 information in documentation
 * Update environment configurations for Drupal in documentation
+* Clean up CFN Logical IDs
 
 # 0.3.0
 
