@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import yaml
 from aws_cdk import (
     aws_autoscaling,
@@ -25,6 +26,7 @@ from aws_cdk import (
 )
 
 TWO_YEARS_IN_DAYS=731
+template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
 
 # When making a new development AMI:
 # 1) $ ave oe-patterns-dev make ami-ec2-build
@@ -2026,6 +2028,7 @@ class DrupalStack(core.Stack):
 
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
+            "OE::Patterns::TemplateVersion": template_version,
             "AWS::CloudFormation::Interface": {
                 "ParameterGroups": [
                     {

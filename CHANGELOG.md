@@ -19,6 +19,7 @@
 * Update Drupal 9 information in documentation
 * Update environment configurations for Drupal in documentation
 * Clean up CFN Logical IDs
+* Include version in template metadata
 
 # 0.3.0
 
