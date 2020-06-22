@@ -1549,34 +1549,54 @@ class DrupalStack(core.Stack):
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # codebuild
-        # TODO: convert to CfnRole
-        codebuild_transform_service_role = aws_iam.Role(
+        codebuild_transform_service_role = aws_iam.CfnRole(
             self,
             "CodeBuildTransformServiceRole",
-            assumed_by=aws_iam.ServicePrincipal("codebuild.amazonaws.com"),
-            inline_policies={
-                "TransformRolePermssions": aws_iam.PolicyDocument(
-                    statements=[
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "logs:CreateLogGroup",
-                                "logs:CreateLogStream",
-                                "logs:PutLogEvents"
-                            ],
-                            resources=[ "*" ]
-                        ),
-                        aws_iam.PolicyStatement(
-                            effect=aws_iam.Effect.ALLOW,
-                            actions=[
-                                "s3:GetObject",
-                                "s3:PutObject"
-                            ],
-                            resources=[ pipeline_artifact_bucket_arn ]
-                        )
-                    ]
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("codebuild.amazonaws.com") ]
+                    )
+                ]
+            ),
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ],
+                                resources=[ "*" ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:GetObject",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ pipeline_artifact_bucket_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="TransformRolePermssions"
                 )
-            }
+            ]
+        )
+        codebuild_transform_service_role_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account=core.Aws.ACCOUNT_ID,
+                region="",
+                resource="role",
+                resource_name=codebuild_transform_service_role.ref,
+                service="iam"
+            ),
+            stack=self
         )
         with open("drupal/codebuild_transform_project_buildspec.yml") as f:
             codebuild_transform_project_buildspec = f.read()
@@ -1598,7 +1618,7 @@ class DrupalStack(core.Stack):
                 type="LINUX_CONTAINER"
             ),
             name="{}-transform".format(core.Aws.STACK_NAME),
-            service_role=codebuild_transform_service_role.role_arn,
+            service_role=codebuild_transform_service_role_arn,
             source=aws_codebuild.CfnProject.SourceProperty(
                 build_spec=codebuild_transform_project_buildspec,
                 type="CODEPIPELINE"
