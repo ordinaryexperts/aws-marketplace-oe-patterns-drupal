@@ -2028,7 +2028,7 @@ class DrupalStack(core.Stack):
             action="lambda:InvokeFunction",
             function_name=cloudfront_invalidation_lambda_function.attr_arn,
             principal="events.amazonaws.com",
-            source_arn=codepipeline_role.ref
+            source_arn=codepipeline_role_arn
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
