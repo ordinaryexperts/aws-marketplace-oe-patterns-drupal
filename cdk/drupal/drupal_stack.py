@@ -282,9 +282,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(0, core.Fn.get_azs()),
             map_public_ip_on_launch=True,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_public_subnet1.cfn_options.condition=vpc_not_given_condition
@@ -319,9 +317,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(1, core.Fn.get_azs()),
             map_public_ip_on_launch=True,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Public"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Public")
+                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_public_subnet2.cfn_options.condition=vpc_not_given_condition
@@ -356,9 +352,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(0, core.Fn.get_azs()),
             map_public_ip_on_launch=False,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_private_subnet1.cfn_options.condition=vpc_not_given_condition
@@ -394,9 +388,7 @@ class DrupalStack(core.Stack):
             availability_zone=core.Fn.select(1, core.Fn.get_azs()),
             map_public_ip_on_launch=False,
             tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME)),
-                core.CfnTag(key="aws-cdk:subnet-name", value="Private"),
-                core.CfnTag(key="aws-cdk:subnet-type", value="Private")
+                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))
             ]
         )
         vpc_private_subnet2.cfn_options.condition=vpc_not_given_condition

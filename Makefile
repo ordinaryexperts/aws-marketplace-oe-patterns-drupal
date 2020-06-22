@@ -93,13 +93,13 @@ publish:
 rebuild:
 	docker-compose build --no-cache drupal
 
-synth:
+synth: build
 	docker-compose run -w /code/cdk --rm drupal cdk synth \
 	--version-reporting false \
 	--path-metadata false \
 	--asset-metadata false
 
-synth-to-file:
+synth-to-file: build
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth \
 	--version-reporting false \
