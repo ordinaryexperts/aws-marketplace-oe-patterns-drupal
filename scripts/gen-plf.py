@@ -5,14 +5,21 @@
 
 import awspricing
 import csv
+import pystache
 import re
+import sys
 import yaml
+
+if len(sys.argv) != 3:
+    raise Exception("Usage: python3 gen-plf.py [AMI_ID] [TEMPLATE_VERSION]")
 
 OE_MARKUP_PERCENTAGE = 0.05
 ANNUAL_SAVINGS_PERCENTAGE = 0.80 # 20% off
-MINIMUM_RATE = 0.001
+MINIMUM_RATE = 0.01
 HOURS_IN_A_YEAR = 8760
 DEFAULT_REGION = "us-east-1"
+AMI=sys.argv[1]
+VERSION=sys.argv[2]
 
 # to generate the 'gen-plf-column-headers.txt', open the Excel Product Load Form,
 # select header row, copy & paste into txt file, replacing all contents.
@@ -25,7 +32,7 @@ plf_config = yaml.load(
 plf_values = {}
 
 allowed_instance_types = yaml.load(
-    open("/code/cdk/drupal/allowed_instance_types.yaml"),
+    open("/code/cdk/drupal/allowed_values.yaml"),
     Loader=yaml.SafeLoader
 )["allowed_instance_types"]
 
@@ -96,7 +103,7 @@ for header in column_headers:
                 plf_values[header] = str(round(annual_price, 2))
     if not availability_match and not price_match:
         if header in plf_config:
-            plf_values[header] = plf_config[header]
+            plf_values[header] = pystache.render(plf_config[header], {'ami': AMI, 'version': VERSION})
         else:
             plf_values[header] = ""
 

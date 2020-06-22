@@ -17,7 +17,7 @@
 "Resource1_Name": "Deployment Guide"
 "Resource1_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/blob/{{version}}/DEPLOYMENTGUIDE.md"
 "Resource2_Name": "Github Source Code and Documentation"
-"Resource2_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal"
+"Resource2_URL": "https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/tree/{{version}}"
 "Resource3_Name": "Ordinary Experts Homepage" # TODO: replace with product page?
 "Resource3_URL": "https://ordinaryexperts.com"
 "Image URL": "TODO"

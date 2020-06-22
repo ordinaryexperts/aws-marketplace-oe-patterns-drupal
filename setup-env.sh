@@ -30,8 +30,8 @@ cd -
 apt-get -y -q install python3 python3-pip
 pip3 install -q taskcat==$TASKCAT_VERSION
 
-# https://github.com/lyft/awspricing
-pip3 install -q awspricing
+# For scripts/gen-pfl.py
+pip3 install -q awspricing pystache
 
 # cdk
 apt-get -y -q install npm

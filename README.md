@@ -6,7 +6,8 @@ The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation templat
 
 Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
 
-###### Current Drupal Environment Configurations
+## Current Drupal Environment Configurations
+
 * Apache 2.4.7
 * MySQL 5.7.8
 * PHP 7.3.0
@@ -41,20 +42,14 @@ Comprehensive, professional cloud hosting for Drupal at the click of a button.
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
-## Setup
-
-We are following the [3 Musketeers](https://3musketeers.io/) pattern for project layout / setup.
-
-First, install [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), and [Make](https://www.gnu.org/software/make/).
-
-Then:
-
-    $ make build
-    $ make synth
-    $ aws-vault exec oe-patterns-dev -- make deploy
-
 ## Deployment Guide
+
 Detailed information about the architecture and step-by-step instructions are available on our [deployment guide](DEPLOYMENTGUIDE.md).
 
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## Feedback
+
 To post feedback, submit feature ideas, or report bugs, use the [Issues section](https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-drupal/issues) of this GitHub repo.

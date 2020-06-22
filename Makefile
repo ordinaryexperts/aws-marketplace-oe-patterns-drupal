@@ -13,7 +13,7 @@ ami-ec2-build:
 ami-ec2-copy:
 	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
 
-bash:
+bash: build
 	docker-compose run -w /code --rm drupal bash
 
 bootstrap:
@@ -22,40 +22,40 @@ bootstrap:
 build:
 	docker-compose build drupal
 
-clean:
+clean: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh
 
-clean-all-tcat:
+clean-all-tcat: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat
 
-clean-all-tcat-all-regions:
+clean-all-tcat-all-regions: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh all tcat all
 
-clean-buckets:
+clean-buckets: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets
 
-clean-buckets-tcat:
+clean-buckets-tcat: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat
 
-clean-buckets-tcat-all-regions:
+clean-buckets-tcat-all-regions: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh buckets tcat all
 
-clean-logs:
+clean-logs: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs
 
-clean-logs-tcat:
+clean-logs-tcat: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat
 
-clean-logs-tcat-all-regions:
+clean-logs-tcat-all-regions: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh logs tcat all
 
-clean-snapshots:
+clean-snapshots: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots
 
-clean-snapshots-tcat:
+clean-snapshots-tcat: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat
 
-clean-snapshots-tcat-all-regions:
+clean-snapshots-tcat-all-regions: build
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat all
 
 deploy: build
@@ -78,16 +78,16 @@ deploy: build
 destroy: build
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
-diff:
+diff: build
 	docker-compose run -w /code/cdk --rm drupal cdk diff
 
-gen-plf:
-	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py
+gen-plf: build
+	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py $(AMI_ID) $(TEMPLATE_VERSION)
 
 lint: build
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
-publish:
+publish: build
 	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
 
 rebuild:
@@ -107,13 +107,13 @@ synth-to-file: build
 	--asset-metadata false > /code/dist/template.yaml \
 	&& echo 'Template saved to dist/template.yaml'"
 
-test-all:
+test-all: build
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/template.yaml \
 	&& cd ../test \
 	&& taskcat test run"
 
-test-main:
+test-main: build
 	docker-compose run -w /code --rm drupal bash -c "cd cdk \
 	&& cdk synth > ../test/main-test/template.yaml \
 	&& cd ../test/main-test \
