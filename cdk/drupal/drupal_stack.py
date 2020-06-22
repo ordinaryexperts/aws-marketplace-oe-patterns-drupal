@@ -124,6 +124,22 @@ class DrupalStack(core.Stack):
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
         pipeline_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
         pipeline_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=core.Token.as_string(
+                    core.Fn.condition_if(
+                        pipeline_artifact_bucket_name_exists_condition.logical_id,
+                        pipeline_artifact_bucket_name_param.value_as_string,
+                        pipeline_artifact_bucket.ref
+                    )
+                ),
+                resource_name="*",
+                service="s3"
+            ),
+            stack=self
+        )
         source_artifact_s3_bucket_param = core.CfnParameter(
             self,
             "SourceArtifactS3Bucket",
@@ -136,6 +152,17 @@ class DrupalStack(core.Stack):
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
             description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
+        source_artifact_s3_object_key_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=source_artifact_s3_bucket_param.value_as_string,
+                resource_name=source_artifact_s3_object_key_param.value_as_string,
+                service="s3"
+            ),
+            stack=self
+        )
+
         notification_email_param = core.CfnParameter(
             self,
             "NotificationEmail",
@@ -529,9 +556,7 @@ class DrupalStack(core.Stack):
                 statements=[
                     aws_iam.PolicyStatement(
                         effect=aws_iam.Effect.ALLOW,
-                        actions=[
-                            "secretsmanager:GetSecretValue"
-                        ],
+                        actions=[ "secretsmanager:GetSecretValue" ],
                         resources=[
                             core.Token.as_string(
                                 core.Fn.condition_if(
@@ -791,9 +816,7 @@ class DrupalStack(core.Stack):
             statements=[
                 aws_iam.PolicyStatement(
                     effect=aws_iam.Effect.ALLOW,
-                    actions=[
-                        "sns:Publish",
-                    ],
+                    actions=[ "sns:Publish" ],
                     resources=[ notification_topic.ref ]
                 )
             ]
@@ -1167,9 +1190,7 @@ class DrupalStack(core.Stack):
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "cloudfront:CreateInvalidation",
-                                ],
+                                actions=[ "cloudfront:CreateInvalidation" ],
                                 resources=[ cloudfront_distribution_arn ]
                             )
                         ]
@@ -1288,18 +1309,7 @@ class DrupalStack(core.Stack):
                                     "s3:Get*",
                                     "s3:Head*"
                                 ],
-                                resources=[
-                                    "arn:{}:s3:::{}/*".format(
-                                        core.Aws.PARTITION,
-                                        core.Token.as_string(
-                                            core.Fn.condition_if(
-                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                                pipeline_artifact_bucket_name_param.value_as_string,
-                                                pipeline_artifact_bucket.ref
-                                            )
-                                        )
-                                    )
-                                ]
+                                resources=[ pipeline_artifact_bucket_arn ]
                             )
                         ]
                     ),
@@ -1310,9 +1320,7 @@ class DrupalStack(core.Stack):
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "autoscaling:Describe*"
-                                ],
+                                actions=[ "autoscaling:Describe*" ],
                                 resources=[ "*" ]
                             )
                         ]
@@ -1541,6 +1549,7 @@ class DrupalStack(core.Stack):
         sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # codebuild
+        # TODO: convert to CfnRole
         codebuild_transform_service_role = aws_iam.Role(
             self,
             "CodeBuildTransformServiceRole",
@@ -1563,24 +1572,7 @@ class DrupalStack(core.Stack):
                                 "s3:GetObject",
                                 "s3:PutObject"
                             ],
-                            resources=[
-                                core.Arn.format(
-                                    components=core.ArnComponents(
-                                        account="",
-                                        region="",
-                                        resource=core.Token.as_string(
-                                            core.Fn.condition_if(
-                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                                pipeline_artifact_bucket_name_param.value_as_string,
-                                                pipeline_artifact_bucket.ref
-                                            )
-                                        ),
-                                        resource_name="*",
-                                        service="s3"
-                                    ),
-                                    stack=self
-                                )
-                            ]
+                            resources=[ pipeline_artifact_bucket_arn ]
                         )
                     ]
                 )
@@ -1692,43 +1684,27 @@ class DrupalStack(core.Stack):
                                     "s3:Get*",
                                     "s3:Head*"
                                 ],
+                                resources=[ source_artifact_s3_object_key_arn ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:GetBucketVersioning" ],
                                 resources=[
-                                    "arn:{}:s3:::{}/{}".format(
-                                        core.Aws.PARTITION,
-                                        source_artifact_s3_bucket_param.value_as_string,
-                                        source_artifact_s3_object_key_param.value_as_string
+                                    core.Arn.format(
+                                        components=core.ArnComponents(
+                                            account="",
+                                            region="",
+                                            resource=source_artifact_s3_bucket_param.value_as_string,
+                                            service="s3"
+                                        ),
+                                        stack=self
                                     )
                                 ]
                             ),
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "s3:GetBucketVersioning"
-                                ],
-                                resources=[
-                                    "arn:{}:s3:::{}".format(
-                                        core.Aws.PARTITION,
-                                        source_artifact_s3_bucket_param.value_as_string
-                                    )
-                                ]
-                            ),
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "s3:*"
-                                ],
-                                resources=[
-                                    "arn:{}:s3:::{}/*".format(
-                                        core.Aws.PARTITION,
-                                        core.Token.as_string(
-                                            core.Fn.condition_if(
-                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                                pipeline_artifact_bucket_name_param.value_as_string,
-                                                pipeline_artifact_bucket.ref
-                                            )
-                                        )
-                                    )
-                                ]
+                                actions=[ "s3:*" ],
+                                resources=[ pipeline_artifact_bucket_arn ]
                             )
                         ]
                     ),
@@ -1764,9 +1740,7 @@ class DrupalStack(core.Stack):
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "codedeploy:*"
-                                ],
+                                actions=[ "codedeploy:*" ],
                                 resources=[ "*" ]
                             ),
                             aws_iam.PolicyStatement(
@@ -1776,18 +1750,7 @@ class DrupalStack(core.Stack):
                                     "s3:Head*",
                                     "s3:PutObject"
                                 ],
-                                resources=[
-                                    "arn:{}:s3:::{}/*".format(
-                                        core.Aws.PARTITION,
-                                        core.Token.as_string(
-                                            core.Fn.condition_if(
-                                                pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                                pipeline_artifact_bucket_name_param.value_as_string,
-                                                pipeline_artifact_bucket.ref
-                                            )
-                                        )
-                                    )
-                                ]
+                                resources=[ pipeline_artifact_bucket_arn ]
                             )
                         ]
                     ),
@@ -1862,6 +1825,7 @@ class DrupalStack(core.Stack):
             application_name=core.Aws.STACK_NAME,
             compute_platform="Server"
         )
+        # TODO: convert to CfnRole
         codedeploy_role = aws_iam.Role(
              self,
             "CodeDeployRole",
@@ -1875,18 +1839,7 @@ class DrupalStack(core.Stack):
                                 "s3:GetObject",
                                 "s3:PutObject"
                             ],
-                            resources=[
-                                "arn:{}:s3:::{}/*".format(
-                                    core.Aws.PARTITION,
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
-                                            pipeline_artifact_bucket_name_exists_condition.logical_id,
-                                            pipeline_artifact_bucket_name_param.value_as_string,
-                                            pipeline_artifact_bucket.ref
-                                        )
-                                    )
-                                )
-                            ]
+                            resources=[ pipeline_artifact_bucket_arn ]
                         ),
                     ]
                 )
