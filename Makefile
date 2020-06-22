@@ -58,7 +58,7 @@ clean-snapshots-tcat:
 clean-snapshots-tcat-all-regions:
 	docker-compose run -w /code --rm drupal bash ./scripts/cleanup.sh snapshots tcat all
 
-deploy:
+deploy: build
 	docker-compose run -w /code/cdk --rm drupal cdk deploy \
 	--require-approval never \
 	--parameters CertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4 \
@@ -75,7 +75,7 @@ deploy:
 	--parameters VpcPublicSubnetId1=subnet-0c2f5d4daa1792c8d \
 	--parameters VpcPublicSubnetId2=subnet-060c39a6ded9e89d7
 
-destroy:
+destroy: build
 	docker-compose run -w /code/cdk --rm drupal cdk destroy
 
 diff:
