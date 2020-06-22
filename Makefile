@@ -84,7 +84,7 @@ diff:
 gen-plf:
 	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py
 
-lint:
+lint: build
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
 publish:
