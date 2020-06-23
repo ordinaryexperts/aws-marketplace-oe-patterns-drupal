@@ -31,32 +31,12 @@ plf_config = yaml.load(
 )
 plf_values = {}
 
-allowed_instance_types = yaml.load(
+allowed_values = yaml.load(
     open("/code/cdk/drupal/allowed_values.yaml"),
     Loader=yaml.SafeLoader
-)["allowed_instance_types"]
-
-# list copied from scripts/copy-image.sh
-# TODO: move to YAML
-allowed_regions = [
-    "us-east-2",
-    "us-west-1",
-    "us-west-2",
-    "ca-central-1",
-    "eu-central-1",
-    "eu-north-1",
-    "eu-west-1",
-    "eu-west-2",
-    "eu-west-3",
-    "ap-northeast-1",
-    "ap-northeast-2",
-    "ap-south-1",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "sa-east-1"
-]
-# plus our default region
-allowed_regions.append(DEFAULT_REGION)
+)
+allowed_instance_types = allowed_values["allowed_instance_types"]
+allowed_regions = open("/code/supported_regions.txt").read().split("\n")
 
 ec2_offer = awspricing.offer('AmazonEC2')
 
@@ -107,9 +87,9 @@ for header in column_headers:
         else:
             plf_values[header] = ""
 
-with open('/code/pfl.csv', 'w', newline='') as csvfile:
+with open('/code/plf.csv', 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=column_headers)
     writer.writeheader()
     writer.writerow(plf_values)
 
-print("PLF row saved to 'pfl.csv'")
+print("PLF row saved to 'plf.csv'")

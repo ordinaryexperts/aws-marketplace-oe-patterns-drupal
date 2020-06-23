@@ -7,10 +7,10 @@ ami-docker-build:
 ami-docker-rebuild:
 	docker-compose build --no-cache ami
 
-ami-ec2-build:
-	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh
+ami-ec2-build: build
+	docker-compose run -w /code --rm drupal bash ./scripts/packer.sh $(TEMPLATE_VERSION)
 
-ami-ec2-copy:
+ami-ec2-copy: build
 	docker-compose run -w /code --rm drupal bash ./scripts/copy-image.sh $(AMI_ID)
 
 bash: build
@@ -88,7 +88,7 @@ lint: build
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
 publish: build
-	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh
+	docker-compose run -w /code --rm drupal bash ./scripts/publish-template.sh $(TEMPLATE_VERSION)
 
 rebuild:
 	docker-compose build --no-cache drupal
