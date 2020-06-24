@@ -96,7 +96,7 @@ class DrupalStack(core.Stack):
             self,
             "PipelineArtifactBucketName",
             default="",
-            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. This can be handy when re-creating this template many times."
+            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. The bucket must be in this same AWS account. This can be handy when re-creating this template many times."
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -142,24 +142,57 @@ class DrupalStack(core.Stack):
             ),
             stack=self
         )
-        source_artifact_s3_bucket_param = core.CfnParameter(
+        source_artifact_bucket_name_param = core.CfnParameter(
             self,
-            "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub",
+            "SourceArtifactBucketName",
+            default="",
             description="Required: AWS S3 Bucket name which contains the build artifacts for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
-        source_artifact_s3_object_key_param = core.CfnParameter(
+        source_artifact_bucket_name_exists_condition = core.CfnCondition(
             self,
-            "SourceArtifactS3ObjectKey",
+            "SourceArtifactBucketNameExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
+        )
+        source_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+            self,
+            "SourceArtifactBucketNameNotExists",
+            expression=core.Fn.condition_equals(source_artifact_bucket_name_param.value, "")
+        )
+        source_artifact_bucket = aws_s3.CfnBucket(
+            self,
+            "SourceArtifactBucket",
+            access_control="Private",
+            bucket_encryption=aws_s3.CfnBucket.BucketEncryptionProperty(
+                server_side_encryption_configuration=[
+                    aws_s3.CfnBucket.ServerSideEncryptionRuleProperty(
+                        server_side_encryption_by_default=aws_s3.CfnBucket.ServerSideEncryptionByDefaultProperty(
+                            sse_algorithm="AES256"
+                        )
+                    )
+                ]
+            ),
+            public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
+        )
+        source_artifact_bucket.cfn_options.condition = source_artifact_bucket_name_not_exists_condition
+        source_artifact_bucket_name = core.Token.as_string(
+            core.Fn.condition_if(
+                source_artifact_bucket_name_exists_condition.logical_id,
+                source_artifact_bucket_name_param.value_as_string,
+                source_artifact_bucket.ref
+            )
+        )
+        source_artifact_object_key_param = core.CfnParameter(
+            self,
+            "SourceArtifactObjectKey",
             default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
             description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
-        source_artifact_s3_object_key_arn = core.Arn.format(
+        source_artifact_object_key_arn = core.Arn.format(
             components=core.ArnComponents(
                 account="",
                 region="",
-                resource=source_artifact_s3_bucket_param.value_as_string,
-                resource_name=source_artifact_s3_object_key_param.value_as_string,
+                resource=source_artifact_bucket_name,
+                resource_name=source_artifact_object_key_param.value_as_string,
                 service="s3"
             ),
             stack=self
@@ -1695,7 +1728,7 @@ class DrupalStack(core.Stack):
                                     "s3:Get*",
                                     "s3:Head*"
                                 ],
-                                resources=[ source_artifact_s3_object_key_arn ]
+                                resources=[ source_artifact_object_key_arn ]
                             ),
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
@@ -1705,7 +1738,7 @@ class DrupalStack(core.Stack):
                                         components=core.ArnComponents(
                                             account="",
                                             region="",
-                                            resource=source_artifact_s3_bucket_param.value_as_string,
+                                            resource=source_artifact_bucket_name,
                                             service="s3"
                                         ),
                                         stack=self
@@ -1922,8 +1955,8 @@ class DrupalStack(core.Stack):
                                 version="1"
                             ),
                             configuration={
-                                "S3Bucket": source_artifact_s3_bucket_param.value_as_string,
-                                "S3ObjectKey": source_artifact_s3_object_key_param.value_as_string
+                                "S3Bucket": source_artifact_bucket_name,
+                                "S3ObjectKey": source_artifact_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -2037,8 +2070,8 @@ class DrupalStack(core.Stack):
                         },
                         "Parameters": [
                             notification_email_param.logical_id,
-                            source_artifact_s3_bucket_param.logical_id,
-                            source_artifact_s3_object_key_param.logical_id
+                            source_artifact_bucket_name_param.logical_id,
+                            source_artifact_object_key_param.logical_id
                         ]
                     },
                     {
@@ -2161,10 +2194,10 @@ class DrupalStack(core.Stack):
                     secret_arn_param.logical_id: {
                         "default": "SecretsManager secret ARN"
                     },
-                    source_artifact_s3_bucket_param.logical_id: {
+                    source_artifact_bucket_name_param.logical_id: {
                         "default": "Source Artifact S3 Bucket Name"
                     },
-                    source_artifact_s3_object_key_param.logical_id: {
+                    source_artifact_object_key_param.logical_id: {
                         "default": "Source Artifact S3 Object Key (path)"
                     },
                     vpc_id_param.logical_id: {
