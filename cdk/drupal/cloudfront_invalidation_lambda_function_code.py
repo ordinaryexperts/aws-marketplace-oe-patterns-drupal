@@ -7,7 +7,7 @@ import boto3
 import botocore
 
 logger = logging.getLogger()
-logger.setLevel('INFO')
+logger.setLevel("INFO")
 
 cloudfront_client = boto3.client("cloudfront")
 codepipeline_client = boto3.client("codepipeline")

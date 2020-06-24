@@ -25,6 +25,8 @@ from aws_cdk import (
     core
 )
 
+DEFAULT_DRUPAL_SOURCE_BUCKET="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
+DEFAULT_DRUPAL_SOURCE_OBJECT_KEY="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
 TWO_YEARS_IN_DAYS=731
 template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
 
@@ -171,7 +173,10 @@ class DrupalStack(core.Stack):
                     )
                 ]
             ),
-            public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
+            public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL,
+            versioning_configuration=aws_s3.CfnBucket.VersioningConfigurationProperty(
+                status="Enabled"
+            )
         )
         source_artifact_bucket.cfn_options.condition = source_artifact_bucket_name_not_exists_condition
         source_artifact_bucket_name = core.Token.as_string(
@@ -2058,6 +2063,93 @@ class DrupalStack(core.Stack):
             source_arn=codepipeline_role_arn
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
+
+        # default drupal
+        initialize_with_default_drupal_param = core.CfnParameter(
+            self,
+            "InitializeWithDefaultDrupal",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Optional: Initialize the stack using a default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
+        )
+        initialize_with_default_drupal_condition = core.CfnCondition(
+            self,
+            "InitializeWithDefaultDrupalCondition",
+            expression=core.Fn.condition_equals(initialize_with_default_drupal_param.value, "true")
+        )
+        initialize_with_default_drupal_lambda_function_role = aws_iam.CfnRole(
+            self,
+            "InitializeWithDefaultDrupalLambdaFunctionRole",
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("lambda.amazonaws.com") ]
+                    )
+                ]
+            ),
+            managed_policy_arns=[
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ],
+            policies=[
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:GetObject" ],
+                                # TODO: tighten
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="GetOrdinaryExpertsDefaultDrupalArtifact"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:PutObject" ],
+                                # TODO: tighten
+                                resources=[ "*" ]
+                            )
+                        ]
+                    ),
+                    policy_name="PutDefaultDrupalArtifact"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=iam_notification_publish_policy,
+                    policy_name="SnsPublishToNotificationTopic"
+                )
+            ]
+        )
+        initialize_with_default_drupal_lambda_function_role.cfn_options.condition = initialize_with_default_drupal_condition
+        with open("drupal/initialize_with_default_drupal_lambda_function_code.py") as f:
+            initialize_with_default_drupal_lambda_function_code = f.read()
+        initialize_with_default_drupal_lambda_function = aws_lambda.CfnFunction(
+            self,
+            "InitializeWithDefaultDrupalLambdaFunction",
+            code=aws_lambda.CfnFunction.CodeProperty(
+                zip_file=initialize_with_default_drupal_lambda_function_code
+            ),
+            dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
+                target_arn=notification_topic.ref
+            ),
+            environment=aws_lambda.CfnFunction.EnvironmentProperty(
+                variables={
+                    "DefaultDrupalSourceArtifactBucket": DEFAULT_DRUPAL_SOURCE_BUCKET,
+                    "DefaultDrupalSourceArtifactObjectKey": DEFAULT_DRUPAL_SOURCE_OBJECT_KEY,
+                    "SourceArtifactBucket": source_artifact_bucket_name,
+                    "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string
+                }
+            ),
+            handler="index.lambda_handler",
+            role=initialize_with_default_drupal_lambda_function_role.attr_arn,
+            runtime="python3.7"
+        )
+        initialize_with_default_drupal_lambda_function.cfn_options.condition = initialize_with_default_drupal_condition
 
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
