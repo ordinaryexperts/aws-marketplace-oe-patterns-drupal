@@ -4,6 +4,7 @@ import subprocess
 import yaml
 from aws_cdk import (
     aws_autoscaling,
+    aws_cloudformation,
     aws_cloudfront,
     aws_cloudwatch,
     aws_codebuild,
@@ -2065,21 +2066,21 @@ class DrupalStack(core.Stack):
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
         # default drupal
-        initialize_with_default_drupal_param = core.CfnParameter(
+        initialize_default_drupal_param = core.CfnParameter(
             self,
-            "InitializeWithDefaultDrupal",
+            "InitializeDefaultDrupal",
             allowed_values=[ "true", "false" ],
             default="false",
             description="Optional: Initialize the stack using a default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
         )
-        initialize_with_default_drupal_condition = core.CfnCondition(
+        initialize_default_drupal_condition = core.CfnCondition(
             self,
-            "InitializeWithDefaultDrupalCondition",
-            expression=core.Fn.condition_equals(initialize_with_default_drupal_param.value, "true")
+            "InitializeDefaultDrupalCondition",
+            expression=core.Fn.condition_equals(initialize_default_drupal_param.value, "true")
         )
-        initialize_with_default_drupal_lambda_function_role = aws_iam.CfnRole(
+        initialize_default_drupal_lambda_function_role = aws_iam.CfnRole(
             self,
-            "InitializeWithDefaultDrupalLambdaFunctionRole",
+            "InitializeDefaultDrupalLambdaFunctionRole",
             assume_role_policy_document=aws_iam.PolicyDocument(
                 statements=[
                     aws_iam.PolicyStatement(
@@ -2125,14 +2126,14 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        initialize_with_default_drupal_lambda_function_role.cfn_options.condition = initialize_with_default_drupal_condition
-        with open("drupal/initialize_with_default_drupal_lambda_function_code.py") as f:
-            initialize_with_default_drupal_lambda_function_code = f.read()
-        initialize_with_default_drupal_lambda_function = aws_lambda.CfnFunction(
+        initialize_default_drupal_lambda_function_role.cfn_options.condition = initialize_default_drupal_condition
+        with open("drupal/initialize_default_drupal_lambda_function_code.py") as f:
+            initialize_default_drupal_lambda_function_code = f.read()
+        initialize_default_drupal_lambda_function = aws_lambda.CfnFunction(
             self,
-            "InitializeWithDefaultDrupalLambdaFunction",
+            "InitializeDefaultDrupalLambdaFunction",
             code=aws_lambda.CfnFunction.CodeProperty(
-                zip_file=initialize_with_default_drupal_lambda_function_code
+                zip_file=initialize_default_drupal_lambda_function_code
             ),
             dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
                 target_arn=notification_topic.ref
@@ -2142,14 +2143,21 @@ class DrupalStack(core.Stack):
                     "DefaultDrupalSourceArtifactBucket": DEFAULT_DRUPAL_SOURCE_BUCKET,
                     "DefaultDrupalSourceArtifactObjectKey": DEFAULT_DRUPAL_SOURCE_OBJECT_KEY,
                     "SourceArtifactBucket": source_artifact_bucket_name,
-                    "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string
+                    "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string,
+                    "StackName": core.Aws.STACK_NAME
                 }
             ),
             handler="index.lambda_handler",
-            role=initialize_with_default_drupal_lambda_function_role.attr_arn,
+            role=initialize_default_drupal_lambda_function_role.attr_arn,
             runtime="python3.7"
         )
-        initialize_with_default_drupal_lambda_function.cfn_options.condition = initialize_with_default_drupal_condition
+        initialize_default_drupal_lambda_function.cfn_options.condition = initialize_default_drupal_condition
+        initialize_default_drupal_custom_resource = aws_cloudformation.CfnCustomResource(
+            self,
+            "InitializeDefaultDrupalCustomResource",
+            service_token=initialize_default_drupal_lambda_function.attr_arn
+        )
+        initialize_default_drupal_custom_resource.cfn_options.condition = initialize_default_drupal_condition
 
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
