@@ -26,7 +26,10 @@ from aws_cdk import (
 )
 
 TWO_YEARS_IN_DAYS=731
-template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
+try:
+    template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
+except:
+    template_version = "CICD"
 
 # When making a new development AMI:
 # 1) $ ave oe-patterns-dev make ami-ec2-build
