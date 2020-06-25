@@ -6,6 +6,8 @@ The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation templat
 
 Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
 
+Want to get started?  Read the [Deployment Guide](DEPLOYMENTGUIDE.md).
+
 ## Current Drupal Environment Configurations
 
 * Apache 2.4.7
@@ -42,7 +44,22 @@ Comprehensive, professional cloud hosting for Drupal at the click of a button.
 
 ![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
 
-## Deployment Guide
+## Infrastructure Cost Estimates
+
+We have prepared the following AWS Simple Monthly Calculator links to help estimate the cost of running different configurations of this infrastructure:
+
+* [Basic with minimum options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-086962bc481edc37a0b1d159f74375dd23c92ca8&v=ver20200610dP): $121.75 USD / mo
+* [Basic with default options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-53dc2f9056a2c23c6ca5e46bbf2a17f57b258080&v=ver20200610dP): $429.33 USD / mo
+* [Basic with default options and VPC](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-9110ebb90e8a5ce555d796d756e8512483deb533&v=ver20200610dP): $501.97 USD / mo
+* [Basic with default options and ElastiCache](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-8d532112abf9ad1f25b13070f10495a6f1186a51&v=ver20200610dP): $454.23 USD / mo
+* [Basic with default options and CloudFront](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-f0df89ffe75796bf1dea267462ff91a82531e0cc&v=ver20200610dP): $439.07 USD / mo
+* [Fully loaded with default options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-f03799f13f8e4fbd2b6566367b330dcc328c9d1a&v=ver20200610dP): $532.11 USD / mo
+
+## Setup
+
+We are following the [3 Musketeers](https://3musketeers.io/) pattern for project layout / setup.
+
+First, install [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), and [Make](https://www.gnu.org/software/make/).
 
 Detailed information about the architecture and step-by-step instructions are available on our [deployment guide](DEPLOYMENTGUIDE.md).
 
