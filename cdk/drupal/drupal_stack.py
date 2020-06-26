@@ -201,7 +201,7 @@ class DrupalStack(core.Stack):
         source_artifact_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
+            default="drupal.zip",
             description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
         )
         source_artifact_object_key_arn = core.Arn.format(
