@@ -189,6 +189,15 @@ class DrupalStack(core.Stack):
                 source_artifact_bucket.ref
             )
         )
+        source_artifact_bucket_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=source_artifact_bucket_name,
+                service="s3"
+            ),
+            stack=self
+        )
         source_artifact_object_key_param = core.CfnParameter(
             self,
             "SourceArtifactObjectKey",
@@ -2096,32 +2105,22 @@ class DrupalStack(core.Stack):
                 "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
             ],
             policies=[
+                # OE default drupal artifact should be public, so no policy needed for s3:GetObject
                 aws_iam.CfnRole.PolicyProperty(
                     policy_document=aws_iam.PolicyDocument(
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[ "s3:GetObject" ],
-                                # TODO: tighten
-                                resources=[ "*" ]
-                            )
-                        ]
-                    ),
-                    policy_name="GetOrdinaryExpertsDefaultDrupalArtifact"
-                ),
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
+                                actions=[ "s3:ListBucket" ],
+                                resources=[ source_artifact_bucket_arn ]
+                            ),
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
                                 actions=[
                                     "s3:HeadObject",
-                                    # TODO: move to separate statement
-                                    "s3:ListBucket",
                                     "s3:PutObject"
                                 ],
-                                # TODO: tighten
-                                resources=[ "*" ]
+                                resources=[ source_artifact_object_key_arn ]
                             )
                         ]
                     ),
