@@ -20,6 +20,7 @@
 * Update environment configurations for Drupal in documentation
 * Clean up CFN Logical IDs
 * Include version in template metadata
+* Source artifact bucket and default Drupal initialization copy option
 
 # 0.3.0
 
