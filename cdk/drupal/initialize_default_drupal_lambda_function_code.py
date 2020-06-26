@@ -4,6 +4,7 @@ import uuid
 
 import boto3
 import botocore
+from botocore.exceptions import ClientError
 import cfnresponse
 
 logger = logging.getLogger()
@@ -17,12 +18,23 @@ def lambda_handler(event, context):
 
     try:
         if (event["RequestType"] == "Create"):
-            s3_client.copy_object(
-                Bucket=os.environ["SourceArtifactBucket"],
-                CopySource=os.environ["DefaultDrupalSourceArtifactBucket"] + "/" + os.environ["DefaultDrupalSourceArtifactObjectKey"],
-                Key=os.environ["SourceArtifactObjectKey"]
-            )
-            logger.info("Drupal codebase copy complete.")
+            try:
+                s3_client.head_object(
+                    Bucket=os.environ["SourceArtifactBucket"],
+                    Key=os.environ["SourceArtifactObjectKey"]
+                )
+            except ClientError as e:
+                # perform the copy only if the object is not found
+                # in this case that means a 404 ClientError from the HeadObject request
+                if e.response["Error"]["Code"] == "404":
+                    s3_client.copy_object(
+                        Bucket=os.environ["SourceArtifactBucket"],
+                        CopySource=os.environ["DefaultDrupalSourceArtifactBucket"] + "/" + os.environ["DefaultDrupalSourceArtifactObjectKey"],
+                        Key=os.environ["SourceArtifactObjectKey"]
+                    )
+                    logger.info("Drupal codebase copy complete.")
+                else:
+                    logger.info("The artifact object already exists. Copy aborted.")
 
         cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
         logger.info("CloudFormation success response sent.")
@@ -30,5 +42,4 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.error(e)
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
-        logger.error("CloudFormation failure response sent.")
         raise e

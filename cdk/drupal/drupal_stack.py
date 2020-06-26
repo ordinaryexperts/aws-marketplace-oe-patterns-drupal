@@ -180,6 +180,8 @@ class DrupalStack(core.Stack):
             )
         )
         source_artifact_bucket.cfn_options.condition = source_artifact_bucket_name_not_exists_condition
+        source_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        source_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
         source_artifact_bucket_name = core.Token.as_string(
             core.Fn.condition_if(
                 source_artifact_bucket_name_exists_condition.logical_id,
@@ -2112,7 +2114,12 @@ class DrupalStack(core.Stack):
                         statements=[
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
-                                actions=[ "s3:PutObject" ],
+                                actions=[
+                                    "s3:HeadObject",
+                                    # TODO: move to separate statement
+                                    "s3:ListBucket",
+                                    "s3:PutObject"
+                                ],
                                 # TODO: tighten
                                 resources=[ "*" ]
                             )
@@ -2193,7 +2200,8 @@ class DrupalStack(core.Stack):
                             app_instance_type_param.logical_id,
                             asg_min_size_param.logical_id,
                             asg_max_size_param.logical_id,
-                            asg_desired_capacity_param.logical_id
+                            asg_desired_capacity_param.logical_id,
+                            initialize_default_drupal_param.logical_id
                         ]
                     },
                     {
@@ -2284,6 +2292,9 @@ class DrupalStack(core.Stack):
                     },
                     elasticache_enable_param.logical_id: {
                         "default": "Enable ElastiCache"
+                    },
+                    initialize_default_drupal_param.logical_id: {
+                        "default": "Initialize with a default Drupal codebase"
                     },
                     notification_email_param.logical_id: {
                         "default": "Notification Email"
