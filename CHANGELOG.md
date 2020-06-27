@@ -1,5 +1,7 @@
 # Unreleased
 
+# 1.0.0
+
 * AWS::CloudFormation::Interface and other param fixes
 * Pass test buckets for each region
 * Update supported regions list
