@@ -84,6 +84,9 @@ diff: build
 gen-plf: build
 	docker-compose run -w /code --rm drupal python3 ./scripts/gen-plf.py $(AMI_ID) $(TEMPLATE_VERSION)
 
+list-all-stacks: build
+	docker-compose run -w /code --rm drupal bash ./scripts/list-all-stacks.sh
+
 lint: build
 	docker-compose run -w /code --rm drupal bash ./scripts/lint.sh
 
