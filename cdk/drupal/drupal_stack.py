@@ -4,6 +4,7 @@ import subprocess
 import yaml
 from aws_cdk import (
     aws_autoscaling,
+    aws_cloudformation,
     aws_cloudfront,
     aws_cloudwatch,
     aws_codebuild,
@@ -25,6 +26,8 @@ from aws_cdk import (
     core
 )
 
+DEFAULT_DRUPAL_SOURCE_BUCKET="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
+DEFAULT_DRUPAL_SOURCE_OBJECT_KEY="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
 TWO_YEARS_IN_DAYS=731
 try:
     template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
@@ -99,7 +102,7 @@ class DrupalStack(core.Stack):
             self,
             "PipelineArtifactBucketName",
             default="",
-            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. This can be handy when re-creating this template many times."
+            description="Optional: Specify a bucket name for the CodePipeline pipeline to use. The bucket must be in this same AWS account. This can be handy when re-creating this template many times."
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -145,24 +148,71 @@ class DrupalStack(core.Stack):
             ),
             stack=self
         )
-        source_artifact_s3_bucket_param = core.CfnParameter(
+        source_artifact_bucket_name_param = core.CfnParameter(
             self,
-            "SourceArtifactS3Bucket",
-            default="github-user-and-bucket-githubartifactbucket-wl52dae3lyub",
-            description="Required: AWS S3 Bucket name which contains the build artifacts for the application.  Default value will deploy Ordinary Experts demo Drupal site."
+            "SourceArtifactBucketName",
+            default="",
+            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application."
         )
-        source_artifact_s3_object_key_param = core.CfnParameter(
+        source_artifact_bucket_name_exists_condition = core.CfnCondition(
             self,
-            "SourceArtifactS3ObjectKey",
-            default="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip",
-            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
+            "SourceArtifactBucketNameExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
         )
-        source_artifact_s3_object_key_arn = core.Arn.format(
+        source_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+            self,
+            "SourceArtifactBucketNameNotExists",
+            expression=core.Fn.condition_equals(source_artifact_bucket_name_param.value, "")
+        )
+        source_artifact_bucket = aws_s3.CfnBucket(
+            self,
+            "SourceArtifactBucket",
+            access_control="Private",
+            bucket_encryption=aws_s3.CfnBucket.BucketEncryptionProperty(
+                server_side_encryption_configuration=[
+                    aws_s3.CfnBucket.ServerSideEncryptionRuleProperty(
+                        server_side_encryption_by_default=aws_s3.CfnBucket.ServerSideEncryptionByDefaultProperty(
+                            sse_algorithm="AES256"
+                        )
+                    )
+                ]
+            ),
+            public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL,
+            versioning_configuration=aws_s3.CfnBucket.VersioningConfigurationProperty(
+                status="Enabled"
+            )
+        )
+        source_artifact_bucket.cfn_options.condition = source_artifact_bucket_name_not_exists_condition
+        source_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        source_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
+        source_artifact_bucket_name = core.Token.as_string(
+            core.Fn.condition_if(
+                source_artifact_bucket_name_exists_condition.logical_id,
+                source_artifact_bucket_name_param.value_as_string,
+                source_artifact_bucket.ref
+            )
+        )
+        source_artifact_bucket_arn = core.Arn.format(
             components=core.ArnComponents(
                 account="",
                 region="",
-                resource=source_artifact_s3_bucket_param.value_as_string,
-                resource_name=source_artifact_s3_object_key_param.value_as_string,
+                resource=source_artifact_bucket_name,
+                service="s3"
+            ),
+            stack=self
+        )
+        source_artifact_object_key_param = core.CfnParameter(
+            self,
+            "SourceArtifactObjectKey",
+            default="drupal.zip",
+            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Updates to this object will trigger a deployment."
+        )
+        source_artifact_object_key_arn = core.Arn.format(
+            components=core.ArnComponents(
+                account="",
+                region="",
+                resource=source_artifact_bucket_name,
+                resource_name=source_artifact_object_key_param.value_as_string,
                 service="s3"
             ),
             stack=self
@@ -1698,7 +1748,7 @@ class DrupalStack(core.Stack):
                                     "s3:Get*",
                                     "s3:Head*"
                                 ],
-                                resources=[ source_artifact_s3_object_key_arn ]
+                                resources=[ source_artifact_object_key_arn ]
                             ),
                             aws_iam.PolicyStatement(
                                 effect=aws_iam.Effect.ALLOW,
@@ -1708,7 +1758,7 @@ class DrupalStack(core.Stack):
                                         components=core.ArnComponents(
                                             account="",
                                             region="",
-                                            resource=source_artifact_s3_bucket_param.value_as_string,
+                                            resource=source_artifact_bucket_name,
                                             service="s3"
                                         ),
                                         stack=self
@@ -1925,8 +1975,8 @@ class DrupalStack(core.Stack):
                                 version="1"
                             ),
                             configuration={
-                                "S3Bucket": source_artifact_s3_bucket_param.value_as_string,
-                                "S3ObjectKey": source_artifact_s3_object_key_param.value_as_string
+                                "S3Bucket": source_artifact_bucket_name,
+                                "S3ObjectKey": source_artifact_object_key_param.value_as_string
                             },
                             output_artifacts=[
                                 aws_codepipeline.CfnPipeline.OutputArtifactProperty(
@@ -2029,6 +2079,95 @@ class DrupalStack(core.Stack):
         )
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
+        # default drupal
+        initialize_default_drupal_param = core.CfnParameter(
+            self,
+            "InitializeDefaultDrupal",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Optional: Trigger the first deployment with a copy of an initial default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
+        )
+        initialize_default_drupal_condition = core.CfnCondition(
+            self,
+            "InitializeDefaultDrupalCondition",
+            expression=core.Fn.condition_equals(initialize_default_drupal_param.value, "true")
+        )
+        initialize_default_drupal_lambda_function_role = aws_iam.CfnRole(
+            self,
+            "InitializeDefaultDrupalLambdaFunctionRole",
+            assume_role_policy_document=aws_iam.PolicyDocument(
+                statements=[
+                    aws_iam.PolicyStatement(
+                        effect=aws_iam.Effect.ALLOW,
+                        actions=[ "sts:AssumeRole" ],
+                        principals=[ aws_iam.ServicePrincipal("lambda.amazonaws.com") ]
+                    )
+                ]
+            ),
+            managed_policy_arns=[
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ],
+            policies=[
+                # OE default drupal artifact should be public, so no policy needed for s3:GetObject
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=aws_iam.PolicyDocument(
+                        statements=[
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[ "s3:ListBucket" ],
+                                resources=[ source_artifact_bucket_arn ]
+                            ),
+                            aws_iam.PolicyStatement(
+                                effect=aws_iam.Effect.ALLOW,
+                                actions=[
+                                    "s3:HeadObject",
+                                    "s3:PutObject"
+                                ],
+                                resources=[ source_artifact_object_key_arn ]
+                            )
+                        ]
+                    ),
+                    policy_name="PutDefaultDrupalArtifact"
+                ),
+                aws_iam.CfnRole.PolicyProperty(
+                    policy_document=iam_notification_publish_policy,
+                    policy_name="SnsPublishToNotificationTopic"
+                )
+            ]
+        )
+        initialize_default_drupal_lambda_function_role.cfn_options.condition = initialize_default_drupal_condition
+        with open("drupal/initialize_default_drupal_lambda_function_code.py") as f:
+            initialize_default_drupal_lambda_function_code = f.read()
+        initialize_default_drupal_lambda_function = aws_lambda.CfnFunction(
+            self,
+            "InitializeDefaultDrupalLambdaFunction",
+            code=aws_lambda.CfnFunction.CodeProperty(
+                zip_file=initialize_default_drupal_lambda_function_code
+            ),
+            dead_letter_config=aws_lambda.CfnFunction.DeadLetterConfigProperty(
+                target_arn=notification_topic.ref
+            ),
+            environment=aws_lambda.CfnFunction.EnvironmentProperty(
+                variables={
+                    "DefaultDrupalSourceArtifactBucket": DEFAULT_DRUPAL_SOURCE_BUCKET,
+                    "DefaultDrupalSourceArtifactObjectKey": DEFAULT_DRUPAL_SOURCE_OBJECT_KEY,
+                    "SourceArtifactBucket": source_artifact_bucket_name,
+                    "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string,
+                    "StackName": core.Aws.STACK_NAME
+                }
+            ),
+            handler="index.lambda_handler",
+            role=initialize_default_drupal_lambda_function_role.attr_arn,
+            runtime="python3.7"
+        )
+        initialize_default_drupal_lambda_function.cfn_options.condition = initialize_default_drupal_condition
+        initialize_default_drupal_custom_resource = aws_cloudformation.CfnCustomResource(
+            self,
+            "InitializeDefaultDrupalCustomResource",
+            service_token=initialize_default_drupal_lambda_function.attr_arn
+        )
+        initialize_default_drupal_custom_resource.cfn_options.condition = initialize_default_drupal_condition
+
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
             "OE::Patterns::TemplateVersion": template_version,
@@ -2040,8 +2179,8 @@ class DrupalStack(core.Stack):
                         },
                         "Parameters": [
                             notification_email_param.logical_id,
-                            source_artifact_s3_bucket_param.logical_id,
-                            source_artifact_s3_object_key_param.logical_id
+                            source_artifact_bucket_name_param.logical_id,
+                            source_artifact_object_key_param.logical_id
                         ]
                     },
                     {
@@ -2063,7 +2202,8 @@ class DrupalStack(core.Stack):
                             app_instance_type_param.logical_id,
                             asg_min_size_param.logical_id,
                             asg_max_size_param.logical_id,
-                            asg_desired_capacity_param.logical_id
+                            asg_desired_capacity_param.logical_id,
+                            initialize_default_drupal_param.logical_id
                         ]
                     },
                     {
@@ -2155,6 +2295,9 @@ class DrupalStack(core.Stack):
                     elasticache_enable_param.logical_id: {
                         "default": "Enable ElastiCache"
                     },
+                    initialize_default_drupal_param.logical_id: {
+                        "default": "Initialize with a default Drupal codebase"
+                    },
                     notification_email_param.logical_id: {
                         "default": "Notification Email"
                     },
@@ -2164,10 +2307,10 @@ class DrupalStack(core.Stack):
                     secret_arn_param.logical_id: {
                         "default": "SecretsManager secret ARN"
                     },
-                    source_artifact_s3_bucket_param.logical_id: {
+                    source_artifact_bucket_name_param.logical_id: {
                         "default": "Source Artifact S3 Bucket Name"
                     },
-                    source_artifact_s3_object_key_param.logical_id: {
+                    source_artifact_object_key_param.logical_id: {
                         "default": "Source Artifact S3 Object Key (path)"
                     },
                     vpc_id_param.logical_id: {
