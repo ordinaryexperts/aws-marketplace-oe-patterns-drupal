@@ -152,7 +152,7 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactBucketName",
             default="",
-            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application."
+            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application. If not specified, a bucket will be created."
         )
         source_artifact_bucket_name_exists_condition = core.CfnCondition(
             self,
@@ -572,7 +572,7 @@ class DrupalStack(core.Stack):
             self,
             "SecretArn",
             default="",
-            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified a secret will be created."
+            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified, a secret will be created."
         )
         secret_arn_exists_condition = core.CfnCondition(
             self,
