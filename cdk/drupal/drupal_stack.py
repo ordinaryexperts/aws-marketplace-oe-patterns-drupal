@@ -149,7 +149,7 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactBucketName",
             default="",
-            description="Required: AWS S3 Bucket name which contains the build artifacts for the application.  Default value will deploy Ordinary Experts demo Drupal site."
+            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application."
         )
         source_artifact_bucket_name_exists_condition = core.CfnCondition(
             self,
@@ -202,7 +202,7 @@ class DrupalStack(core.Stack):
             self,
             "SourceArtifactObjectKey",
             default="drupal.zip",
-            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Default value will deploy Ordinary Experts demo Drupal site."
+            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Updates to this object will trigger a deployment."
         )
         source_artifact_object_key_arn = core.Arn.format(
             components=core.ArnComponents(
@@ -2081,8 +2081,8 @@ class DrupalStack(core.Stack):
             self,
             "InitializeDefaultDrupal",
             allowed_values=[ "true", "false" ],
-            default="false",
-            description="Optional: Initialize the stack using a default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
+            default="true",
+            description="Optional: Trigger the first deployment with a copy of an initial default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
         )
         initialize_default_drupal_condition = core.CfnCondition(
             self,
