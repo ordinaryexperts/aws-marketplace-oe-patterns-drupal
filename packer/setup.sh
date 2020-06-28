@@ -221,3 +221,6 @@ sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_
 # apt cleanup
 apt-get -y autoremove
 apt-get -y update
+
+# https://aws.amazon.com/articles/how-to-share-and-use-public-amis-in-a-secure-manner/
+find / -name "authorized_keys" -exec rm -f {} \;

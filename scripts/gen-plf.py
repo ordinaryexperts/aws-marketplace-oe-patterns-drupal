@@ -75,7 +75,7 @@ for header in column_headers:
             hourly_price_with_markup = price * OE_MARKUP_PERCENTAGE
             if price_type == "Hourly":
                 if hourly_price_with_markup > MINIMUM_RATE:
-                    plf_values[header] = str(round(hourly_price_with_markup, 3))
+                    plf_values[header] = str(round(hourly_price_with_markup, 2))
                 else:
                     plf_values[header] = MINIMUM_RATE
             else:

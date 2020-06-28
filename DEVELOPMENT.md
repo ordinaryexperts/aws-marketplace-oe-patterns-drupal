@@ -23,8 +23,8 @@ Then:
 1. Update `drupal_stack.py` with updated AMI ID as instructed
 1. Synth the template with `make synth-to-file` and test in prod AWS Console
 1. Repeat until test passes
-1. Generate PLF row using AMI ID and release version with `ave oe-patterns-dev make AMI_ID=$AMI_ID TEMPLATE_VERSION=$TEMPLATE_VERSION gen-plf`
+1. Generate PLF row using AMI ID and release version with `ave oe-patterns-prod make AMI_ID=$AMI_ID TEMPLATE_VERSION=$TEMPLATE_VERSION gen-plf`
 1. Commit changes to release branch
 1. Finish release branch with `git flow release finish [version]`
-1. Publish CFN template to production account using `ave oe-patterns-prod make TEMPLATE_VERSION=$TEMPLATE_VERSION publish`
+1. Publish CFN template to artifacts bucket using `ave oe-patterns-dev make TEMPLATE_VERSION=$TEMPLATE_VERSION publish`
 1. Teardown test stacks with `ave oe-patterns-prod make destroy`
