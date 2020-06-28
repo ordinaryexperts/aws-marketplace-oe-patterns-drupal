@@ -1,5 +1,7 @@
 import os
 import logging
+import shutil
+import urllib3
 import uuid
 
 import boto3
@@ -29,16 +31,23 @@ def lambda_handler(event, context):
                 # perform the copy only if the object is not found
                 # in this case that means a 404 ClientError from the HeadObject request
                 if e.response["Error"]["Code"] == "404":
-                    copy_source = os.environ["DefaultDrupalSourceArtifactBucket"] + "/" + os.environ["DefaultDrupalSourceArtifactObjectKey"]
+                    copy_source = os.environ["DefaultDrupalSourceUrl"]
+                    local_file = "/tmp/drupal.zip"
                     logger.info("Copying {} to {}/{}".format(
                         copy_source,
                         os.environ["SourceArtifactBucket"],
                         os.environ["SourceArtifactObjectKey"]
                     ))
-                    s3_client.copy_object(
-                        Bucket=os.environ["SourceArtifactBucket"],
-                        CopySource=copy_source,
-                        Key=os.environ["SourceArtifactObjectKey"]
+
+                    c = urllib3.PoolManager()
+                    with c.request('GET', copy_source, preload_content=False) as resp, open(local_file, 'wb') as out_file:
+                        shutil.copyfileobj(resp, out_file)
+                    resp.release_conn()
+
+                    s3_client.upload_file(
+                        local_file,
+                        os.environ["SourceArtifactBucket"],
+                        os.environ["SourceArtifactObjectKey"]
                     )
                     logger.info("Drupal codebase copy complete.")
 

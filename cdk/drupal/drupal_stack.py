@@ -26,8 +26,7 @@ from aws_cdk import (
     core
 )
 
-DEFAULT_DRUPAL_SOURCE_BUCKET="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
-DEFAULT_DRUPAL_SOURCE_OBJECT_KEY="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
+DEFAULT_DRUPAL_SOURCE_URL="https://github-user-and-bucket-githubartifactbucket-wl52dae3lyub.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
 TWO_YEARS_IN_DAYS=731
 try:
     template_version = subprocess.check_output(["git", "describe"]).strip().decode('ascii')
@@ -2149,8 +2148,7 @@ class DrupalStack(core.Stack):
             ),
             environment=aws_lambda.CfnFunction.EnvironmentProperty(
                 variables={
-                    "DefaultDrupalSourceArtifactBucket": DEFAULT_DRUPAL_SOURCE_BUCKET,
-                    "DefaultDrupalSourceArtifactObjectKey": DEFAULT_DRUPAL_SOURCE_OBJECT_KEY,
+                    "DefaultDrupalSourceUrl": DEFAULT_DRUPAL_SOURCE_URL,
                     "SourceArtifactBucket": source_artifact_bucket_name,
                     "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string,
                     "StackName": core.Aws.STACK_NAME
@@ -2158,7 +2156,8 @@ class DrupalStack(core.Stack):
             ),
             handler="index.lambda_handler",
             role=initialize_default_drupal_lambda_function_role.attr_arn,
-            runtime="python3.7"
+            runtime="python3.7",
+            timeout=300
         )
         initialize_default_drupal_lambda_function.cfn_options.condition = initialize_default_drupal_condition
         initialize_default_drupal_custom_resource = aws_cloudformation.CfnCustomResource(
