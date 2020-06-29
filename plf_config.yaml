@@ -5,8 +5,14 @@
 "SKU": "OE_PATTERNS_DRUPAL_{{version}}"
 "Software by": "Ordinary Experts"
 "Title": "Ordinary Experts Drupal Pattern"
-"Short Description": "Ordinary Experts Drupal Pattern AWS Architecture Diagram"
-"Full Description": "The Ordinary Experts Drupal Patterns AWS Architecture Diagram shows the total flow of services from when the developer updates the project code to when the customer accesses the Drupal application. The diagram shows the following AWS Services: Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeDeploy, Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora MySQL, Amazon Elastic File System (Amazon EFS), Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront."
+"Short Description": "The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template + custom AMI that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal application, using both AWS and Drupal best practices."
+"Full Description": "The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal app in the AWS cloud. This template provides a base Drupal application or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
+
+Automatically configured to support auto-scaling through AWS Autoscaling Groups, this solution leverages an EFS file system to share user generated content between application servers. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
+
+The template ensure multi-level security by incorporating AWS IAM for federated access to resources with least privilege and AWS managed keys and Secret Manager to manage secrets for encryption of data at rest and in transit. More information regarding the security features are available in the deployment guide.
+
+We support multiple availability zones using an RDS Aurora MySQL cluster and Amazon's integrated options to distribute infrastructure."
 "Highlight1": "Features a CodePipeline for continuous integration and deployment. Automatic deployment across all application servers by uploading your code archive to an S3 location. Install a fresh version of Drupal or import an existing site by supplying a RDS snapshot ARN."
 "Highlight2": "Optionally include built-in, seamless support for SSL/HTTPS traffic, CloudFront as a content delivery network, ElastiCache memcache layer. You can even easily choose to deploy your stack into a brand new VPC, or an existing VPC you specify."
 "Highlight3": "AWS and Drupal hosting best practices. Multi-AZ support. All data encrypted at rest and in transit."
