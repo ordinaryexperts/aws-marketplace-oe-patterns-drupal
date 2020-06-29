@@ -50,9 +50,11 @@ We support multiple availability zones using an RDS Aurora MySQL cluster and Ama
 "Endpoint URL Protocol": "http/https"
 "Endpoint URL Port": "80/443"
 "Endpoint URL Relative URL": "/"
-# region availability fields are here, i.e. "me-south-1 Availability"
+"Countries to include": ""
+"Countries to exclude": ""
 # EULA: https://docs.aws.amazon.com/marketplace/latest/userguide/standardized-license-terms.html
 "End User License Agreement URL": "https://s3.amazonaws.com/EULA/Standard+Contract+for+AWS+Marketplace+2019-04-24.pdf"
+# region availability fields are here, i.e. "me-south-1 Availability"
 "Make available in all future U.S. regions": "FALSE"
 "Make available in all future non-U.S. regions": "FALSE"
 "Recommended Instance Type": "m5.xlarge"
