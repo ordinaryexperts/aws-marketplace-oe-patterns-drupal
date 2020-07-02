@@ -1,5 +1,7 @@
 # Unreleased
 
+* Beefing up cleanup script
+
 # 1.0.0
 
 * AWS::CloudFormation::Interface and other param fixes

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# https://stackoverflow.com/a/246128
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 TYPE="${1:-all}"
 PREFIX="${2:-user}"
 TEST_REGIONS="${3:-main}"
@@ -19,15 +22,13 @@ else
 fi
 
 if [[ $TYPE == "all" || $TYPE == "buckets" ]]; then
-    for region in ${REGIONS[@]}; do
-        echo "Removing $PREFIX_TO_DELETE buckets in $region..."
-        BUCKETS=`aws s3 ls --region $region | awk '{print $3}'`
-        for bucket in $BUCKETS; do
-            if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
-                echo $bucket
-                aws s3 rb s3://$bucket --region $region --force
-            fi
-        done
+    echo "Removing $PREFIX_TO_DELETE buckets..."
+    BUCKETS=`aws s3 ls | awk '{print $3}'`
+    for bucket in $BUCKETS; do
+        if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
+            echo $bucket
+            python3 $DIR/empty-and-delete-bucket.py $bucket
+        fi
     done
     echo "done."
 fi
