@@ -22,7 +22,7 @@ for i in ${!supported_regions[@]}; do
     copied_ami_id=`AWS_REGION=$region aws ec2 describe-images --filters Name=name,Values=$AMI_NAME | jq -r '.Images[].ImageId'`
     if [[ -z "${copied_ami_id}" ]]; then
         echo -n "need to copy AMI..."
-        # copied_ami_id=`AWS_REGION=$region aws ec2 copy-image --name $AMI_NAME --source-image-id $AMI_ID --source-region us-east-1 | jq -r '.ImageId'`
+        copied_ami_id=`AWS_REGION=$region aws ec2 copy-image --name $AMI_NAME --source-image-id $AMI_ID --source-region us-east-1 | jq -r '.ImageId'`
         echo "done."
     else
         echo "AMI already copied."
