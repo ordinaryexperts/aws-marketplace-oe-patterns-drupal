@@ -10,6 +10,7 @@ tests:
     parameters:
       CertificateArn: ''
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -19,6 +20,7 @@ tests:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -29,6 +31,7 @@ tests:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -40,6 +43,7 @@ tests:
       DBSnapshotIdentifier: arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -48,6 +52,7 @@ tests:
   withoutVpc:
     parameters:
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: ''
       VpcPrivateSubnetId1: ''
       VpcPrivateSubnetId2: ''
@@ -62,6 +67,7 @@ tests:
       InitializeDefaultDrupal: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -76,8 +82,7 @@ tests:
       InitializeDefaultDrupal: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
-      SourceArtifactBucketName: github-user-and-bucket-githubartifactbucket-wl52dae3lyub
-      SourceArtifactObjectKey: aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -103,6 +108,7 @@ tests:
       ElastiCacheClusterNumCacheNodes: 2
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -116,6 +122,7 @@ tests:
       CloudFrontEnable: 'true'
       CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -126,6 +133,7 @@ tests:
       CloudFrontEnable: 'true'
       CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -138,6 +146,7 @@ tests:
       CloudFrontEnable: 'true'
       CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
@@ -151,6 +160,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1ez4gpd957ssw
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - us-east-2
   allResourcesUsWest1:
@@ -160,6 +170,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-ho6mfquy2i0a
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - us-west-1
   allResourcesUsWest2:
@@ -169,6 +180,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-849z7vrx6s8y
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - us-west-2
   allResourcesCaCentral1:
@@ -178,6 +190,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-ohedywzh1qgz
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ca-central-1
   allResourcesEuCentral1:
@@ -187,6 +200,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-cpmt9o7e3kcr
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - eu-central-1
   allResourcesEuWest1:
@@ -196,6 +210,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-k6hn1bp3o927
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - eu-west-1
   allResourcesEuWest2:
@@ -205,6 +220,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1umlk8cxcn2z5
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - eu-west-2
   allResourcesEuWest3:
@@ -214,6 +230,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1ie5iy4dcl6my
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - eu-west-3
   allResourcesApNorthEast1:
@@ -223,6 +240,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2e12fa5839m7
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ap-northeast-1
   allResourcesApSouth1:
@@ -232,6 +250,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2x5mkltu15nc
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ap-south-1
   allResourcesApSouthEast1:
@@ -241,6 +260,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1tf0mq31uhu6s
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ap-southeast-1
   allResourcesApSouthEast2:
@@ -250,6 +270,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1fnshkw6aa7a0
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ap-southeast-2
   allResourcesApNortheast2:
@@ -259,6 +280,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-1sgwwc6ser06h
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - ap-northeast-2
   allResourcesSaEast1:
@@ -268,6 +290,7 @@ tests:
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-ph0macusrupc
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
     regions:
       - sa-east-1
   # allResourcesEuNorth1:

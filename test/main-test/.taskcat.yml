@@ -15,6 +15,7 @@ tests:
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
+      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
       VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
       VpcPrivateSubnetId2: subnet-079290412ce63c4d5
