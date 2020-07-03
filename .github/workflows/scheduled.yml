@@ -1,9 +1,9 @@
-# run all tests once at 11pm pst daily
-name: Test Nightly CI
+# run all tests once weekly Monday 9am
+name: Test Weekly CI
 
 on:
   schedule:
-    - cron: '0 6 * * *' # run at 11pm pst
+    - cron: '0 16 * * 1' # run Mondays at 9am pacific
 
 jobs:
   taskcat:
