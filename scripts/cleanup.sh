@@ -8,11 +8,9 @@ PREFIX="${2:-user}"
 TEST_REGIONS="${3:-main}"
 
 if [[ $TEST_REGIONS == "all" ]]; then
-  REGIONS=('us-east-1' 'us-east-2' 'us-west-1' 'us-west-2' 'ca-central-1'
-            'eu-central-1' 'eu-north-1' 'eu-west-1' 'eu-west-2' 'eu-west-3' 'ap-northeast-1'
-            'ap-northeast-2' 'ap-south-1' 'ap-southeast-1' 'ap-southeast-2' 'sa-east-1')
+    readarray -t REGIONS < /code/supported_regions.txt
 else
-  REGIONS=('us-east-1')
+    REGIONS=('us-east-1')
 fi
 
 if [[ $PREFIX == "tcat" ]]; then
@@ -41,6 +39,27 @@ if [[ $TYPE == "all" || $TYPE == "snapshots" ]]; then
             if [[ $snapshot == $PREFIX_TO_DELETE* ]]; then
                 echo $snapshot
                 aws rds delete-db-cluster-snapshot --region $region --db-cluster-snapshot-identifier $snapshot
+            fi
+        done
+    done
+    echo "done."
+fi
+
+if [[ $TYPE == "all" || $TYPE == "stacks" ]]; then
+    for region in ${REGIONS[@]}; do
+        echo "Removing $PREFIX_TO_DELETE stacks in $region..."
+        STACKS=`aws cloudformation describe-stacks --region $region | jq -r '.Stacks[].StackName'`
+        for stack in $STACKS; do
+            if [[ $PREFIX_TO_DELETE == "tcat" ]]; then
+                if [[ $stack == tCaT* ]]; then
+                    echo $stack
+                    aws cloudformation delete-stack --region $region --stack-name $stack
+                fi
+            else
+                if [[ $stack == $PREFIX_TO_DELETE* ]]; then
+                    echo $stack
+                    aws cloudformation delete-stack --region $region --stack-name $stack
+                fi
             fi
         done
     done
