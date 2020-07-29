@@ -1,5 +1,5 @@
 # run all tests once weekly Monday 9am
-name: Test Weekly CI
+name: All Features and Region Tests
 
 on:
   push:
