@@ -29,7 +29,7 @@ jobs:
         if: always()
         with:
           name: taskcat_outputs
-          path: main-test/test/taskcat_outputs/
+          path: test/main-test/taskcat_outputs/
       - name: test regions
         run: make regions-all
         env:
@@ -39,7 +39,7 @@ jobs:
         if: always()
         with:
           name: taskcat_outputs
-          path: regions-test/test/taskcat_outputs/
+          path: test/regions-test/taskcat_outputs/
       - name: clean snapshots
         if: always()
         run: make clean-snapshots-tcat-all-regions
