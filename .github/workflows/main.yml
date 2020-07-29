@@ -1,11 +1,11 @@
 name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
-on:
-  push:
-    branches: [ develop ]
-    tags: [ '*' ]
-  pull_request:
-    branches: [ develop ]
+# on:
+#   push:
+#     branches: [ develop ]
+#     tags: [ '*' ]
+#   pull_request:
+#     branches: [ develop ]
 
 jobs:
   taskcat:
