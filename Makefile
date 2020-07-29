@@ -123,3 +123,9 @@ test-main: build
 	&& cdk synth > ../test/main-test/template.yaml \
 	&& cd ../test/main-test \
 	&& taskcat test run"
+
+test-regions: build
+	docker-compose run -w /code --rm drupal bash -c "cd cdk \
+	&& cdk synth > ../test/regions-test/template.yaml \
+	&& cd ../test/regions-test \
+	&& taskcat test run"
