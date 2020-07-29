@@ -3,7 +3,7 @@ name: Test Weekly CI
 
 on:
   schedule:
-    - cron: '0 16 * * 3' # run Mondays at 9am pacific
+    - cron: '47 6 * * *' # run Mondays at 9am pacific
 
 jobs:
   taskcat:
