@@ -5,7 +5,7 @@ with open("README.md") as fp:
     long_description = fp.read()
 
 
-CDK_VERSION="1.36.1"
+CDK_VERSION="1.42.1"
 
 setuptools.setup(
     name="drupal",
@@ -22,6 +22,7 @@ setuptools.setup(
 
     install_requires=[
         f"aws-cdk.aws-autoscaling=={CDK_VERSION}",
+        f"aws-cdk.aws-cloudformation=={CDK_VERSION}",
         f"aws-cdk.aws-cloudfront=={CDK_VERSION}",
         f"aws-cdk.aws-cloudwatch=={CDK_VERSION}",
         f"aws-cdk.aws-codebuild=={CDK_VERSION}",
@@ -33,6 +34,7 @@ setuptools.setup(
         f"aws-cdk.aws-elasticache=={CDK_VERSION}",
         f"aws-cdk.aws-elasticloadbalancingv2=={CDK_VERSION}",
         f"aws-cdk.aws-iam=={CDK_VERSION}",
+        f"aws-cdk.aws-lambda=={CDK_VERSION}",
         f"aws-cdk.aws-rds=={CDK_VERSION}",
         f"aws-cdk.aws-s3=={CDK_VERSION}",
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",

@@ -2,7 +2,7 @@ name: AWS Patterns Ordinary Experts Patterns Drupal CI
 
 on:
   push:
-    branches: [ master, develop, 'hotfix/*', 'release/*' ]
+    branches: [ develop ]
     tags: [ '*' ]
   pull_request:
     branches: [ develop ]
@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: build
         run: make build
       - name: test
@@ -23,7 +25,10 @@ jobs:
         if: always()
         with:
           name: taskcat_outputs
-          path: test/taskcat_outputs/
+          path: test/main-test/taskcat_outputs/
       - name: clean snapshots
         if: always()
         run: make clean-snapshots-tcat
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}

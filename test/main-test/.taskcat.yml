@@ -9,14 +9,14 @@ tests:
   allResources:
     parameters:
       CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontAliases: cdn.dev.patterns.ordinaryexperts.com
+      CloudFrontAliases: cdn-all-resources-test-$[taskcat_random-string].dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/77ba53df-8613-4620-8b45-3d22940059d4
-      CloudFrontEnableParam: true
-      ElastiCacheEnableParam: true
-      CustomerVpcId: vpc-00425deda4c835455
-      CustomerVpcPrivateSubnet1: subnet-030c94b9795c6cb96
-      CustomerVpcPrivateSubnet2: subnet-079290412ce63c4d5
-      CustomerVpcPublicSubnet1: subnet-0c2f5d4daa1792c8d
-      CustomerVpcPublicSubnet2: subnet-060c39a6ded9e89d7
-      SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
+      CloudFrontEnable: 'true'
+      ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
+      SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
+      VpcId: vpc-00425deda4c835455
+      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
+      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
+      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7

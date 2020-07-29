@@ -1,5 +1,29 @@
 # Unreleased
 
+# 1.0.0
+
+* AWS::CloudFormation::Interface and other param fixes
+* Pass test buckets for each region
+* Update supported regions list
+* Pass creds in workflow to run clean script
+* Fix test params after rename
+* CloudFront fixes
+* Remove instance types that aren't supported in all regions
+* Bump taskcat version
+* Add deployment guide
+* Parameter name consistency
+* make gen-plf - generates Product Load Form info
+* CloudFront cache invalidation
+* Switch to Aurora MySQL provisioned instead of serverless
+* Add apcu and uploadprogress PECL packages
+* Update supported regions and taskcat tests
+* Fix CloudFront aliases failing in tests
+* Update Drupal 9 information in documentation
+* Update environment configurations for Drupal in documentation
+* Clean up CFN Logical IDs
+* Include version in template metadata
+* Source artifact bucket and default Drupal initialization copy option
+
 # 0.3.0
 
 * Schedule nightly workflow to test all scenarios
