@@ -1,6 +1,5 @@
 import setuptools
 
-
 with open("README.md") as fp:
     long_description = fp.read()
 
@@ -40,7 +39,8 @@ setuptools.setup(
         f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",
         f"aws-cdk.aws-sns=={CDK_VERSION}",
         f"aws-cdk.aws-ssm=={CDK_VERSION}",
-        f"aws-cdk.core=={CDK_VERSION}"
+        f"aws-cdk.core=={CDK_VERSION}",
+        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@feature/package-prototyping#egg=aws_marketplace_oe_patterns_cdk_common-10"
     ],
 
     python_requires=">=3.6",
