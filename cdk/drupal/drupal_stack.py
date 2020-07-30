@@ -256,7 +256,7 @@ class DrupalStack(core.Stack):
         # vpc
         vpc = Vpc(
             self,
-            "VpcConstruct"
+            "Vpc"
         )
 
         app_sg = aws_ec2.CfnSecurityGroup(
