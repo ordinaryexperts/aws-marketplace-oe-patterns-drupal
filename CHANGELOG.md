@@ -1,6 +1,7 @@
 # Unreleased
 
 * Beefing up cleanup script
+* Including full guid in append_stack_uuid
 
 # 1.0.0
 
