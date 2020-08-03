@@ -1915,18 +1915,7 @@ class DrupalStack(core.Stack):
                             cloudfront_price_class_param.logical_id
                         ]
                     },
-                    {
-                        "Label": {
-                            "default": "VPC"
-                        },
-                        "Parameters": [
-                            vpc.vpc_id_param.logical_id,
-                            vpc.vpc_private_subnet_id1_param.logical_id,
-                            vpc.vpc_private_subnet_id2_param.logical_id,
-                            vpc.vpc_public_subnet_id1_param.logical_id,
-                            vpc.vpc_public_subnet_id2_param.logical_id
-                        ]
-                    },
+                    vpc.metadata_parameter_group(),
                     {
                         "Label": {
                             "default": "Template Development"
