@@ -2000,21 +2000,7 @@ class DrupalStack(core.Stack):
                     source_artifact_object_key_param.logical_id: {
                         "default": "Source Artifact S3 Object Key (path)"
                     },
-                    vpc.vpc_id_param.logical_id: {
-                        "default": "VPC ID"
-                    },
-                    vpc.vpc_private_subnet_id1_param.logical_id: {
-                        "default": "Private Subnet ID 1"
-                    },
-                    vpc.vpc_private_subnet_id2_param.logical_id: {
-                        "default": "Private Subnet ID 2"
-                    },
-                    vpc.vpc_public_subnet_id1_param.logical_id: {
-                        "default": "Public Subnet ID 1"
-                    },
-                    vpc.vpc_public_subnet_id2_param.logical_id: {
-                        "default": "Public Subnet ID 2"
-                    }
+                    **vpc.metadata_parameter_labels()
                 }
             }
         }
