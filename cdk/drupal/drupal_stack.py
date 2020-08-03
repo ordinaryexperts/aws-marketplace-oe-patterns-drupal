@@ -284,19 +284,7 @@ class DrupalStack(core.Stack):
             self,
             "DbSubnetGroup",
             db_subnet_group_description="MySQL Aurora DB Subnet Group",
-            subnet_ids=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    [
-                        vpc.vpc_private_subnet1.ref,
-                        vpc.vpc_private_subnet2.ref
-                    ],
-                    [
-                        vpc.vpc_private_subnet_id1_param.value_as_string,
-                        vpc.vpc_private_subnet_id2_param.value_as_string
-                    ]
-                )
-            )
+            subnet_ids=vpc.private_subnet_ids()
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -476,19 +464,7 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            subnets=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    [
-                        vpc.vpc_public_subnet1.ref,
-                        vpc.vpc_public_subnet2.ref
-                    ],
-                    [
-                        vpc.vpc_public_subnet_id1_param.value_as_string,
-                        vpc.vpc_public_subnet_id2_param.value_as_string
-                    ]
-                )
-            ),
+            subnets=vpc.private_subnet_ids(),
             type="application"
         )
         alb_dns_name_output = core.CfnOutput(
@@ -649,26 +625,14 @@ class DrupalStack(core.Stack):
             "AppEfsMountTarget1",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc_private_subnet1.ref,
-                    vpc.vpc_private_subnet_id1_param.value_as_string
-                )
-            )
+            subnet_id=vpc.private_subnet1_id()
         )
         efs_mount_target2 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget2",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc_private_subnet2.ref,
-                    vpc.vpc_private_subnet_id2_param.value_as_string
-                )
-            )
+            subnet_id=vpc.private_subnet2_id()
         )
 
         # elasticache
@@ -729,20 +693,8 @@ class DrupalStack(core.Stack):
             "ElastiCacheSubnetGroup",
             type="AWS::ElastiCache::SubnetGroup",
             properties={
-                "Description": "test",
-                "SubnetIds":  {
-                    "Fn::If": [
-                        vpc.vpc_not_given_condition.logical_id,
-                        [
-                            vpc.vpc_private_subnet1.ref,
-                            vpc.vpc_private_subnet2.ref
-                        ],
-                        [
-                            vpc.vpc_private_subnet_id1_param.value_as_string,
-                            vpc.vpc_private_subnet_id2_param.value_as_string
-                        ]
-                    ]
-                }
+                "Description": "ElastiCache subnet group.",
+                "SubnetIds":  vpc.private_subnet_ids()
             }
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
@@ -1230,19 +1182,7 @@ class DrupalStack(core.Stack):
                     )
                 )
             ],
-            vpc_zone_identifier=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc.vpc_given_condition.logical_id,
-                    [
-                        vpc.vpc_private_subnet_id1_param.value_as_string,
-                        vpc.vpc_private_subnet_id2_param.value_as_string
-                    ],
-                    [
-                        vpc.vpc_private_subnet1.ref,
-                        vpc.vpc_private_subnet2.ref
-                    ]
-                )
-            )
+            vpc_zone_identifier=vpc.private_subnet_ids()
         )
         asg.cfn_options.creation_policy=core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(
