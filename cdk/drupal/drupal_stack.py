@@ -263,25 +263,13 @@ class DrupalStack(core.Stack):
             self,
             "AppSg",
             group_description="App SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DbSg",
             group_description="Database SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -461,13 +449,7 @@ class DrupalStack(core.Stack):
             self,
             "AlbSg",
             group_description="Alb Sg",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -524,13 +506,7 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
         http_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -578,13 +554,7 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         https_target_group.cfn_options.condition = certificate_arn_exists_condition
         https_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -658,13 +628,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSg",
             group_description="EFS SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -747,13 +711,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSg",
             group_description="App SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc.vpc_not_given_condition.logical_id,
-                    vpc.vpc.ref,
-                    vpc.vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         elasticache_sg.cfn_options.condition = elasticache_enable_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
