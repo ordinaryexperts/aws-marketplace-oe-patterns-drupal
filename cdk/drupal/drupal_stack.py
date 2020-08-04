@@ -26,7 +26,7 @@ from aws_cdk import (
     core
 )
 
-from aws_marketplace_oe_patterns_cdk_common import Vpc
+from oe_patterns_cdk_common import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.0.0.zip"
 DEFAULT_DRUPAL_SOURCE_BUCKET="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
