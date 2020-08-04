@@ -102,7 +102,7 @@ class DrupalStack(core.Stack):
         def append_stack_uuid(name):
             return core.Fn.join("-", [
                 name,
-                core.Fn.select(0, core.Fn.split("-", core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))))
+                core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))
             ])
 
         pipeline_artifact_bucket_name_param = core.CfnParameter(

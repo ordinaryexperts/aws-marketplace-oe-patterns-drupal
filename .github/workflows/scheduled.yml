@@ -2,14 +2,8 @@
 name: All Features and Region Tests
 
 on:
-  push:
-    branches: [ develop ]
-    tags: [ '*' ]
-  pull_request:
-    branches: [ develop ]
-# on:
-#   schedule:
-#     - cron: '0 16 * * 1' # run Mondays at 9am pacific
+  schedule:
+    - cron: '0 16 * * 1' # run Mondays at 9am pacific
 
 jobs:
   taskcat:
@@ -28,17 +22,17 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: taskcat_outputs
-          path: test/main-test/taskcat_outputs/
+          name: taskcat_outputs_features
+          path: test/taskcat_outputs/
       - name: test regions
-        run: make regions-all
+        run: make test-regions
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: taskcat_outputs
+          name: taskcat_outputs_regions
           path: test/regions-test/taskcat_outputs/
       - name: clean snapshots
         if: always()
