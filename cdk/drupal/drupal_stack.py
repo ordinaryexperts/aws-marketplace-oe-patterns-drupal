@@ -26,6 +26,8 @@ from aws_cdk import (
     core
 )
 
+from oe_patterns_cdk_common import Vpc
+
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.0.0.zip"
 TWO_YEARS_IN_DAYS=731
 if 'TEMPLATE_VERSION' in os.environ:
@@ -250,252 +252,22 @@ class DrupalStack(core.Stack):
         )
 
         # vpc
-        vpc_id_param = core.CfnParameter(
+        vpc = Vpc(
             self,
-            "VpcId",
-            default="",
-            description="Optional: Specify the VPC ID.  If not specified, a VPC will be created."
+            "Vpc"
         )
-        vpc_private_subnet_id1_param = core.CfnParameter(
-            self,
-            "VpcPrivateSubnetId1",
-            default="",
-            description="Optional: Specify Subnet ID for first private subnet."
-        )
-        vpc_private_subnet_id2_param = core.CfnParameter(
-            self,
-            "VpcPrivateSubnetId2",
-            default="",
-            description="Optional: Specify Subnet ID for second private subnet."
-        )
-        vpc_public_subnet_id1_param = core.CfnParameter(
-            self,
-            "VpcPublicSubnetId1",
-            default="",
-            description="Optional: Specify Subnet ID for first public subnet."
-        )
-        vpc_public_subnet_id2_param = core.CfnParameter(
-            self,
-            "VpcPublicSubnetId2",
-            default="",
-            description="Optional: Specify Subnet ID for second public subnet."
-        )
-        vpc_given_condition = core.CfnCondition(
-            self,
-            "VpcGiven",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(vpc_id_param.value, ""))
-        )
-        vpc_not_given_condition = core.CfnCondition(
-            self,
-            "VpcNotGiven",
-            expression=core.Fn.condition_equals(vpc_id_param.value, "")
-        )
-        vpc = aws_ec2.CfnVPC(
-            self,
-            "Vpc",
-            cidr_block="10.0.0.0/16",
-            enable_dns_hostnames=True,
-            enable_dns_support=True,
-            instance_tenancy="default",
-            tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
-        )
-        vpc.cfn_options.condition=vpc_not_given_condition
-
-        vpc_igw = aws_ec2.CfnInternetGateway(
-            self,
-            "VpcInternetGateway",
-            tags=[core.CfnTag(key="Name", value="{}/Vpc".format(core.Aws.STACK_NAME))]
-        )
-        vpc_igw.cfn_options.condition=vpc_not_given_condition
-        vpc_igw_attachment = aws_ec2.CfnVPCGatewayAttachment(
-            self,
-            "VpcIGWAttachment",
-            vpc_id=vpc.ref,
-            internet_gateway_id=vpc_igw.ref
-        )
-        vpc_igw_attachment.cfn_options.condition=vpc_not_given_condition
-
-        vpc_public_route_table = aws_ec2.CfnRouteTable(
-            self,
-            "VpcPublicRouteTable",
-            vpc_id=vpc.ref,
-            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicRouteTable".format(core.Aws.STACK_NAME))]
-        )
-        vpc_public_route_table.cfn_options.condition=vpc_not_given_condition
-        vpc_public_default_route = aws_ec2.CfnRoute(
-            self,
-            "VpcPublicDefaultRoute",
-            route_table_id=vpc_public_route_table.ref,
-            destination_cidr_block="0.0.0.0/0",
-            gateway_id=vpc_igw.ref
-        )
-        vpc_public_default_route.cfn_options.condition=vpc_not_given_condition
-
-        vpc_public_subnet1 = aws_ec2.CfnSubnet(
-            self,
-            "VpcPublicSubnet1",
-            cidr_block="10.0.0.0/18",
-            vpc_id=vpc.ref,
-            assign_ipv6_address_on_creation=None,
-            availability_zone=core.Fn.select(0, core.Fn.get_azs()),
-            map_public_ip_on_launch=True,
-            tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))
-            ]
-        )
-        vpc_public_subnet1.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
-            self,
-            "VpcPublicSubnet1RouteTableAssociation",
-            route_table_id=vpc_public_route_table.ref,
-            subnet_id=vpc_public_subnet1.ref
-        )
-        vpc_public_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet1_eip = aws_ec2.CfnEIP(
-            self,
-            "VpcPublicSubnet1EIP",
-            domain="vpc"
-        )
-        vpc_public_subnet1_eip.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet1_nat_gateway = aws_ec2.CfnNatGateway(
-            self,
-            "VpcPublicSubnet1NATGateway",
-            allocation_id=vpc_public_subnet1_eip.attr_allocation_id,
-            subnet_id=vpc_public_subnet1.ref,
-            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet1".format(core.Aws.STACK_NAME))]
-        )
-        vpc_public_subnet1_nat_gateway.cfn_options.condition=vpc_not_given_condition
-
-        vpc_public_subnet2 = aws_ec2.CfnSubnet(
-            self,
-            "VpcPublicSubnet2",
-            cidr_block="10.0.64.0/18",
-            vpc_id=vpc.ref,
-            assign_ipv6_address_on_creation=None,
-            availability_zone=core.Fn.select(1, core.Fn.get_azs()),
-            map_public_ip_on_launch=True,
-            tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))
-            ]
-        )
-        vpc_public_subnet2.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
-            self,
-            "VpcPublicSubnet2RouteTableAssociation",
-            route_table_id=vpc_public_route_table.ref,
-            subnet_id=vpc_public_subnet2.ref
-        )
-        vpc_public_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet2_eip = aws_ec2.CfnEIP(
-            self,
-            "VpcPublicSubnet2EIP",
-            domain="vpc"
-        )
-        vpc_public_subnet2_eip.cfn_options.condition=vpc_not_given_condition
-        vpc_public_subnet2_nat_gateway = aws_ec2.CfnNatGateway(
-            self,
-            "VpcPublicSubnet2NATGateway",
-            allocation_id=vpc_public_subnet2_eip.attr_allocation_id,
-            subnet_id=vpc_public_subnet1.ref,
-            tags=[core.CfnTag(key="Name", value="{}/Vpc/PublicSubnet2".format(core.Aws.STACK_NAME))]
-        )
-        vpc_public_subnet2_nat_gateway.cfn_options.condition=vpc_not_given_condition
-
-        vpc_private_subnet1 = aws_ec2.CfnSubnet(
-            self,
-            "VpcPrivateSubnet1",
-            cidr_block="10.0.128.0/18",
-            vpc_id=vpc.ref,
-            assign_ipv6_address_on_creation=None,
-            availability_zone=core.Fn.select(0, core.Fn.get_azs()),
-            map_public_ip_on_launch=False,
-            tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))
-            ]
-        )
-        vpc_private_subnet1.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet1_route_table = aws_ec2.CfnRouteTable(
-            self,
-            "VpcPrivateSubnet1RouteTable",
-            vpc_id=vpc.ref,
-            tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet1".format(core.Aws.STACK_NAME))]
-        )
-        vpc_private_subnet1_route_table.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet1_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
-            self,
-            "VpcPrivateSubnet1RouteTableAssociation",
-            route_table_id=vpc_private_subnet1_route_table.ref,
-            subnet_id=vpc_private_subnet1.ref
-        )
-        vpc_private_subnet1_route_table_association.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet1_default_route = aws_ec2.CfnRoute(
-            self,
-            "VpcPrivateSubnet1DefaultRoute",
-            route_table_id=vpc_private_subnet1_route_table.ref,
-            destination_cidr_block="0.0.0.0/0",
-            nat_gateway_id=vpc_public_subnet1_nat_gateway.ref
-        )
-        vpc_private_subnet1_default_route.cfn_options.condition=vpc_not_given_condition
-
-        vpc_private_subnet2 = aws_ec2.CfnSubnet(
-            self,
-            "VpcPrivateSubnet2",
-            cidr_block="10.0.192.0/18",
-            vpc_id=vpc.ref,
-            assign_ipv6_address_on_creation=None,
-            availability_zone=core.Fn.select(1, core.Fn.get_azs()),
-            map_public_ip_on_launch=False,
-            tags=[
-                core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))
-            ]
-        )
-        vpc_private_subnet2.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet2_route_table = aws_ec2.CfnRouteTable(
-            self,
-            "VpcPrivateSubnet2RouteTable",
-            vpc_id=vpc.ref,
-            tags=[core.CfnTag(key="Name", value="{}/Vpc/PrivateSubnet2".format(core.Aws.STACK_NAME))]
-        )
-        vpc_private_subnet2_route_table.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet2_route_table_association = aws_ec2.CfnSubnetRouteTableAssociation(
-            self,
-            "VpcPrivateSubnet2RouteTableAssociation",
-            route_table_id=vpc_private_subnet2_route_table.ref,
-            subnet_id=vpc_private_subnet2.ref
-        )
-        vpc_private_subnet2_route_table_association.cfn_options.condition=vpc_not_given_condition
-        vpc_private_subnet2_default_route = aws_ec2.CfnRoute(
-            self,
-            "VpcPrivateSubnet2DefaultRoute",
-            route_table_id=vpc_private_subnet2_route_table.ref,
-            destination_cidr_block="0.0.0.0/0",
-            nat_gateway_id=vpc_public_subnet2_nat_gateway.ref
-        )
-        vpc_private_subnet2_default_route.cfn_options.condition=vpc_not_given_condition
 
         app_sg = aws_ec2.CfnSecurityGroup(
             self,
             "AppSg",
             group_description="App SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DbSg",
             group_description="Database SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -510,19 +282,7 @@ class DrupalStack(core.Stack):
             self,
             "DbSubnetGroup",
             db_subnet_group_description="MySQL Aurora DB Subnet Group",
-            subnet_ids=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    [
-                        vpc_private_subnet1.ref,
-                        vpc_private_subnet2.ref
-                    ],
-                    [
-                        vpc_private_subnet_id1_param.value_as_string,
-                        vpc_private_subnet_id2_param.value_as_string
-                    ]
-                )
-            )
+            subnet_ids=vpc.private_subnet_ids()
         )
         db_cluster_parameter_group = aws_rds.CfnDBClusterParameterGroup(
             self,
@@ -675,13 +435,7 @@ class DrupalStack(core.Stack):
             self,
             "AlbSg",
             group_description="Alb Sg",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -708,19 +462,7 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            subnets=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    [
-                        vpc_public_subnet1.ref,
-                        vpc_public_subnet2.ref
-                    ],
-                    [
-                        vpc_public_subnet_id1_param.value_as_string,
-                        vpc_public_subnet_id2_param.value_as_string
-                    ]
-                )
-            ),
+            subnets=vpc.private_subnet_ids(),
             type="application"
         )
         alb_dns_name_output = core.CfnOutput(
@@ -738,13 +480,7 @@ class DrupalStack(core.Stack):
             port=80,
             protocol="HTTP",
             target_type="instance",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
         http_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -792,13 +528,7 @@ class DrupalStack(core.Stack):
             port=443,
             protocol="HTTPS",
             target_type="instance",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         https_target_group.cfn_options.condition = certificate_arn_exists_condition
         https_listener = aws_elasticloadbalancingv2.CfnListener(
@@ -872,13 +602,7 @@ class DrupalStack(core.Stack):
             self,
             "EfsSg",
             group_description="EFS SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
@@ -899,26 +623,14 @@ class DrupalStack(core.Stack):
             "AppEfsMountTarget1",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc_private_subnet1.ref,
-                    vpc_private_subnet_id1_param.value_as_string
-                )
-            )
+            subnet_id=vpc.private_subnet1_id()
         )
         efs_mount_target2 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget2",
             file_system_id=efs.ref,
             security_groups=[ efs_sg.ref ],
-            subnet_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc_private_subnet2.ref,
-                    vpc_private_subnet_id2_param.value_as_string
-                )
-            )
+            subnet_id=vpc.private_subnet2_id()
         )
 
         # elasticache
@@ -961,13 +673,7 @@ class DrupalStack(core.Stack):
             self,
             "ElastiCacheSg",
             group_description="App SG",
-            vpc_id=core.Token.as_string(
-                core.Fn.condition_if(
-                    vpc_not_given_condition.logical_id,
-                    vpc.ref,
-                    vpc_id_param.value_as_string
-                )
-            )
+            vpc_id=vpc.id()
         )
         elasticache_sg.cfn_options.condition = elasticache_enable_condition
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
@@ -985,20 +691,8 @@ class DrupalStack(core.Stack):
             "ElastiCacheSubnetGroup",
             type="AWS::ElastiCache::SubnetGroup",
             properties={
-                "Description": "test",
-                "SubnetIds":  {
-                    "Fn::If": [
-                        vpc_not_given_condition.logical_id,
-                        [
-                            vpc_private_subnet1.ref,
-                            vpc_private_subnet2.ref
-                        ],
-                        [
-                            vpc_private_subnet_id1_param.value_as_string,
-                            vpc_private_subnet_id2_param.value_as_string
-                        ]
-                    ]
-                }
+                "Description": "ElastiCache subnet group.",
+                "SubnetIds":  vpc.private_subnet_ids()
             }
         )
         elasticache_subnet_group.cfn_options.condition = elasticache_enable_condition
@@ -1486,19 +1180,7 @@ class DrupalStack(core.Stack):
                     )
                 )
             ],
-            vpc_zone_identifier=core.Token.as_list(
-                core.Fn.condition_if(
-                    vpc_given_condition.logical_id,
-                    [
-                        vpc_private_subnet_id1_param.value_as_string,
-                        vpc_private_subnet_id2_param.value_as_string
-                    ],
-                    [
-                        vpc_private_subnet1.ref,
-                        vpc_private_subnet2.ref
-                    ]
-                )
-            )
+            vpc_zone_identifier=vpc.private_subnet_ids()
         )
         asg.cfn_options.creation_policy=core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(
@@ -2231,18 +1913,7 @@ class DrupalStack(core.Stack):
                             cloudfront_price_class_param.logical_id
                         ]
                     },
-                    {
-                        "Label": {
-                            "default": "VPC"
-                        },
-                        "Parameters": [
-                            vpc_id_param.logical_id,
-                            vpc_private_subnet_id1_param.logical_id,
-                            vpc_private_subnet_id2_param.logical_id,
-                            vpc_public_subnet_id1_param.logical_id,
-                            vpc_public_subnet_id2_param.logical_id
-                        ]
-                    },
+                    vpc.metadata_parameter_group(),
                     {
                         "Label": {
                             "default": "Template Development"
@@ -2316,21 +1987,7 @@ class DrupalStack(core.Stack):
                     source_artifact_object_key_param.logical_id: {
                         "default": "Source Artifact S3 Object Key (path)"
                     },
-                    vpc_id_param.logical_id: {
-                        "default": "VPC ID"
-                    },
-                    vpc_private_subnet_id1_param.logical_id: {
-                        "default": "Private Subnet ID 1"
-                    },
-                    vpc_private_subnet_id2_param.logical_id: {
-                        "default": "Private Subnet ID 2"
-                    },
-                    vpc_public_subnet_id1_param.logical_id: {
-                        "default": "Public Subnet ID 1"
-                    },
-                    vpc_public_subnet_id2_param.logical_id: {
-                        "default": "Public Subnet ID 2"
-                    }
+                    **vpc.metadata_parameter_labels()
                 }
             }
         }
