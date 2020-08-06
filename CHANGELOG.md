@@ -2,6 +2,7 @@
 
 * Beefing up cleanup script
 * Including full guid in append_stack_uuid
+* Switching to common VPC construct from OE CDK repo
 
 # 1.0.0
 
