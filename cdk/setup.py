@@ -8,13 +8,13 @@ CDK_VERSION="1.42.1"
 
 setuptools.setup(
     name="drupal",
-    version="0.0.1",
+    version="1.0.0",
 
-    description="An empty CDK Python app",
+    description="AWS Marketplace Pattern for Drupal by Ordinary Experts.",
     long_description=long_description,
     long_description_content_type="text/markdown",
 
-    author="author",
+    author="Ordinary Experts",
 
     package_dir={"": "drupal"},
     packages=setuptools.find_packages(where="drupal"),
