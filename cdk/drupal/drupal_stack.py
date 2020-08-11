@@ -29,8 +29,6 @@ from aws_cdk import (
 from oe_patterns_cdk_common import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.0.0.zip"
-DEFAULT_DRUPAL_SOURCE_BUCKET="github-user-and-bucket-githubartifactbucket-wl52dae3lyub"
-DEFAULT_DRUPAL_SOURCE_OBJECT_KEY="aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip"
 TWO_YEARS_IN_DAYS=731
 if 'TEMPLATE_VERSION' in os.environ:
     template_version = os.environ['TEMPLATE_VERSION']
