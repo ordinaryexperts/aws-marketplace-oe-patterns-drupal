@@ -77,6 +77,10 @@ class DrupalStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
+        #
+        # INITIALIZATION
+        #
+
         current_directory = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         allowed_values = yaml.load(
             open(os.path.join(current_directory, "allowed_values.yaml")),
@@ -96,18 +100,217 @@ class DrupalStack(core.Stack):
         )
 
         # utility function to parse the unique id from the stack id for
-        # shorter resource names  using cloudformation functions
+        # shorter resource names using cloudformation functions
         def append_stack_uuid(name):
             return core.Fn.join("-", [
                 name,
                 core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))
             ])
 
+        #
+        # PARAMETERS
+        #
+
+        app_instance_type_param = core.CfnParameter(
+            self,
+            "AppLaunchConfigInstanceType",
+            allowed_values=allowed_values["allowed_instance_types"],
+            default="m5.xlarge",
+            description="Required: The EC2 instance type for the application Auto Scaling Group."
+        )
+        asg_desired_capacity_param = core.CfnParameter(
+            self,
+            "AppAsgDesiredCapacity",
+            default=1,
+            description="Required: The desired capacity of the Auto Scaling Group.",
+            min_value=0,
+            type="Number"
+        )
+        asg_max_size_param = core.CfnParameter(
+            self,
+            "AppAsgMaxSize",
+            default=2,
+            description="Required: The maximum size of the Auto Scaling Group.",
+            min_value=0,
+            type="Number"
+        )
+        asg_min_size_param = core.CfnParameter(
+            self,
+            "AppAsgMinSize",
+            default=1,
+            description="Required: The minimum size of the Auto Scaling Group.",
+            min_value=0,
+            type="Number"
+        )
+        certificate_arn_param = core.CfnParameter(
+            self,
+            "CertificateArn",
+            default="",
+            description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
+        )
+        cloudfront_aliases_param = core.CfnParameter(
+            self,
+            "CloudFrontAliases",
+            default="",
+            description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
+            type="CommaDelimitedList"
+        )
+        cloudfront_certificate_arn_param = core.CfnParameter(
+            self,
+            "CloudFrontCertificateArn",
+            default="",
+            description="Optional: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east-1 region."
+        )
+        cloudfront_enable_param = core.CfnParameter(
+            self,
+            "CloudFrontEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Required: Enable CloudFront CDN support."
+        )
+        cloudfront_price_class_param = core.CfnParameter(
+            self,
+            "CloudFrontPriceClass",
+            # possible to use a map to make the values more human readable
+            allowed_values = [
+                "PriceClass_All",
+                "PriceClass_200",
+                "PriceClass_100"
+            ],
+            default="PriceClass_All",
+            description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
+        )
+        db_instance_class_param = core.CfnParameter(
+            self,
+            "DbInstanceClass",
+            allowed_values=allowed_values["allowed_db_instance_types"],
+            default="db.r5.large",
+            description="Required: The class profile for memory and compute capacity for the database instance."
+        )
+        db_snapshot_identifier_param = core.CfnParameter(
+            self,
+            "DbSnapshotIdentifier",
+            default="",
+            description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
+        )
+        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterCacheNodeType",
+            allowed_values=allowed_values["allowed_cache_instance_types"],
+            default="cache.t3.micro",
+            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
+        )
+        elasticache_cluster_engine_version_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterEngineVersion",
+            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
+            default="1.5.16",
+            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
+        )
+        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+            self,
+            "ElastiCacheClusterNumCacheNodes",
+            default=2,
+            description="Required: The number of cache nodes in the memcached cluster (only applies ElastiCache enabled).",
+            min_value=1,
+            max_value=20,
+            type="Number"
+        )
+        elasticache_enable_param = core.CfnParameter(
+            self,
+            "ElastiCacheEnable",
+            allowed_values=[ "true", "false" ],
+            default="false",
+            description="Required: Whether to provision ElastiCache memcached cluster."
+        )
+        initialize_default_drupal_param = core.CfnParameter(
+            self,
+            "InitializeDefaultDrupal",
+            allowed_values=[ "true", "false" ],
+            default="true",
+            description="Optional: Trigger the first deployment with a copy of an initial default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
+        )
+        initialize_default_drupal_condition = core.CfnCondition(
+            self,
+            "InitializeDefaultDrupalCondition",
+            expression=core.Fn.condition_equals(initialize_default_drupal_param.value, "true")
+        )
+        notification_email_param = core.CfnParameter(
+            self,
+            "NotificationEmail",
+            default="",
+            description="Optional: Specify an email address to get emails about deploys and other system events."
+        )
         pipeline_artifact_bucket_name_param = core.CfnParameter(
             self,
             "PipelineArtifactBucketName",
             default="",
             description="Optional: Specify a bucket name for the CodePipeline pipeline to use. The bucket must be in this same AWS account. This can be handy when re-creating this template many times."
+        )
+        secret_arn_param = core.CfnParameter(
+            self,
+            "SecretArn",
+            default="",
+            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified, a secret will be created."
+        )
+        source_artifact_bucket_name_param = core.CfnParameter(
+            self,
+            "SourceArtifactBucketName",
+            default="",
+            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application. If not specified, a bucket will be created."
+        )
+        source_artifact_object_key_param = core.CfnParameter(
+            self,
+            "SourceArtifactObjectKey",
+            default="drupal.zip",
+            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Updates to this object will trigger a deployment."
+        )
+
+        #
+        # CONDITIONS
+        #
+
+        certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+        )
+        certificate_arn_does_not_exist_condition = core.CfnCondition(
+            self,
+            "CertificateArnNotExists",
+            expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+        )
+        cloudfront_aliases_exist_condition = core.CfnCondition(
+            self,
+            "CloudFrontAliasesExist",
+            expression=core.Fn.condition_not(
+                core.Fn.condition_equals(core.Fn.select(0, cloudfront_aliases_param.value_as_list), "")
+            )
+        )
+        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+            self,
+            "CloudFrontCertificateArnExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+        )
+        cloudfront_enable_condition = core.CfnCondition(
+            self,
+            "CloudFrontEnableCondition",
+            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+        )
+        db_snapshot_identifier_exists_condition = core.CfnCondition(
+            self,
+            "DbSnapshotIdentifierExistsCondition",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
+        )
+        elasticache_enable_condition = core.CfnCondition(
+            self,
+            "ElastiCacheEnableCondition",
+            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+        )
+        notification_email_exists_condition = core.CfnCondition(
+            self,
+            "NotificationEmailExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
         pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
             self,
@@ -119,6 +322,64 @@ class DrupalStack(core.Stack):
             "PipelineArtifactBucketNameExists",
             expression=core.Fn.condition_not(core.Fn.condition_equals(pipeline_artifact_bucket_name_param.value, ""))
         )
+        secret_arn_exists_condition = core.CfnCondition(
+            self,
+            "SecretArnExistsCondition",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
+        )
+        secret_arn_not_exists_condition = core.CfnCondition(
+            self,
+            "SecretArnNotExistsCondition",
+            expression=core.Fn.condition_equals(secret_arn_param.value, "")
+        )
+        source_artifact_bucket_name_exists_condition = core.CfnCondition(
+            self,
+            "SourceArtifactBucketNameExists",
+            expression=core.Fn.condition_not(core.Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
+        )
+        source_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+            self,
+            "SourceArtifactBucketNameNotExists",
+            expression=core.Fn.condition_equals(source_artifact_bucket_name_param.value, "")
+        )
+
+        #
+        # RULES
+        #
+
+        cloudfront_aliases_certificate_rule = core.CfnRule(
+            self,
+            "CloudFrontAliasesAndCertificateRequiredRule",
+            assertions=[
+                core.CfnRuleAssertion(
+                    assert_=core.Fn.condition_not(
+                        core.Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
+                    ),
+                    assert_description="When providing a set of aliases for CloudFront, you must also supply a trusted CloudFrontCertificateArn parameter which validates your authorization to use those domain names"
+                )
+            ],
+            rule_condition=core.Fn.condition_not(
+                core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
+            )
+        )
+        db_snapshot_secret_rule = core.CfnRule(
+            self,
+            "DbSnapshotIdentifierAndSecretRequiredRule",
+            assertions=[
+                core.CfnRuleAssertion(
+                    assert_=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value_as_string, "")),
+                    assert_description="When restoring the database from a snapshot, a secret ARN must also be supplied, prepopulated with username and password key-value pairs which correspond to the snapshot image"
+                )
+            ],
+            rule_condition=core.Fn.condition_not(
+                core.Fn.condition_equals(db_snapshot_identifier_param.value_as_string, "")
+            )
+        )
+
+        #
+        # RESOURCES
+        #
+
         pipeline_artifact_bucket = aws_s3.CfnBucket(
             self,
             "PipelineArtifactBucket",
@@ -152,22 +413,6 @@ class DrupalStack(core.Stack):
                 service="s3"
             ),
             stack=self
-        )
-        source_artifact_bucket_name_param = core.CfnParameter(
-            self,
-            "SourceArtifactBucketName",
-            default="",
-            description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application. If not specified, a bucket will be created."
-        )
-        source_artifact_bucket_name_exists_condition = core.CfnCondition(
-            self,
-            "SourceArtifactBucketNameExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
-        )
-        source_artifact_bucket_name_not_exists_condition = core.CfnCondition(
-            self,
-            "SourceArtifactBucketNameNotExists",
-            expression=core.Fn.condition_equals(source_artifact_bucket_name_param.value, "")
         )
         source_artifact_bucket = aws_s3.CfnBucket(
             self,
@@ -206,12 +451,6 @@ class DrupalStack(core.Stack):
             ),
             stack=self
         )
-        source_artifact_object_key_param = core.CfnParameter(
-            self,
-            "SourceArtifactObjectKey",
-            default="drupal.zip",
-            description="Required: AWS S3 Object key (path) for the build artifact for the application.  Updates to this object will trigger a deployment."
-        )
         source_artifact_object_key_arn = core.Arn.format(
             components=core.ArnComponents(
                 account="",
@@ -221,34 +460,6 @@ class DrupalStack(core.Stack):
                 service="s3"
             ),
             stack=self
-        )
-
-        notification_email_param = core.CfnParameter(
-            self,
-            "NotificationEmail",
-            default="",
-            description="Optional: Specify an email address to get emails about deploys and other system events."
-        )
-        certificate_arn_param = core.CfnParameter(
-            self,
-            "CertificateArn",
-            default="",
-            description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
-        )
-        certificate_arn_exists_condition = core.CfnCondition(
-            self,
-            "CertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
-        )
-        certificate_arn_does_not_exist_condition = core.CfnCondition(
-            self,
-            "CertificateArnNotExists",
-            expression=core.Fn.condition_equals(certificate_arn_param.value, "")
-        )
-        notification_email_exists_condition = core.CfnCondition(
-            self,
-            "NotificationEmailExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
         )
 
         # vpc
@@ -313,40 +524,6 @@ class DrupalStack(core.Stack):
                 "slow_query_log": "1"
             }
         )
-        db_snapshot_identifier_param = core.CfnParameter(
-            self,
-            "DbSnapshotIdentifier",
-            default="",
-            description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
-        )
-        db_instance_class_param = core.CfnParameter(
-            self,
-            "DbInstanceClass",
-            allowed_values=allowed_values["allowed_db_instance_types"],
-            default="db.r5.large",
-            description="Required: The class profile for memory and compute capacity for the database instance."
-        )
-        db_snapshot_identifier_exists_condition = core.CfnCondition(
-            self,
-            "DbSnapshotIdentifierExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
-        )
-        secret_arn_param = core.CfnParameter(
-            self,
-            "SecretArn",
-            default="",
-            description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified, a secret will be created."
-        )
-        secret_arn_exists_condition = core.CfnCondition(
-            self,
-            "SecretArnExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
-        )
-        secret_arn_not_exists_condition = core.CfnCondition(
-            self,
-            "SecretArnNotExistsCondition",
-            expression=core.Fn.condition_equals(secret_arn_param.value, "")
-        )
         secret = aws_secretsmanager.CfnSecret(
             self,
             "Secret",
@@ -359,19 +536,6 @@ class DrupalStack(core.Stack):
             name="{}/drupal/secret".format(core.Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
-        db_snapshot_secret_rule = core.CfnRule(
-            self,
-            "DbSnapshotIdentifierAndSecretRequiredRule",
-            assertions=[
-                core.CfnRuleAssertion(
-                    assert_=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value_as_string, "")),
-                    assert_description="When restoring the database from a snapshot, a secret ARN must also be supplied, prepopulated with username and password key-value pairs which correspond to the snapshot image"
-                )
-            ],
-            rule_condition=core.Fn.condition_not(
-                core.Fn.condition_equals(db_snapshot_identifier_param.value_as_string, "")
-            )
-        )
 
         db_cluster = aws_rds.CfnDBCluster(
             self,
@@ -464,12 +628,6 @@ class DrupalStack(core.Stack):
             security_groups=[ alb_sg.ref ],
             subnets=vpc.private_subnet_ids(),
             type="application"
-        )
-        alb_dns_name_output = core.CfnOutput(
-            self,
-            "AlbDnsNameOutput",
-            description="The DNS name of the application load balancer.",
-            value=alb.attr_dns_name
         )
         # if there is no cert...
         http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
@@ -634,41 +792,6 @@ class DrupalStack(core.Stack):
         )
 
         # elasticache
-        elasticache_cluster_cache_node_type_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterCacheNodeType",
-            allowed_values=allowed_values["allowed_cache_instance_types"],
-            default="cache.t3.micro",
-            description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
-        )
-        elasticache_cluster_engine_version_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterEngineVersion",
-            allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
-            default="1.5.16",
-            description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
-        )
-        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
-            self,
-            "ElastiCacheClusterNumCacheNodes",
-            default=2,
-            description="Required: The number of cache nodes in the memcached cluster (only applies ElastiCache enabled).",
-            min_value=1,
-            max_value=20,
-            type="Number"
-        )
-        elasticache_enable_param = core.CfnParameter(
-            self,
-            "ElastiCacheEnable",
-            allowed_values=[ "true", "false" ],
-            default="false",
-            description="Required: Whether to provision ElastiCache memcached cluster."
-        )
-        elasticache_enable_condition = core.CfnCondition(
-            self,
-            "ElastiCacheEnableCondition",
-            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
-        )
         elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
             "ElastiCacheSg",
@@ -709,80 +832,8 @@ class DrupalStack(core.Stack):
         )
         core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
-        elasticache_cluster_endpoint_output = core.CfnOutput(
-            self,
-            "ElastiCacheClusterEndpointOutput",
-            condition=elasticache_enable_condition,
-            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
-            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
-                                 elasticache_cluster.attr_configuration_endpoint_port)
-        )
 
         # cloudfront
-        cloudfront_aliases_param = core.CfnParameter(
-            self,
-            "CloudFrontAliases",
-            default="",
-            description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
-            type="CommaDelimitedList"
-        )
-        cloudfront_aliases_exist_condition = core.CfnCondition(
-            self,
-            "CloudFrontAliasesExist",
-            expression=core.Fn.condition_not(
-                core.Fn.condition_equals(core.Fn.select(0, cloudfront_aliases_param.value_as_list), "")
-            )
-        )
-        cloudfront_certificate_arn_param = core.CfnParameter(
-            self,
-            "CloudFrontCertificateArn",
-            default="",
-            description="Optional: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east-1 region."
-        )
-        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
-            self,
-            "CloudFrontCertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
-        )
-        cloudfront_enable_param = core.CfnParameter(
-            self,
-            "CloudFrontEnable",
-            allowed_values=[ "true", "false" ],
-            default="false",
-            description="Required: Enable CloudFront CDN support."
-        )
-        cloudfront_enable_condition = core.CfnCondition(
-            self,
-            "CloudFrontEnableCondition",
-            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
-        )
-        cloudfront_aliases_certificate_rule = core.CfnRule(
-            self,
-            "CloudFrontAliasesAndCertificateRequiredRule",
-            assertions=[
-                core.CfnRuleAssertion(
-                    assert_=core.Fn.condition_not(
-                        core.Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
-                    ),
-                    assert_description="When providing a set of aliases for CloudFront, you must also supply a trusted CloudFrontCertificateArn parameter which validates your authorization to use those domain names"
-                )
-            ],
-            rule_condition=core.Fn.condition_not(
-                core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
-            )
-        )
-        cloudfront_price_class_param = core.CfnParameter(
-            self,
-            "CloudFrontPriceClass",
-            # possible to use a map to make the values more human readable
-            allowed_values = [
-                "PriceClass_All",
-                "PriceClass_200",
-                "PriceClass_100"
-            ],
-            default="PriceClass_All",
-            description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
-        )
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
             "CloudFrontDistribution",
@@ -957,13 +1008,6 @@ class DrupalStack(core.Stack):
             runtime="python3.7"
         )
         cloudfront_invalidation_lambda_function.cfn_options.condition = cloudfront_enable_condition
-        cloudfront_distribution_endpoint_output = core.CfnOutput(
-            self,
-            "CloudFrontDistributionEndpointOutput",
-            condition=cloudfront_enable_condition,
-            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
-            value=cloudfront_distribution.attr_domain_name
-        )
 
         # app
         app_instance_role = aws_iam.CfnRole(
@@ -1081,37 +1125,6 @@ class DrupalStack(core.Stack):
         )
 
         # autoscaling
-        app_instance_type_param = core.CfnParameter(
-            self,
-            "AppLaunchConfigInstanceType",
-            allowed_values=allowed_values["allowed_instance_types"],
-            default="m5.xlarge",
-            description="Required: The EC2 instance type for the application Auto Scaling Group."
-        )
-        asg_desired_capacity_param = core.CfnParameter(
-            self,
-            "AppAsgDesiredCapacity",
-            default=1,
-            description="Required: The desired capacity of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
-        asg_max_size_param = core.CfnParameter(
-            self,
-            "AppAsgMaxSize",
-            default=2,
-            description="Required: The maximum size of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
-        asg_min_size_param = core.CfnParameter(
-            self,
-            "AppAsgMinSize",
-            default=1,
-            description="Required: The minimum size of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
         with open("drupal/app_launch_config_user_data.sh") as f:
             app_launch_config_user_data = f.read()
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
@@ -1765,18 +1778,6 @@ class DrupalStack(core.Stack):
         cloudfront_invalidation_lambda_permission.cfn_options.condition = cloudfront_enable_condition
 
         # default drupal
-        initialize_default_drupal_param = core.CfnParameter(
-            self,
-            "InitializeDefaultDrupal",
-            allowed_values=[ "true", "false" ],
-            default="true",
-            description="Optional: Trigger the first deployment with a copy of an initial default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
-        )
-        initialize_default_drupal_condition = core.CfnCondition(
-            self,
-            "InitializeDefaultDrupalCondition",
-            expression=core.Fn.condition_equals(initialize_default_drupal_param.value, "true")
-        )
         initialize_default_drupal_lambda_function_role = aws_iam.CfnRole(
             self,
             "InitializeDefaultDrupalLambdaFunctionRole",
@@ -1853,6 +1854,32 @@ class DrupalStack(core.Stack):
         )
         initialize_default_drupal_custom_resource.cfn_options.condition = initialize_default_drupal_condition
 
+        #
+        # OUTPUTS
+        #
+
+        alb_dns_name_output = core.CfnOutput(
+            self,
+            "AlbDnsNameOutput",
+            description="The DNS name of the application load balancer.",
+            value=alb.attr_dns_name
+        )
+        cloudfront_distribution_endpoint_output = core.CfnOutput(
+            self,
+            "CloudFrontDistributionEndpointOutput",
+            condition=cloudfront_enable_condition,
+            description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
+            value=cloudfront_distribution.attr_domain_name
+        )
+        elasticache_cluster_endpoint_output = core.CfnOutput(
+            self,
+            "ElastiCacheClusterEndpointOutput",
+            condition=elasticache_enable_condition,
+            description="The endpoint of the cluster for connection. Configure in Drupal's settings.php.",
+            value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
+                                 elasticache_cluster.attr_configuration_endpoint_port)
+        )
+        
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
             "OE::Patterns::TemplateVersion": template_version,

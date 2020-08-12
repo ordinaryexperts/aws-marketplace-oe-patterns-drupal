@@ -4,17 +4,17 @@ with open("README.md") as fp:
     long_description = fp.read()
 
 
-CDK_VERSION="1.42.1"
+CDK_VERSION="1.57.0"
 
 setuptools.setup(
     name="drupal",
-    version="0.0.1",
+    version="1.1.0",
 
-    description="An empty CDK Python app",
+    description="AWS Marketplace Pattern for Drupal by Ordinary Experts.",
     long_description=long_description,
     long_description_content_type="text/markdown",
 
-    author="author",
+    author="Ordinary Experts",
 
     package_dir={"": "drupal"},
     packages=setuptools.find_packages(where="drupal"),
@@ -40,7 +40,7 @@ setuptools.setup(
         f"aws-cdk.aws-sns=={CDK_VERSION}",
         f"aws-cdk.aws-ssm=={CDK_VERSION}",
         f"aws-cdk.core=={CDK_VERSION}",
-        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@1.0.0"
+        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@1.1.0"
     ],
 
     python_requires=">=3.6",
