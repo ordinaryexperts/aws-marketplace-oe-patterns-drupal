@@ -5,6 +5,7 @@
 * Switching to common VPC construct from OE CDK repo
 * Upgrade CDK to 1.57.0
 * Reorganizing DrupalStack class code
+* Adding output for SourceArtifactBucketName
 * Adding uuid to notification topic name
 
 # 1.0.0

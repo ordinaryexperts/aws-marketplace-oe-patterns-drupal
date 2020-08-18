@@ -1879,6 +1879,11 @@ class DrupalStack(core.Stack):
             value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
                                  elasticache_cluster.attr_configuration_endpoint_port)
         )
+        source_artifact_bucket_name_output = core.CfnOutput(
+            self,
+            "SourceArtifactBucketNameOutput",
+            value=source_artifact_bucket_name
+        )
         
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
