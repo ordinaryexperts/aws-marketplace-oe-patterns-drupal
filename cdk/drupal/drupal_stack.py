@@ -713,7 +713,7 @@ class DrupalStack(core.Stack):
         notification_topic = aws_sns.CfnTopic(
             self,
             "NotificationTopic",
-            topic_name="{}-notifications".format(core.Aws.STACK_NAME)
+            topic_name=append_stack_uuid(f"{core.Aws.STACK_NAME}-notifications")
         )
         notification_subscription = aws_sns.CfnSubscription(
             self,
