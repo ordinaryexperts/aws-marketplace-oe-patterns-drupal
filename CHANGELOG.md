@@ -7,6 +7,7 @@
 * Reorganizing DrupalStack class code
 * Adding output for SourceArtifactBucketName
 * Adding uuid to notification topic name
+* Tweaking AWS Vault references in DEVELOPMENT.md documentation
 
 # 1.0.0
 
