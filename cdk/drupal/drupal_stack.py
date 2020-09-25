@@ -626,15 +626,14 @@ class DrupalStack(core.Stack):
             "AppAlb",
             scheme="internet-facing",
             security_groups=[ alb_sg.ref ],
-            subnets=vpc.private_subnet_ids(),
+            subnets=vpc.public_subnet_ids(),
             type="application"
         )
         # if there is no cert...
         http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpTargetGroup",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
+            health_check_path="/robots.txt",
             port=80,
             protocol="HTTP",
             target_type="instance",
@@ -681,8 +680,7 @@ class DrupalStack(core.Stack):
         https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
             self,
             "AsgHttpsTargetGroup",
-            health_check_enabled=None,
-            health_check_interval_seconds=None,
+            health_check_path="/robots.txt",
             port=443,
             protocol="HTTPS",
             target_type="instance",
