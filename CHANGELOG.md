@@ -8,6 +8,7 @@
 * Adding output for SourceArtifactBucketName
 * Adding uuid to notification topic name
 * Upgrading common VPC construct and fixing ALB subnet/healthcheck
+* Tweaking AWS Vault references in DEVELOPMENT.md documentation
 
 # 1.0.0
 
