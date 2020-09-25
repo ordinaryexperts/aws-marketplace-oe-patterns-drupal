@@ -7,6 +7,7 @@
 * Reorganizing DrupalStack class code
 * Adding output for SourceArtifactBucketName
 * Adding uuid to notification topic name
+* Upgrading common VPC construct and fixing ALB subnet/healthcheck
 
 # 1.0.0
 
