@@ -9,6 +9,7 @@
 * Adding uuid to notification topic name
 * Upgrading common VPC construct and fixing ALB subnet/healthcheck
 * Tweaking AWS Vault references in DEVELOPMENT.md documentation
+* Fixing taskcat / docker failure
 
 # 1.0.0
 
