@@ -69,7 +69,6 @@ apt-get -y install            \
         mysql-client-5.7      \
         mysql-client-core-5.7 \
         nfs-common            \
-        php-mysql             \
         php7.4                \
         php7.4-apcu           \
         php7.4-cgi            \
@@ -78,6 +77,7 @@ apt-get -y install            \
         php7.4-fpm            \
         php7.4-gd             \
         php7.4-mbstring       \
+        php7.4-mysql          \
         php7.4-xml            \
         zlib1g-dev
 
