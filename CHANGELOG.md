@@ -1,5 +1,10 @@
 # Unreleased
 
+# 1.0.1
+
+* Updating packages to address CVE-2021-3177
+* Upgrading default Drupal site to 9.2.6
+
 # 1.0.0
 
 * AWS::CloudFormation::Interface and other param fixes

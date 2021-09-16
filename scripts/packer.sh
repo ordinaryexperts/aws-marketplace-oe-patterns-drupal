@@ -10,6 +10,7 @@ else
     IS_RELEASE=true
 fi
 
+rm -f manifest.json
 VERSION=$VERSION packer build $DIR/../packer/ami.json
 
 supported_regions=(
