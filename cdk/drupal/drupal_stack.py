@@ -774,6 +774,7 @@ class DrupalStack(core.Stack):
             "AppEfs",
             encrypted=True
         )
+        core.Tags.of(efs).add("Name", "{}/Efs".format(core.Aws.STACK_NAME))
         efs_mount_target1 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget1",
