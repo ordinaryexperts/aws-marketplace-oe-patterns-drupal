@@ -829,7 +829,7 @@ class DrupalStack(core.Stack):
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.ref ]
         )
-        core.Tag.add(elasticache_cluster, "oe:patterns:drupal:stack", core.Aws.STACK_NAME)
+        core.Tags.of(elasticache_cluster).add("oe:patterns:drupal:stack", core.Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
 
         # cloudfront
@@ -1210,7 +1210,7 @@ class DrupalStack(core.Stack):
                 ignore_unmodified_group_size_properties=True
             )
         )
-        core.Tag.add(asg, "Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
+        core.Tags.of(asg).add("Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
         asg.add_depends_on(db_cluster)
         asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
             self,
