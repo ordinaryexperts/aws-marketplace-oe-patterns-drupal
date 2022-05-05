@@ -46,6 +46,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from oe_patterns_cdk_common.asg import Asg
 from oe_patterns_cdk_common.vpc import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.1.0.zip"
@@ -131,37 +132,6 @@ class DrupalStack(Stack):
         # PARAMETERS
         #
 
-        app_instance_type_param = CfnParameter(
-            self,
-            "AppLaunchConfigInstanceType",
-            allowed_values=allowed_values["allowed_instance_types"],
-            default="m5.xlarge",
-            description="Required: The EC2 instance type for the application Auto Scaling Group."
-        )
-        asg_desired_capacity_param = CfnParameter(
-            self,
-            "AppAsgDesiredCapacity",
-            default=1,
-            description="Required: The desired capacity of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
-        asg_max_size_param = CfnParameter(
-            self,
-            "AppAsgMaxSize",
-            default=2,
-            description="Required: The maximum size of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
-        asg_min_size_param = CfnParameter(
-            self,
-            "AppAsgMinSize",
-            default=1,
-            description="Required: The minimum size of the Auto Scaling Group.",
-            min_value=0,
-            type="Number"
-        )
         certificate_arn_param = CfnParameter(
             self,
             "CertificateArn",
@@ -488,26 +458,11 @@ class DrupalStack(Stack):
             "Vpc"
         )
 
-        app_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "AppSg",
-            group_description="App SG",
-            vpc_id=vpc.id()
-        )
         db_sg = aws_ec2.CfnSecurityGroup(
             self,
             "DbSg",
             group_description="Database SG",
             vpc_id=vpc.id()
-        )
-        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "DbSgIngress",
-            from_port=3306,
-            group_id=db_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=3306
         )
         db_subnet_group = aws_rds.CfnDBSubnetGroup(
             self,
@@ -780,15 +735,6 @@ class DrupalStack(Stack):
             group_description="EFS SG",
             vpc_id=vpc.id()
         )
-        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngress",
-            from_port=2049,
-            group_id=efs_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=2049
-        )
         efs = aws_efs.CfnFileSystem(
             self,
             "AppEfs",
@@ -818,16 +764,6 @@ class DrupalStack(Stack):
             vpc_id=vpc.id()
         )
         elasticache_sg.cfn_options.condition = elasticache_enable_condition
-        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "ElasticacheSgIngress",
-            from_port=11211,
-            group_id=elasticache_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=app_sg.ref,
-            to_port=11211
-        )
-        elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
         elasticache_subnet_group = CfnResource(
             self,
             "ElastiCacheSubnetGroup",
@@ -1028,270 +964,85 @@ class DrupalStack(Stack):
         )
         cloudfront_invalidation_lambda_function.cfn_options.condition = cloudfront_enable_condition
 
-        # app
-        app_instance_role = aws_iam.CfnRole(
-            self,
-            "AppInstanceRole",
-            assume_role_policy_document=aws_iam.PolicyDocument(
-                statements=[
-                    aws_iam.PolicyStatement(
-                        effect=aws_iam.Effect.ALLOW,
-                        actions=[ "sts:AssumeRole" ],
-                        principals=[ aws_iam.ServicePrincipal("ec2.amazonaws.com") ]
-                    )
-                ]
-            ),
-            policies=[
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "logs:CreateLogStream",
-                                    "logs:DescribeLogStreams",
-                                    "logs:PutLogEvents"
-                                ],
-                                resources=[
-                                    access_log_group.attr_arn,
-                                    error_log_group.attr_arn,
-                                    system_log_group.attr_arn
-                                ]
-                            )
-                        ]
-                    ),
-                    policy_name="AllowStreamLogsToCloudWatch"
-                ),
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "ec2:DescribeVolumes",
-                                    "ec2:DescribeTags",
-                                    "cloudwatch:GetMetricStatistics",
-                                    "cloudwatch:ListMetrics",
-                                    "cloudwatch:PutMetricData"
-                                ],
-                                resources=[ "*" ]
-                            )
-                        ]
-                    ),
-                    policy_name="AllowStreamMetricsToCloudWatch"
-                ),
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[
-                                    "s3:Get*",
-                                    "s3:Head*"
-                                ],
-                                resources=[ pipeline_artifact_bucket_arn ]
-                            )
-                        ]
-                    ),
-                    policy_name="AllowGetFromArtifactBucket",
-                ),
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[ "autoscaling:Describe*" ],
-                                resources=[ "*" ]
-                            )
-                        ]
-                    ),
-                    policy_name="AllowDescribeAutoScaling"
-                ),
-                aws_iam.CfnRole.PolicyProperty(
-                    policy_document=aws_iam.PolicyDocument(
-                        statements=[
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[ "secretsmanager:GetSecretValue" ],
-                                resources=[
-                                    Token.as_string(
-                                        Fn.condition_if(
-                                            secret_arn_exists_condition.logical_id,
-                                            secret_arn_param.value_as_string,
-                                            secret.ref
-                                        )
-                                    )
-                                ]
-                            ),
-                            aws_iam.PolicyStatement(
-                                effect=aws_iam.Effect.ALLOW,
-                                actions=[ "secretsmanager:ListSecrets" ],
-                                resources=[ "*" ],
-                            ),
-                        ]
-                    ),
-                    policy_name="DrupalSecretAccessPolicy"
-                )
-            ],
-            managed_policy_arns=[
-                "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-            ]
-        )
-        instance_profile = aws_iam.CfnInstanceProfile(
-            self,
-            "AppInstanceProfile",
-            roles=[ app_instance_role.ref ]
-        )
 
         # autoscaling
         with open("drupal/app_launch_config_user_data.sh") as f:
             app_launch_config_user_data = f.read()
-        launch_config = aws_autoscaling.CfnLaunchConfiguration(
+        asg = Asg(
             self,
-            "AppLaunchConfig",
-            image_id=Fn.find_in_map("AWSAMIRegionMap", Aws.REGION, "OEDRUPAL"),
-            instance_type=app_instance_type_param.value_as_string,
-            iam_instance_profile=instance_profile.ref,
-            security_groups=[app_sg.ref],
-            user_data=(
-                Fn.base64(
-                    Fn.sub(
-                        app_launch_config_user_data,
-                        {
-                            "CloudFrontHost": Token.as_string(
-                                Fn.condition_if(
-                                    cloudfront_enable_condition.logical_id,
-                                    Fn.condition_if(
-                                        cloudfront_aliases_exist_condition.logical_id,
-                                        Fn.select(0, cloudfront_aliases_param.value_as_list),
-                                        cloudfront_distribution.attr_domain_name
-                                    ),
-                                    ""
-                                )
-                            ),
-                            "DrupalSalt": Fn.base64(Aws.STACK_ID),
-                            "ElastiCacheClusterHost": Token.as_string(
-                                Fn.condition_if(
-                                    elasticache_enable_condition.logical_id,
-                                    elasticache_cluster.attr_configuration_endpoint_address,
-                                    ""
-                                )
-                            ),
-                            "ElastiCacheClusterPort": Token.as_string(
-                                Fn.condition_if(
-                                    elasticache_enable_condition.logical_id,
-                                    elasticache_cluster.attr_configuration_endpoint_port,
-                                    ""
-                                )
-                            ),
-                            "SecretArn": Token.as_string(
-                                Fn.condition_if(
-                                    secret_arn_exists_condition.logical_id,
-                                    secret_arn_param.value_as_string,
-                                    secret.ref
-                                )
-                            )
-                        }
-                    )
-                )
-            )
-        )
-        asg = aws_autoscaling.CfnAutoScalingGroup(
-            self,
-            "AppAsg",
-            launch_configuration_name=launch_config.ref,
-            desired_capacity=Token.as_string(asg_desired_capacity_param.value),
-            max_size=Token.as_string(asg_max_size_param.value),
-            min_size=Token.as_string(asg_min_size_param.value),
-            target_group_arns=[
-                Token.as_string(
+            "Drupal",
+            user_data_contents=app_launch_config_user_data,
+            user_data_variables={
+                "CloudFrontHost": Token.as_string(
                     Fn.condition_if(
-                        certificate_arn_exists_condition.logical_id,
-                        https_target_group.ref,
-                        http_target_group.ref
+                        cloudfront_enable_condition.logical_id,
+                        Fn.condition_if(
+                            cloudfront_aliases_exist_condition.logical_id,
+                            Fn.select(0, cloudfront_aliases_param.value_as_list),
+                            cloudfront_distribution.attr_domain_name
+                        ),
+                        ""
+                    )
+                ),
+                "DrupalSalt": Fn.base64(Aws.STACK_ID),
+                "ElastiCacheClusterHost": Token.as_string(
+                    Fn.condition_if(
+                        elasticache_enable_condition.logical_id,
+                        elasticache_cluster.attr_configuration_endpoint_address,
+                        ""
+                    )
+                ),
+                "ElastiCacheClusterPort": Token.as_string(
+                    Fn.condition_if(
+                        elasticache_enable_condition.logical_id,
+                        elasticache_cluster.attr_configuration_endpoint_port,
+                        ""
+                    )
+                ),
+                "SecretArn": Token.as_string(
+                    Fn.condition_if(
+                        secret_arn_exists_condition.logical_id,
+                        secret_arn_param.value_as_string,
+                        secret.ref
                     )
                 )
-            ],
-            vpc_zone_identifier=vpc.private_subnet_ids()
+            },
+            vpc=vpc
         )
-        asg.cfn_options.creation_policy=CfnCreationPolicy(
-            resource_signal=CfnResourceSignal(
-                count=1,
-                timeout="PT15M"
-            )
-        )
-        asg.cfn_options.update_policy=CfnUpdatePolicy(
-            auto_scaling_rolling_update=CfnAutoScalingRollingUpdate(
-                min_instances_in_service=1,
-                pause_time="PT15M",
-                wait_on_resource_signals=True
-            ),
-            auto_scaling_scheduled_action=CfnAutoScalingScheduledAction(
-                ignore_unmodified_group_size_properties=True
-            )
-        )
-        Tags.of(asg).add("Name", "{}/AppAsg".format(Aws.STACK_NAME))
-        asg.add_depends_on(db_cluster)
-        asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
+        elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "WebServerScaleUpPolicy",
-            adjustment_type="ChangeInCapacity",
-            auto_scaling_group_name=asg.ref,
-            cooldown="60",
-            scaling_adjustment=1
+            "ElasticacheSgIngress",
+            from_port=11211,
+            group_id=elasticache_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=asg.sg.ref,
+            to_port=11211
         )
-        asg_web_server_scale_down_policy = aws_autoscaling.CfnScalingPolicy(
+        elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
+        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "WebServerScaleDownPolicy",
-            adjustment_type="ChangeInCapacity",
-            auto_scaling_group_name=asg.ref,
-            cooldown="60",
-            scaling_adjustment=-1
+            "EfsSgIngress",
+            from_port=2049,
+            group_id=efs_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=asg.sg.ref,
+            to_port=2049
         )
-
-        # cloudwatch alarms
-        cpu_alarm_high = aws_cloudwatch.CfnAlarm(
+        db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
-            "CpuAlarmHigh",
-            comparison_operator="GreaterThanThreshold",
-            evaluation_periods=2,
-            actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_up_policy.ref, notification_topic.ref ],
-            alarm_description="Scale-up if CPU > 90% for 10mins",
-            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
-                name="AutoScalingGroupName",
-                value=asg.ref
-            )],
-            metric_name="CPUUtilization",
-            namespace="AWS/EC2",
-            period=300,
-            statistic="Average",
-            threshold=90
-        )
-        cpu_alarm_low = aws_cloudwatch.CfnAlarm(
-            self,
-            "CpuAlarmLow",
-            comparison_operator="LessThanThreshold",
-            evaluation_periods=2,
-            actions_enabled=None,
-            alarm_actions=[ asg_web_server_scale_down_policy.ref, notification_topic.ref ],
-            alarm_description="Scale-down if CPU < 70% for 10mins",
-            dimensions=[ aws_cloudwatch.CfnAlarm.DimensionProperty(
-                name="AutoScalingGroupName",
-                value=asg.ref
-            )],
-            metric_name="CPUUtilization",
-            namespace="AWS/EC2",
-            period=300,
-            statistic="Average",
-            threshold=70
+            "DbSgIngress",
+            from_port=3306,
+            group_id=db_sg.ref,
+            ip_protocol="tcp",
+            source_security_group_id=asg.sg.ref,
+            to_port=3306
         )
 
         sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "AppSgHttpIngress",
             from_port=80,
-            group_id=app_sg.ref,
+            group_id=asg.sg.ref,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.ref,
             to_port=80
@@ -1302,7 +1053,7 @@ class DrupalStack(Stack):
             self,
             "AppSgHttpsIngress",
             from_port=443,
-            group_id=app_sg.ref,
+            group_id=asg.sg.ref,
             ip_protocol="tcp",
             source_security_group_id=alb_sg.ref,
             to_port=443
@@ -1372,7 +1123,7 @@ class DrupalStack(Stack):
                 environment_variables=[
                     aws_codebuild.CfnProject.EnvironmentVariableProperty(
                         name="AUTO_SCALING_GROUP_NAME",
-                        value=asg.ref,
+                        value=asg.asg.ref,
                     )
                 ],
                 image="aws/codebuild/standard:4.0",
@@ -1651,7 +1402,7 @@ class DrupalStack(Stack):
             self,
             "CodeDeployDeploymentGroup",
             application_name=codedeploy_application.application_name,
-            auto_scaling_groups=[ asg.ref ],
+            auto_scaling_groups=[ asg.asg.ref ],
             deployment_group_name="{}-app".format(Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=codedeploy_role_arn,
@@ -1935,10 +1686,6 @@ class DrupalStack(Stack):
                         "Parameters": [
                             certificate_arn_param.logical_id,
                             secret_arn_param.logical_id,
-                            app_instance_type_param.logical_id,
-                            asg_min_size_param.logical_id,
-                            asg_max_size_param.logical_id,
-                            asg_desired_capacity_param.logical_id,
                             initialize_default_drupal_param.logical_id
                         ]
                     },
@@ -1975,18 +1722,6 @@ class DrupalStack(Stack):
                     }
                 ],
                 "ParameterLabels": {
-                    app_instance_type_param.logical_id: {
-                        "default": "Instance Type"
-                    },
-                    asg_desired_capacity_param.logical_id: {
-                        "default": "Auto Scaling Group Desired Capacity"
-                    },
-                    asg_max_size_param.logical_id: {
-                        "default": "Auto Scaling Group Maximum Size"
-                    },
-                    asg_min_size_param.logical_id: {
-                        "default": "Auto Scaling Group Minimum Size"
-                    },
                     certificate_arn_param.logical_id: {
                         "default": "ACM Certificate ARN"
                     },
