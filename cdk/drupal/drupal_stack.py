@@ -3,6 +3,9 @@ import os
 import subprocess
 import yaml
 from aws_cdk import (
+    Arn,
+    ArnComponents,
+    Aws,
     aws_autoscaling,
     aws_cloudformation,
     aws_cloudfront,
@@ -23,10 +26,27 @@ from aws_cdk import (
     aws_secretsmanager,
     aws_sns,
     aws_ssm,
-    core
+    CfnAutoScalingRollingUpdate,
+    CfnAutoScalingScheduledAction,
+    CfnCondition,
+    CfnCreationPolicy,
+    CfnDeletionPolicy,
+    CfnMapping,
+    CfnOutput,
+    CfnParameter,
+    CfnResource,
+    CfnResourceSignal,
+    CfnRule,
+    CfnRuleAssertion,
+    CfnUpdatePolicy,
+    Fn,
+    Stack,
+    Tags,
+    Token
 )
+from constructs import Construct
 
-from oe_patterns_cdk_common import Vpc
+from oe_patterns_cdk_common.vpc import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.1.0.zip"
 TWO_YEARS_IN_DAYS=731
@@ -72,9 +92,9 @@ generated_ami_ids = {
 # Sanity check: if this fails then make copy-image needs to be run...
 assert AMI_ID == generated_ami_ids["us-east-1"]
 
-class DrupalStack(core.Stack):
+class DrupalStack(Stack):
 
-    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         #
@@ -93,7 +113,7 @@ class DrupalStack(core.Stack):
         }
         for region in generated_ami_ids.keys():
             ami_mapping[region] = { "OEDRUPAL": generated_ami_ids[region] }
-        aws_ami_region_map = core.CfnMapping(
+        aws_ami_region_map = CfnMapping(
             self,
             "AWSAMIRegionMap",
             mapping=ami_mapping
@@ -102,23 +122,23 @@ class DrupalStack(core.Stack):
         # utility function to parse the unique id from the stack id for
         # shorter resource names using cloudformation functions
         def append_stack_uuid(name):
-            return core.Fn.join("-", [
+            return Fn.join("-", [
                 name,
-                core.Fn.select(2, core.Fn.split("/", core.Aws.STACK_ID))
+                Fn.select(2, Fn.split("/", Aws.STACK_ID))
             ])
 
         #
         # PARAMETERS
         #
 
-        app_instance_type_param = core.CfnParameter(
+        app_instance_type_param = CfnParameter(
             self,
             "AppLaunchConfigInstanceType",
             allowed_values=allowed_values["allowed_instance_types"],
             default="m5.xlarge",
             description="Required: The EC2 instance type for the application Auto Scaling Group."
         )
-        asg_desired_capacity_param = core.CfnParameter(
+        asg_desired_capacity_param = CfnParameter(
             self,
             "AppAsgDesiredCapacity",
             default=1,
@@ -126,7 +146,7 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-        asg_max_size_param = core.CfnParameter(
+        asg_max_size_param = CfnParameter(
             self,
             "AppAsgMaxSize",
             default=2,
@@ -134,7 +154,7 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-        asg_min_size_param = core.CfnParameter(
+        asg_min_size_param = CfnParameter(
             self,
             "AppAsgMinSize",
             default=1,
@@ -142,33 +162,33 @@ class DrupalStack(core.Stack):
             min_value=0,
             type="Number"
         )
-        certificate_arn_param = core.CfnParameter(
+        certificate_arn_param = CfnParameter(
             self,
             "CertificateArn",
             default="",
             description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
         )
-        cloudfront_aliases_param = core.CfnParameter(
+        cloudfront_aliases_param = CfnParameter(
             self,
             "CloudFrontAliases",
             default="",
             description="Optional: A list of hostname aliases registered with the CloudFront distribution. If a certificate is supplied, each hostname must validate against the certificate.",
             type="CommaDelimitedList"
         )
-        cloudfront_certificate_arn_param = core.CfnParameter(
+        cloudfront_certificate_arn_param = CfnParameter(
             self,
             "CloudFrontCertificateArn",
             default="",
             description="Optional: The ARN from AWS Certificate Manager for the SSL cert used in CloudFront CDN. Must be in us-east-1 region."
         )
-        cloudfront_enable_param = core.CfnParameter(
+        cloudfront_enable_param = CfnParameter(
             self,
             "CloudFrontEnable",
             allowed_values=[ "true", "false" ],
             default="false",
             description="Required: Enable CloudFront CDN support."
         )
-        cloudfront_price_class_param = core.CfnParameter(
+        cloudfront_price_class_param = CfnParameter(
             self,
             "CloudFrontPriceClass",
             # possible to use a map to make the values more human readable
@@ -180,34 +200,34 @@ class DrupalStack(core.Stack):
             default="PriceClass_All",
             description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
         )
-        db_instance_class_param = core.CfnParameter(
+        db_instance_class_param = CfnParameter(
             self,
             "DbInstanceClass",
             allowed_values=allowed_values["allowed_db_instance_types"],
             default="db.r5.large",
             description="Required: The class profile for memory and compute capacity for the database instance."
         )
-        db_snapshot_identifier_param = core.CfnParameter(
+        db_snapshot_identifier_param = CfnParameter(
             self,
             "DbSnapshotIdentifier",
             default="",
             description="Optional: RDS snapshot ARN from which to restore. If specified, manually edit the secret values to specify the snapshot credentials for the application. WARNING: Changing this value will re-provision the database."
         )
-        elasticache_cluster_cache_node_type_param = core.CfnParameter(
+        elasticache_cluster_cache_node_type_param = CfnParameter(
             self,
             "ElastiCacheClusterCacheNodeType",
             allowed_values=allowed_values["allowed_cache_instance_types"],
             default="cache.t3.micro",
             description="Required: Instance type for the memcached cluster nodes (only applies when ElastiCache enabled)."
         )
-        elasticache_cluster_engine_version_param = core.CfnParameter(
+        elasticache_cluster_engine_version_param = CfnParameter(
             self,
             "ElastiCacheClusterEngineVersion",
             allowed_values=[ "1.4.14", "1.4.24", "1.4.33", "1.4.34", "1.4.5", "1.5.10", "1.5.16" ],
             default="1.5.16",
             description="Required: The memcached version of the cache cluster (only applies when ElastiCache enabled)."
         )
-        elasticache_cluster_num_cache_nodes_param = core.CfnParameter(
+        elasticache_cluster_num_cache_nodes_param = CfnParameter(
             self,
             "ElastiCacheClusterNumCacheNodes",
             default=2,
@@ -216,50 +236,50 @@ class DrupalStack(core.Stack):
             max_value=20,
             type="Number"
         )
-        elasticache_enable_param = core.CfnParameter(
+        elasticache_enable_param = CfnParameter(
             self,
             "ElastiCacheEnable",
             allowed_values=[ "true", "false" ],
             default="false",
             description="Required: Whether to provision ElastiCache memcached cluster."
         )
-        initialize_default_drupal_param = core.CfnParameter(
+        initialize_default_drupal_param = CfnParameter(
             self,
             "InitializeDefaultDrupal",
             allowed_values=[ "true", "false" ],
             default="true",
             description="Optional: Trigger the first deployment with a copy of an initial default codebase from Ordinary Experts using Drupal 9 and some common modules taking advantage of the stack capabilities."
         )
-        initialize_default_drupal_condition = core.CfnCondition(
+        initialize_default_drupal_condition = CfnCondition(
             self,
             "InitializeDefaultDrupalCondition",
-            expression=core.Fn.condition_equals(initialize_default_drupal_param.value, "true")
+            expression=Fn.condition_equals(initialize_default_drupal_param.value, "true")
         )
-        notification_email_param = core.CfnParameter(
+        notification_email_param = CfnParameter(
             self,
             "NotificationEmail",
             default="",
             description="Optional: Specify an email address to get emails about deploys and other system events."
         )
-        pipeline_artifact_bucket_name_param = core.CfnParameter(
+        pipeline_artifact_bucket_name_param = CfnParameter(
             self,
             "PipelineArtifactBucketName",
             default="",
             description="Optional: Specify a bucket name for the CodePipeline pipeline to use. The bucket must be in this same AWS account. This can be handy when re-creating this template many times."
         )
-        secret_arn_param = core.CfnParameter(
+        secret_arn_param = CfnParameter(
             self,
             "SecretArn",
             default="",
             description="Optional: SecretsManager secret ARN used to store database credentials and other configuration. If not specified, a secret will be created."
         )
-        source_artifact_bucket_name_param = core.CfnParameter(
+        source_artifact_bucket_name_param = CfnParameter(
             self,
             "SourceArtifactBucketName",
             default="",
             description="Optional: Specify a S3 Bucket name which will contain the build artifacts for the application. If not specified, a bucket will be created."
         )
-        source_artifact_object_key_param = core.CfnParameter(
+        source_artifact_object_key_param = CfnParameter(
             self,
             "SourceArtifactObjectKey",
             default="drupal.zip",
@@ -270,109 +290,109 @@ class DrupalStack(core.Stack):
         # CONDITIONS
         #
 
-        certificate_arn_exists_condition = core.CfnCondition(
+        certificate_arn_exists_condition = CfnCondition(
             self,
             "CertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(certificate_arn_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(certificate_arn_param.value, ""))
         )
-        certificate_arn_does_not_exist_condition = core.CfnCondition(
+        certificate_arn_does_not_exist_condition = CfnCondition(
             self,
             "CertificateArnNotExists",
-            expression=core.Fn.condition_equals(certificate_arn_param.value, "")
+            expression=Fn.condition_equals(certificate_arn_param.value, "")
         )
-        cloudfront_aliases_exist_condition = core.CfnCondition(
+        cloudfront_aliases_exist_condition = CfnCondition(
             self,
             "CloudFrontAliasesExist",
-            expression=core.Fn.condition_not(
-                core.Fn.condition_equals(core.Fn.select(0, cloudfront_aliases_param.value_as_list), "")
+            expression=Fn.condition_not(
+                Fn.condition_equals(Fn.select(0, cloudfront_aliases_param.value_as_list), "")
             )
         )
-        cloudfront_certificate_arn_exists_condition = core.CfnCondition(
+        cloudfront_certificate_arn_exists_condition = CfnCondition(
             self,
             "CloudFrontCertificateArnExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(cloudfront_certificate_arn_param.value, ""))
         )
-        cloudfront_enable_condition = core.CfnCondition(
+        cloudfront_enable_condition = CfnCondition(
             self,
             "CloudFrontEnableCondition",
-            expression=core.Fn.condition_equals(cloudfront_enable_param.value, "true")
+            expression=Fn.condition_equals(cloudfront_enable_param.value, "true")
         )
-        db_snapshot_identifier_exists_condition = core.CfnCondition(
+        db_snapshot_identifier_exists_condition = CfnCondition(
             self,
             "DbSnapshotIdentifierExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(db_snapshot_identifier_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(db_snapshot_identifier_param.value, ""))
         )
-        elasticache_enable_condition = core.CfnCondition(
+        elasticache_enable_condition = CfnCondition(
             self,
             "ElastiCacheEnableCondition",
-            expression=core.Fn.condition_equals(elasticache_enable_param.value, "true")
+            expression=Fn.condition_equals(elasticache_enable_param.value, "true")
         )
-        notification_email_exists_condition = core.CfnCondition(
+        notification_email_exists_condition = CfnCondition(
             self,
             "NotificationEmailExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(notification_email_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(notification_email_param.value, ""))
         )
-        pipeline_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+        pipeline_artifact_bucket_name_not_exists_condition = CfnCondition(
             self,
             "PipelineArtifactBucketNameNotExists",
-            expression=core.Fn.condition_equals(pipeline_artifact_bucket_name_param.value, "")
+            expression=Fn.condition_equals(pipeline_artifact_bucket_name_param.value, "")
         )
-        pipeline_artifact_bucket_name_exists_condition = core.CfnCondition(
+        pipeline_artifact_bucket_name_exists_condition = CfnCondition(
             self,
             "PipelineArtifactBucketNameExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(pipeline_artifact_bucket_name_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(pipeline_artifact_bucket_name_param.value, ""))
         )
-        secret_arn_exists_condition = core.CfnCondition(
+        secret_arn_exists_condition = CfnCondition(
             self,
             "SecretArnExistsCondition",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(secret_arn_param.value, ""))
         )
-        secret_arn_not_exists_condition = core.CfnCondition(
+        secret_arn_not_exists_condition = CfnCondition(
             self,
             "SecretArnNotExistsCondition",
-            expression=core.Fn.condition_equals(secret_arn_param.value, "")
+            expression=Fn.condition_equals(secret_arn_param.value, "")
         )
-        source_artifact_bucket_name_exists_condition = core.CfnCondition(
+        source_artifact_bucket_name_exists_condition = CfnCondition(
             self,
             "SourceArtifactBucketNameExists",
-            expression=core.Fn.condition_not(core.Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
+            expression=Fn.condition_not(Fn.condition_equals(source_artifact_bucket_name_param.value, ""))
         )
-        source_artifact_bucket_name_not_exists_condition = core.CfnCondition(
+        source_artifact_bucket_name_not_exists_condition = CfnCondition(
             self,
             "SourceArtifactBucketNameNotExists",
-            expression=core.Fn.condition_equals(source_artifact_bucket_name_param.value, "")
+            expression=Fn.condition_equals(source_artifact_bucket_name_param.value, "")
         )
 
         #
         # RULES
         #
 
-        cloudfront_aliases_certificate_rule = core.CfnRule(
+        cloudfront_aliases_certificate_rule = CfnRule(
             self,
             "CloudFrontAliasesAndCertificateRequiredRule",
             assertions=[
-                core.CfnRuleAssertion(
-                    assert_=core.Fn.condition_not(
-                        core.Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
+                CfnRuleAssertion(
+                    assert_=Fn.condition_not(
+                        Fn.condition_equals(cloudfront_certificate_arn_param.value_as_string, "")
                     ),
                     assert_description="When providing a set of aliases for CloudFront, you must also supply a trusted CloudFrontCertificateArn parameter which validates your authorization to use those domain names"
                 )
             ],
-            rule_condition=core.Fn.condition_not(
-                core.Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
+            rule_condition=Fn.condition_not(
+                Fn.condition_each_member_equals(cloudfront_aliases_param.value_as_list, "")
             )
         )
-        db_snapshot_secret_rule = core.CfnRule(
+        db_snapshot_secret_rule = CfnRule(
             self,
             "DbSnapshotIdentifierAndSecretRequiredRule",
             assertions=[
-                core.CfnRuleAssertion(
-                    assert_=core.Fn.condition_not(core.Fn.condition_equals(secret_arn_param.value_as_string, "")),
+                CfnRuleAssertion(
+                    assert_=Fn.condition_not(Fn.condition_equals(secret_arn_param.value_as_string, "")),
                     assert_description="When restoring the database from a snapshot, a secret ARN must also be supplied, prepopulated with username and password key-value pairs which correspond to the snapshot image"
                 )
             ],
-            rule_condition=core.Fn.condition_not(
-                core.Fn.condition_equals(db_snapshot_identifier_param.value_as_string, "")
+            rule_condition=Fn.condition_not(
+                Fn.condition_equals(db_snapshot_identifier_param.value_as_string, "")
             )
         )
 
@@ -396,14 +416,14 @@ class DrupalStack(core.Stack):
             public_access_block_configuration=aws_s3.BlockPublicAccess.BLOCK_ALL
         )
         pipeline_artifact_bucket.cfn_options.condition=pipeline_artifact_bucket_name_not_exists_condition
-        pipeline_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        pipeline_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        pipeline_artifact_bucket_arn = core.Arn.format(
-            components=core.ArnComponents(
+        pipeline_artifact_bucket.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        pipeline_artifact_bucket_arn = Arn.format(
+            components=ArnComponents(
                 account="",
                 region="",
-                resource=core.Token.as_string(
-                    core.Fn.condition_if(
+                resource=Token.as_string(
+                    Fn.condition_if(
                         pipeline_artifact_bucket_name_exists_condition.logical_id,
                         pipeline_artifact_bucket_name_param.value_as_string,
                         pipeline_artifact_bucket.ref
@@ -433,17 +453,17 @@ class DrupalStack(core.Stack):
             )
         )
         source_artifact_bucket.cfn_options.condition = source_artifact_bucket_name_not_exists_condition
-        source_artifact_bucket.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
-        source_artifact_bucket.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        source_artifact_bucket_name = core.Token.as_string(
-            core.Fn.condition_if(
+        source_artifact_bucket.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
+        source_artifact_bucket.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        source_artifact_bucket_name = Token.as_string(
+            Fn.condition_if(
                 source_artifact_bucket_name_exists_condition.logical_id,
                 source_artifact_bucket_name_param.value_as_string,
                 source_artifact_bucket.ref
             )
         )
-        source_artifact_bucket_arn = core.Arn.format(
-            components=core.ArnComponents(
+        source_artifact_bucket_arn = Arn.format(
+            components=ArnComponents(
                 account="",
                 region="",
                 resource=source_artifact_bucket_name,
@@ -451,8 +471,8 @@ class DrupalStack(core.Stack):
             ),
             stack=self
         )
-        source_artifact_object_key_arn = core.Arn.format(
-            components=core.ArnComponents(
+        source_artifact_object_key_arn = Arn.format(
+            components=ArnComponents(
                 account="",
                 region="",
                 resource=source_artifact_bucket_name,
@@ -533,7 +553,7 @@ class DrupalStack(core.Stack):
                 generate_string_key="password",
                 secret_string_template=json.dumps({"username":"dbadmin"})
             ),
-            name="{}/drupal/secret".format(core.Aws.STACK_NAME)
+            name="{}/drupal/secret".format(Aws.STACK_NAME)
         )
         secret.cfn_options.condition = secret_arn_not_exists_condition
 
@@ -545,33 +565,33 @@ class DrupalStack(core.Stack):
             engine="aurora-mysql",
             engine_mode="provisioned",
             engine_version="5.7.mysql_aurora.2.08.0",
-            master_username=core.Token.as_string(
-                core.Fn.condition_if(
+            master_username=Token.as_string(
+                Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
-                    core.Aws.NO_VALUE,
-                    core.Fn.condition_if(
+                    Aws.NO_VALUE,
+                    Fn.condition_if(
                         secret_arn_exists_condition.logical_id,
-                        core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
-                        core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
+                        Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:username}}"),
+                        Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:username}}")
                     ),
                 )
             ),
-            master_user_password=core.Token.as_string(
-                core.Fn.condition_if(
+            master_user_password=Token.as_string(
+                Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
-                    core.Aws.NO_VALUE,
-                    core.Fn.condition_if(
+                    Aws.NO_VALUE,
+                    Fn.condition_if(
                         secret_arn_exists_condition.logical_id,
-                        core.Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
-                        core.Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
+                        Fn.sub("{{resolve:secretsmanager:${SecretArn}:SecretString:password}}"),
+                        Fn.sub("{{resolve:secretsmanager:${Secret}:SecretString:password}}"),
                     ),
                 )
             ),
-            snapshot_identifier=core.Token.as_string(
-                core.Fn.condition_if(
+            snapshot_identifier=Token.as_string(
+                Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
                     db_snapshot_identifier_param.value_as_string,
-                    core.Aws.NO_VALUE
+                    Aws.NO_VALUE
                 )
             ),
             storage_encrypted=True,
@@ -582,10 +602,10 @@ class DrupalStack(core.Stack):
             "DbPrimaryInstance",
             db_cluster_identifier=db_cluster.ref,
             db_instance_class=db_instance_class_param.value_as_string,
-            db_instance_identifier=core.Token.as_string(
-                core.Fn.condition_if(
+            db_instance_identifier=Token.as_string(
+                Fn.condition_if(
                     db_snapshot_identifier_exists_condition.logical_id,
-                    core.Aws.NO_VALUE,
+                    Aws.NO_VALUE,
                     append_stack_uuid("drupal")
                 )
             ),
@@ -711,7 +731,7 @@ class DrupalStack(core.Stack):
         notification_topic = aws_sns.CfnTopic(
             self,
             "NotificationTopic",
-            topic_name=append_stack_uuid(f"{core.Aws.STACK_NAME}-notifications")
+            topic_name=append_stack_uuid(f"{Aws.STACK_NAME}-notifications")
         )
         notification_subscription = aws_sns.CfnSubscription(
             self,
@@ -736,22 +756,22 @@ class DrupalStack(core.Stack):
             "DrupalSystemLogGroup",
             retention_in_days=TWO_YEARS_IN_DAYS
         )
-        system_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        system_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        system_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
         access_log_group = aws_logs.CfnLogGroup(
             self,
             "DrupalAccessLogGroup",
             retention_in_days=TWO_YEARS_IN_DAYS
         )
-        access_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        access_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        access_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
         error_log_group = aws_logs.CfnLogGroup(
             self,
             "DrupalErrorLogGroup",
             retention_in_days=TWO_YEARS_IN_DAYS
         )
-        error_log_group.cfn_options.update_replace_policy = core.CfnDeletionPolicy.RETAIN
-        error_log_group.cfn_options.deletion_policy = core.CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
+        error_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
 
         # efs
         efs_sg = aws_ec2.CfnSecurityGroup(
@@ -774,7 +794,7 @@ class DrupalStack(core.Stack):
             "AppEfs",
             encrypted=True
         )
-        core.Tags.of(efs).add("Name", "{}/Efs".format(core.Aws.STACK_NAME))
+        Tags.of(efs).add("Name", "{}/Efs".format(Aws.STACK_NAME))
         efs_mount_target1 = aws_efs.CfnMountTarget(
             self,
             "AppEfsMountTarget1",
@@ -808,7 +828,7 @@ class DrupalStack(core.Stack):
             to_port=11211
         )
         elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
-        elasticache_subnet_group = core.CfnResource(
+        elasticache_subnet_group = CfnResource(
             self,
             "ElastiCacheSubnetGroup",
             type="AWS::ElastiCache::SubnetGroup",
@@ -829,7 +849,7 @@ class DrupalStack(core.Stack):
             num_cache_nodes=elasticache_cluster_num_cache_nodes_param.value_as_number,
             vpc_security_group_ids=[ elasticache_sg.ref ]
         )
-        core.Tags.of(elasticache_cluster).add("oe:patterns:drupal:stack", core.Aws.STACK_NAME)
+        Tags.of(elasticache_cluster).add("oe:patterns:drupal:stack", Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
 
         # cloudfront
@@ -837,14 +857,14 @@ class DrupalStack(core.Stack):
             self,
             "CloudFrontDistribution",
             distribution_config=aws_cloudfront.CfnDistribution.DistributionConfigProperty(
-                aliases=core.Token.as_list(
-                    core.Fn.condition_if(
+                aliases=Token.as_list(
+                    Fn.condition_if(
                         cloudfront_aliases_exist_condition.logical_id,
                         cloudfront_aliases_param.value_as_list,
-                        core.Aws.NO_VALUE
+                        Aws.NO_VALUE
                     )
                 ),
-                comment=core.Aws.STACK_NAME,
+                comment=Aws.STACK_NAME,
                 default_cache_behavior=aws_cloudfront.CfnDistribution.DefaultCacheBehaviorProperty(
                     allowed_methods=[
                         "DELETE",
@@ -884,8 +904,8 @@ class DrupalStack(core.Stack):
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
                         # if there is an ssl cert on the alb, use https only
-                        origin_protocol_policy=core.Token.as_string(
-                            core.Fn.condition_if(
+                        origin_protocol_policy=Token.as_string(
+                            Fn.condition_if(
                                 certificate_arn_exists_condition.logical_id,
                                 "https-only",
                                 "http-only"
@@ -896,38 +916,38 @@ class DrupalStack(core.Stack):
                 )],
                 price_class=cloudfront_price_class_param.value_as_string,
                 viewer_certificate=aws_cloudfront.CfnDistribution.ViewerCertificateProperty(
-                    acm_certificate_arn=core.Token.as_string(
-                        core.Fn.condition_if(
+                    acm_certificate_arn=Token.as_string(
+                        Fn.condition_if(
                             cloudfront_certificate_arn_exists_condition.logical_id,
                             cloudfront_certificate_arn_param.value_as_string,
-                            core.Aws.NO_VALUE
+                            Aws.NO_VALUE
                         )
                     ),
-                    cloud_front_default_certificate=core.Fn.condition_if(
+                    cloud_front_default_certificate=Fn.condition_if(
                         cloudfront_certificate_arn_exists_condition.logical_id,
-                        core.Aws.NO_VALUE,
+                        Aws.NO_VALUE,
                         True
                     ),
-                    minimum_protocol_version=core.Token.as_string(
-                        core.Fn.condition_if(
+                    minimum_protocol_version=Token.as_string(
+                        Fn.condition_if(
                             cloudfront_certificate_arn_exists_condition.logical_id,
                             "TLSv1.2_2018",
-                            core.Aws.NO_VALUE
+                            Aws.NO_VALUE
                         )
                     ),
-                    ssl_support_method=core.Token.as_string(
-                        core.Fn.condition_if(
+                    ssl_support_method=Token.as_string(
+                        Fn.condition_if(
                             cloudfront_certificate_arn_exists_condition.logical_id,
                             "sni-only",
-                            core.Aws.NO_VALUE
+                            Aws.NO_VALUE
                         )
                     )
                 )
             )
         )
-        cloudfront_distribution_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        cloudfront_distribution_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="distribution",
                 resource_name=cloudfront_distribution.ref,
@@ -1094,8 +1114,8 @@ class DrupalStack(core.Stack):
                                 effect=aws_iam.Effect.ALLOW,
                                 actions=[ "secretsmanager:GetSecretValue" ],
                                 resources=[
-                                    core.Token.as_string(
-                                        core.Fn.condition_if(
+                                    Token.as_string(
+                                        Fn.condition_if(
                                             secret_arn_exists_condition.logical_id,
                                             secret_arn_param.value_as_string,
                                             secret.ref
@@ -1129,43 +1149,43 @@ class DrupalStack(core.Stack):
         launch_config = aws_autoscaling.CfnLaunchConfiguration(
             self,
             "AppLaunchConfig",
-            image_id=core.Fn.find_in_map("AWSAMIRegionMap", core.Aws.REGION, "OEDRUPAL"),
+            image_id=Fn.find_in_map("AWSAMIRegionMap", Aws.REGION, "OEDRUPAL"),
             instance_type=app_instance_type_param.value_as_string,
             iam_instance_profile=instance_profile.ref,
             security_groups=[app_sg.ref],
             user_data=(
-                core.Fn.base64(
-                    core.Fn.sub(
+                Fn.base64(
+                    Fn.sub(
                         app_launch_config_user_data,
                         {
-                            "CloudFrontHost": core.Token.as_string(
-                                core.Fn.condition_if(
+                            "CloudFrontHost": Token.as_string(
+                                Fn.condition_if(
                                     cloudfront_enable_condition.logical_id,
-                                    core.Fn.condition_if(
+                                    Fn.condition_if(
                                         cloudfront_aliases_exist_condition.logical_id,
-                                        core.Fn.select(0, cloudfront_aliases_param.value_as_list),
+                                        Fn.select(0, cloudfront_aliases_param.value_as_list),
                                         cloudfront_distribution.attr_domain_name
                                     ),
                                     ""
                                 )
                             ),
-                            "DrupalSalt": core.Fn.base64(core.Aws.STACK_ID),
-                            "ElastiCacheClusterHost": core.Token.as_string(
-                                core.Fn.condition_if(
+                            "DrupalSalt": Fn.base64(Aws.STACK_ID),
+                            "ElastiCacheClusterHost": Token.as_string(
+                                Fn.condition_if(
                                     elasticache_enable_condition.logical_id,
                                     elasticache_cluster.attr_configuration_endpoint_address,
                                     ""
                                 )
                             ),
-                            "ElastiCacheClusterPort": core.Token.as_string(
-                                core.Fn.condition_if(
+                            "ElastiCacheClusterPort": Token.as_string(
+                                Fn.condition_if(
                                     elasticache_enable_condition.logical_id,
                                     elasticache_cluster.attr_configuration_endpoint_port,
                                     ""
                                 )
                             ),
-                            "SecretArn": core.Token.as_string(
-                                core.Fn.condition_if(
+                            "SecretArn": Token.as_string(
+                                Fn.condition_if(
                                     secret_arn_exists_condition.logical_id,
                                     secret_arn_param.value_as_string,
                                     secret.ref
@@ -1180,12 +1200,12 @@ class DrupalStack(core.Stack):
             self,
             "AppAsg",
             launch_configuration_name=launch_config.ref,
-            desired_capacity=core.Token.as_string(asg_desired_capacity_param.value),
-            max_size=core.Token.as_string(asg_max_size_param.value),
-            min_size=core.Token.as_string(asg_min_size_param.value),
+            desired_capacity=Token.as_string(asg_desired_capacity_param.value),
+            max_size=Token.as_string(asg_max_size_param.value),
+            min_size=Token.as_string(asg_min_size_param.value),
             target_group_arns=[
-                core.Token.as_string(
-                    core.Fn.condition_if(
+                Token.as_string(
+                    Fn.condition_if(
                         certificate_arn_exists_condition.logical_id,
                         https_target_group.ref,
                         http_target_group.ref
@@ -1194,23 +1214,23 @@ class DrupalStack(core.Stack):
             ],
             vpc_zone_identifier=vpc.private_subnet_ids()
         )
-        asg.cfn_options.creation_policy=core.CfnCreationPolicy(
-            resource_signal=core.CfnResourceSignal(
+        asg.cfn_options.creation_policy=CfnCreationPolicy(
+            resource_signal=CfnResourceSignal(
                 count=1,
                 timeout="PT15M"
             )
         )
-        asg.cfn_options.update_policy=core.CfnUpdatePolicy(
-            auto_scaling_rolling_update=core.CfnAutoScalingRollingUpdate(
+        asg.cfn_options.update_policy=CfnUpdatePolicy(
+            auto_scaling_rolling_update=CfnAutoScalingRollingUpdate(
                 min_instances_in_service=1,
                 pause_time="PT15M",
                 wait_on_resource_signals=True
             ),
-            auto_scaling_scheduled_action=core.CfnAutoScalingScheduledAction(
+            auto_scaling_scheduled_action=CfnAutoScalingScheduledAction(
                 ignore_unmodified_group_size_properties=True
             )
         )
-        core.Tags.of(asg).add("Name", "{}/AppAsg".format(core.Aws.STACK_NAME))
+        Tags.of(asg).add("Name", "{}/AppAsg".format(Aws.STACK_NAME))
         asg.add_depends_on(db_cluster)
         asg_web_server_scale_up_policy = aws_autoscaling.CfnScalingPolicy(
             self,
@@ -1329,9 +1349,9 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        codebuild_transform_service_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codebuild_transform_service_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codebuild_transform_service_role.ref,
@@ -1358,7 +1378,7 @@ class DrupalStack(core.Stack):
                 image="aws/codebuild/standard:4.0",
                 type="LINUX_CONTAINER"
             ),
-            name="{}-transform".format(core.Aws.STACK_NAME),
+            name="{}-transform".format(Aws.STACK_NAME),
             service_role=codebuild_transform_service_role_arn,
             source=aws_codebuild.CfnProject.SourceProperty(
                 build_spec=codebuild_transform_project_buildspec,
@@ -1413,9 +1433,9 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        codepipeline_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codepipeline_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codepipeline_role.ref,
@@ -1451,8 +1471,8 @@ class DrupalStack(core.Stack):
                                 effect=aws_iam.Effect.ALLOW,
                                 actions=[ "s3:GetBucketVersioning" ],
                                 resources=[
-                                    core.Arn.format(
-                                        components=core.ArnComponents(
+                                    Arn.format(
+                                        components=ArnComponents(
                                             account="",
                                             region="",
                                             resource=source_artifact_bucket_name,
@@ -1473,9 +1493,9 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        codepipeline_source_stage_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codepipeline_source_stage_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codepipeline_source_stage_role.ref,
@@ -1519,9 +1539,9 @@ class DrupalStack(core.Stack):
                 )
             ]
         )
-        codepipeline_deploy_stage_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codepipeline_deploy_stage_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codepipeline_deploy_stage_role.ref,
@@ -1569,9 +1589,9 @@ class DrupalStack(core.Stack):
             ]
         )
         codepipeline_finalize_stage_role.cfn_options.condition = cloudfront_enable_condition
-        codepipeline_finalize_stage_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codepipeline_finalize_stage_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codepipeline_finalize_stage_role.ref,
@@ -1583,7 +1603,7 @@ class DrupalStack(core.Stack):
         codedeploy_application = aws_codedeploy.CfnApplication(
             self,
             "CodeDeployApplication",
-            application_name=core.Aws.STACK_NAME,
+            application_name=Aws.STACK_NAME,
             compute_platform="Server"
         )
         codedeploy_role = aws_iam.CfnRole(
@@ -1594,7 +1614,7 @@ class DrupalStack(core.Stack):
                     aws_iam.PolicyStatement(
                         effect=aws_iam.Effect.ALLOW,
                         actions=[ "sts:AssumeRole" ],
-                        principals=[ aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(core.Aws.REGION)) ]
+                        principals=[ aws_iam.ServicePrincipal("codedeploy.{}.amazonaws.com".format(Aws.REGION)) ]
                     )
                 ]
             ),
@@ -1617,9 +1637,9 @@ class DrupalStack(core.Stack):
             ],
             managed_policy_arns=[ "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole" ]
         )
-        codedeploy_role_arn = core.Arn.format(
-            components=core.ArnComponents(
-                account=core.Aws.ACCOUNT_ID,
+        codedeploy_role_arn = Arn.format(
+            components=ArnComponents(
+                account=Aws.ACCOUNT_ID,
                 region="",
                 resource="role",
                 resource_name=codedeploy_role.ref,
@@ -1632,7 +1652,7 @@ class DrupalStack(core.Stack):
             "CodeDeployDeploymentGroup",
             application_name=codedeploy_application.application_name,
             auto_scaling_groups=[ asg.ref ],
-            deployment_group_name="{}-app".format(core.Aws.STACK_NAME),
+            deployment_group_name="{}-app".format(Aws.STACK_NAME),
             deployment_config_name=aws_codedeploy.ServerDeploymentConfig.ALL_AT_ONCE.deployment_config_name,
             service_role_arn=codedeploy_role_arn,
             trigger_configurations=[
@@ -1650,8 +1670,8 @@ class DrupalStack(core.Stack):
             self,
             "Pipeline",
             artifact_store=aws_codepipeline.CfnPipeline.ArtifactStoreProperty(
-                location=core.Token.as_string(
-                    core.Fn.condition_if(
+                location=Token.as_string(
+                    Fn.condition_if(
                         pipeline_artifact_bucket_name_exists_condition.logical_id,
                         pipeline_artifact_bucket_name_param.value_as_string,
                         pipeline_artifact_bucket.ref
@@ -1762,7 +1782,7 @@ class DrupalStack(core.Stack):
                         ],
                         "Name": "Finalize"
                     },
-                    core.Aws.NO_VALUE
+                    Aws.NO_VALUE
                 ]
             }
         )
@@ -1837,7 +1857,7 @@ class DrupalStack(core.Stack):
                     "DefaultDrupalSourceUrl": DEFAULT_DRUPAL_SOURCE_URL,
                     "SourceArtifactBucket": source_artifact_bucket_name,
                     "SourceArtifactObjectKey": source_artifact_object_key_param.value_as_string,
-                    "StackName": core.Aws.STACK_NAME
+                    "StackName": Aws.STACK_NAME
                 }
             ),
             handler="index.lambda_handler",
@@ -1857,20 +1877,20 @@ class DrupalStack(core.Stack):
         # OUTPUTS
         #
 
-        alb_dns_name_output = core.CfnOutput(
+        alb_dns_name_output = CfnOutput(
             self,
             "AlbDnsNameOutput",
             description="The DNS name of the application load balancer.",
             value=alb.attr_dns_name
         )
-        cloudfront_distribution_endpoint_output = core.CfnOutput(
+        cloudfront_distribution_endpoint_output = CfnOutput(
             self,
             "CloudFrontDistributionEndpointOutput",
             condition=cloudfront_enable_condition,
             description="The distribution DNS name endpoint for connection. Configure in Drupal's settings.php.",
             value=cloudfront_distribution.attr_domain_name
         )
-        elasticache_cluster_endpoint_output = core.CfnOutput(
+        elasticache_cluster_endpoint_output = CfnOutput(
             self,
             "ElastiCacheClusterEndpointOutput",
             condition=elasticache_enable_condition,
@@ -1878,7 +1898,7 @@ class DrupalStack(core.Stack):
             value="{}:{}".format(elasticache_cluster.attr_configuration_endpoint_address,
                                  elasticache_cluster.attr_configuration_endpoint_port)
         )
-        source_artifact_bucket_name_output = core.CfnOutput(
+        source_artifact_bucket_name_output = CfnOutput(
             self,
             "SourceArtifactBucketNameOutput",
             value=source_artifact_bucket_name
