@@ -17,7 +17,7 @@ deploy: build
 	--parameters SourceArtifactBucketName=github-user-and-bucket-githubartifactbucket-wl52dae3lyub \
 	--parameters SourceArtifactObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip \
 	--parameters VpcId=vpc-00425deda4c835455 \
-	--parameters VpcPrivateSubnetId1=subnet-030c94b9795c6cb96 \
-	--parameters VpcPrivateSubnetId2=subnet-079290412ce63c4d5 \
-	--parameters VpcPublicSubnetId1=subnet-0c2f5d4daa1792c8d \
-	--parameters VpcPublicSubnetId2=subnet-060c39a6ded9e89d7
+	--parameters VpcPrivateSubnet1Id=subnet-030c94b9795c6cb96 \
+	--parameters VpcPrivateSubnet2Id=subnet-079290412ce63c4d5 \
+	--parameters VpcPublicSubnet1Id=subnet-0c2f5d4daa1792c8d \
+	--parameters VpcPublicSubnet2Id=subnet-060c39a6ded9e89d7

@@ -109,11 +109,11 @@ class DrupalStack(Stack):
         )
         ami_mapping={
             "AMI": {
-                "OEDRUPAL": AMI_NAME
+                "AMI": AMI_NAME
             }
         }
         for region in generated_ami_ids.keys():
-            ami_mapping[region] = { "OEDRUPAL": generated_ami_ids[region] }
+            ami_mapping[region] = { "AMI": generated_ami_ids[region] }
         aws_ami_region_map = CfnMapping(
             self,
             "AWSAMIRegionMap",
