@@ -47,6 +47,7 @@ from aws_cdk import (
 from constructs import Construct
 
 from oe_patterns_cdk_common.asg import Asg
+from oe_patterns_cdk_common.efs import Efs
 from oe_patterns_cdk_common.vpc import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.1.0.zip"
@@ -728,34 +729,6 @@ class DrupalStack(Stack):
         error_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
         error_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
 
-        # efs
-        efs_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "EfsSg",
-            group_description="EFS SG",
-            vpc_id=vpc.id()
-        )
-        efs = aws_efs.CfnFileSystem(
-            self,
-            "AppEfs",
-            encrypted=True
-        )
-        Tags.of(efs).add("Name", "{}/Efs".format(Aws.STACK_NAME))
-        efs_mount_target1 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget1",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=vpc.private_subnet1_id()
-        )
-        efs_mount_target2 = aws_efs.CfnMountTarget(
-            self,
-            "AppEfsMountTarget2",
-            file_system_id=efs.ref,
-            security_groups=[ efs_sg.ref ],
-            subnet_id=vpc.private_subnet2_id()
-        )
-
         # elasticache
         elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
@@ -970,7 +943,7 @@ class DrupalStack(Stack):
             app_launch_config_user_data = f.read()
         asg = Asg(
             self,
-            "Drupal",
+            "App",
             user_data_contents=app_launch_config_user_data,
             user_data_variables={
                 "CloudFrontHost": Token.as_string(
@@ -1009,6 +982,10 @@ class DrupalStack(Stack):
             },
             vpc=vpc
         )
+
+        # efs
+        efs = Efs(self, "Efs", app_sg=asg.sg, vpc=vpc)
+
         elasticache_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "ElasticacheSgIngress",
@@ -1019,15 +996,6 @@ class DrupalStack(Stack):
             to_port=11211
         )
         elasticache_sg_ingress.cfn_options.condition = elasticache_enable_condition
-        efs_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "EfsSgIngress",
-            from_port=2049,
-            group_id=efs_sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=asg.sg.ref,
-            to_port=2049
-        )
         db_sg_ingress = aws_ec2.CfnSecurityGroupIngress(
             self,
             "DbSgIngress",
