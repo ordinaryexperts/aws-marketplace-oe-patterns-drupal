@@ -11,6 +11,7 @@
 * Tweaking AWS Vault references in DEVELOPMENT.md documentation
 * Fixing taskcat / docker failure
 * Switching to common ASG construct from OE CDK repo
+* Switching to common EFS construct from OE CDK repo
 
 # 1.0.1
 
