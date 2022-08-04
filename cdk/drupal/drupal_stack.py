@@ -6,18 +6,13 @@ from aws_cdk import (
     Arn,
     ArnComponents,
     Aws,
-    aws_autoscaling,
     aws_cloudformation,
     aws_cloudfront,
-    aws_cloudwatch,
     aws_codebuild,
     aws_codedeploy,
     aws_codepipeline,
-    aws_codepipeline_actions,
     aws_ec2,
-    aws_efs,
     aws_elasticache,
-    aws_elasticloadbalancingv2,
     aws_iam,
     aws_lambda,
     aws_logs,
@@ -25,20 +20,14 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
-    aws_ssm,
-    CfnAutoScalingRollingUpdate,
-    CfnAutoScalingScheduledAction,
     CfnCondition,
-    CfnCreationPolicy,
     CfnDeletionPolicy,
     CfnMapping,
     CfnOutput,
     CfnParameter,
     CfnResource,
-    CfnResourceSignal,
     CfnRule,
     CfnRuleAssertion,
-    CfnUpdatePolicy,
     Fn,
     Stack,
     Tags,
@@ -46,11 +35,14 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from oe_patterns_cdk_common.alb import Alb
 from oe_patterns_cdk_common.asg import Asg
+from oe_patterns_cdk_common.dns import Dns
 from oe_patterns_cdk_common.efs import Efs
 from oe_patterns_cdk_common.vpc import Vpc
 
 DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.1.0.zip"
+
 TWO_YEARS_IN_DAYS=731
 if 'TEMPLATE_VERSION' in os.environ:
     template_version = os.environ['TEMPLATE_VERSION']
@@ -133,12 +125,6 @@ class DrupalStack(Stack):
         # PARAMETERS
         #
 
-        certificate_arn_param = CfnParameter(
-            self,
-            "CertificateArn",
-            default="",
-            description="Optional: Specify the ARN of a ACM Certificate to configure HTTPS."
-        )
         cloudfront_aliases_param = CfnParameter(
             self,
             "CloudFrontAliases",
@@ -261,16 +247,6 @@ class DrupalStack(Stack):
         # CONDITIONS
         #
 
-        certificate_arn_exists_condition = CfnCondition(
-            self,
-            "CertificateArnExists",
-            expression=Fn.condition_not(Fn.condition_equals(certificate_arn_param.value, ""))
-        )
-        certificate_arn_does_not_exist_condition = CfnCondition(
-            self,
-            "CertificateArnNotExists",
-            expression=Fn.condition_equals(certificate_arn_param.value, "")
-        )
         cloudfront_aliases_exist_condition = CfnCondition(
             self,
             "CloudFrontAliasesExist",
@@ -568,120 +544,8 @@ class DrupalStack(Stack):
             db_parameter_group_name=db_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
             engine="aurora-mysql",
-            # option_group_name="TODO",
             publicly_accessible=False
         )
-        alb_sg = aws_ec2.CfnSecurityGroup(
-            self,
-            "AlbSg",
-            group_description="Alb Sg",
-            vpc_id=vpc.id()
-        )
-        alb_http_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpIngress",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 80",
-            from_port=80,
-            group_id=alb_sg.ref,
-            ip_protocol="tcp",
-            to_port=80
-        )
-        alb_https_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AlbSgHttpsIngress",
-            cidr_ip="0.0.0.0/0",
-            description="Allow from anyone on port 443",
-            from_port=443,
-            group_id=alb_sg.ref,
-            ip_protocol="tcp",
-            to_port=443
-        )
-        alb = aws_elasticloadbalancingv2.CfnLoadBalancer(
-            self,
-            "AppAlb",
-            scheme="internet-facing",
-            security_groups=[ alb_sg.ref ],
-            subnets=vpc.public_subnet_ids(),
-            type="application"
-        )
-        # if there is no cert...
-        http_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgHttpTargetGroup",
-            health_check_path="/robots.txt",
-            port=80,
-            protocol="HTTP",
-            target_type="instance",
-            vpc_id=vpc.id()
-        )
-        http_target_group.cfn_options.condition = certificate_arn_does_not_exist_condition
-        http_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpListener",
-            default_actions=[
-                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
-                    target_group_arn=http_target_group.ref,
-                    type="forward"
-                )
-            ],
-            load_balancer_arn=alb.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_listener.cfn_options.condition = certificate_arn_does_not_exist_condition
-
-        # if there is a cert...
-        http_redirect_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpRedirectListener",
-            default_actions=[
-                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
-                    redirect_config=aws_elasticloadbalancingv2.CfnListener.RedirectConfigProperty(
-                        host="#{host}",
-                        path="/#{path}",
-                        port="443",
-                        protocol="HTTPS",
-                        query="#{query}",
-                        status_code="HTTP_301"
-                    ),
-                    type="redirect"
-                ),
-            ],
-            load_balancer_arn=alb.ref,
-            port=80,
-            protocol="HTTP"
-        )
-        http_redirect_listener.cfn_options.condition = certificate_arn_exists_condition
-        https_target_group = aws_elasticloadbalancingv2.CfnTargetGroup(
-            self,
-            "AsgHttpsTargetGroup",
-            health_check_path="/robots.txt",
-            port=443,
-            protocol="HTTPS",
-            target_type="instance",
-            vpc_id=vpc.id()
-        )
-        https_target_group.cfn_options.condition = certificate_arn_exists_condition
-        https_listener = aws_elasticloadbalancingv2.CfnListener(
-            self,
-            "HttpsListener",
-            certificates=[
-                aws_elasticloadbalancingv2.CfnListener.CertificateProperty(
-                    certificate_arn=certificate_arn_param.value_as_string
-                )
-            ],
-            default_actions=[
-                aws_elasticloadbalancingv2.CfnListener.ActionProperty(
-                    target_group_arn=https_target_group.ref,
-                    type="forward"
-                )
-            ],
-            load_balancer_arn=alb.ref,
-            port=443,
-            protocol="HTTPS"
-        )
-        https_listener.cfn_options.condition = certificate_arn_exists_condition
 
         # notifications
         notification_topic = aws_sns.CfnTopic(
@@ -761,6 +625,45 @@ class DrupalStack(Stack):
         Tags.of(elasticache_cluster).add("oe:patterns:drupal:stack", Aws.STACK_NAME)
         elasticache_cluster.cfn_options.condition = elasticache_enable_condition
 
+        # autoscaling
+        with open("drupal/app_launch_config_user_data.sh") as f:
+            app_launch_config_user_data = f.read()
+        asg = Asg(
+            self,
+            "App",
+            user_data_contents=app_launch_config_user_data,
+            user_data_variables={
+                "DrupalSalt": Fn.base64(Aws.STACK_ID),
+                "ElastiCacheClusterHost": Token.as_string(
+                    Fn.condition_if(
+                        elasticache_enable_condition.logical_id,
+                        elasticache_cluster.attr_configuration_endpoint_address,
+                        ""
+                    )
+                ),
+                "ElastiCacheClusterPort": Token.as_string(
+                    Fn.condition_if(
+                        elasticache_enable_condition.logical_id,
+                        elasticache_cluster.attr_configuration_endpoint_port,
+                        ""
+                    )
+                ),
+                "SecretArn": Token.as_string(
+                    Fn.condition_if(
+                        secret_arn_exists_condition.logical_id,
+                        secret_arn_param.value_as_string,
+                        secret.ref
+                    )
+                )
+            },
+            vpc=vpc
+        )
+
+        # alb
+        alb = Alb(self, "Alb", asg=asg, vpc=vpc)
+        asg.asg.target_group_arns = [ alb.https_target_group.ref ]
+        dns = Dns(self, "Dns", alb=alb)
+
         # cloudfront
         cloudfront_distribution = aws_cloudfront.CfnDistribution(
             self,
@@ -809,17 +712,10 @@ class DrupalStack(Stack):
                 ),
                 enabled=True,
                 origins=[ aws_cloudfront.CfnDistribution.OriginProperty(
-                    domain_name=alb.attr_dns_name,
+                    domain_name=alb.alb.attr_dns_name,
                     id="alb",
                     custom_origin_config=aws_cloudfront.CfnDistribution.CustomOriginConfigProperty(
-                        # if there is an ssl cert on the alb, use https only
-                        origin_protocol_policy=Token.as_string(
-                            Fn.condition_if(
-                                certificate_arn_exists_condition.logical_id,
-                                "https-only",
-                                "http-only"
-                            )
-                        ),
+                        origin_protocol_policy="https-only",
                         origin_ssl_protocols=[ "TLSv1.1", "TLSv1.2" ]
                     )
                 )],
@@ -938,51 +834,6 @@ class DrupalStack(Stack):
         cloudfront_invalidation_lambda_function.cfn_options.condition = cloudfront_enable_condition
 
 
-        # autoscaling
-        with open("drupal/app_launch_config_user_data.sh") as f:
-            app_launch_config_user_data = f.read()
-        asg = Asg(
-            self,
-            "App",
-            user_data_contents=app_launch_config_user_data,
-            user_data_variables={
-                "CloudFrontHost": Token.as_string(
-                    Fn.condition_if(
-                        cloudfront_enable_condition.logical_id,
-                        Fn.condition_if(
-                            cloudfront_aliases_exist_condition.logical_id,
-                            Fn.select(0, cloudfront_aliases_param.value_as_list),
-                            cloudfront_distribution.attr_domain_name
-                        ),
-                        ""
-                    )
-                ),
-                "DrupalSalt": Fn.base64(Aws.STACK_ID),
-                "ElastiCacheClusterHost": Token.as_string(
-                    Fn.condition_if(
-                        elasticache_enable_condition.logical_id,
-                        elasticache_cluster.attr_configuration_endpoint_address,
-                        ""
-                    )
-                ),
-                "ElastiCacheClusterPort": Token.as_string(
-                    Fn.condition_if(
-                        elasticache_enable_condition.logical_id,
-                        elasticache_cluster.attr_configuration_endpoint_port,
-                        ""
-                    )
-                ),
-                "SecretArn": Token.as_string(
-                    Fn.condition_if(
-                        secret_arn_exists_condition.logical_id,
-                        secret_arn_param.value_as_string,
-                        secret.ref
-                    )
-                )
-            },
-            vpc=vpc
-        )
-
         # efs
         efs = Efs(self, "Efs", app_sg=asg.sg, vpc=vpc)
 
@@ -1005,28 +856,6 @@ class DrupalStack(Stack):
             source_security_group_id=asg.sg.ref,
             to_port=3306
         )
-
-        sg_http_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AppSgHttpIngress",
-            from_port=80,
-            group_id=asg.sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=alb_sg.ref,
-            to_port=80
-        )
-        sg_http_ingress.cfn_options.condition = certificate_arn_does_not_exist_condition
-
-        sg_https_ingress = aws_ec2.CfnSecurityGroupIngress(
-            self,
-            "AppSgHttpsIngress",
-            from_port=443,
-            group_id=asg.sg.ref,
-            ip_protocol="tcp",
-            source_security_group_id=alb_sg.ref,
-            to_port=443
-        )
-        sg_https_ingress.cfn_options.condition = certificate_arn_exists_condition
 
         # codebuild
         codebuild_transform_service_role = aws_iam.CfnRole(
@@ -1600,7 +1429,7 @@ class DrupalStack(Stack):
             self,
             "AlbDnsNameOutput",
             description="The DNS name of the application load balancer.",
-            value=alb.attr_dns_name
+            value=alb.alb.attr_dns_name
         )
         cloudfront_distribution_endpoint_output = CfnOutput(
             self,
@@ -1623,76 +1452,76 @@ class DrupalStack(Stack):
             value=source_artifact_bucket_name
         )
         
+        parameter_groups = [
+            {
+                "Label": {
+                    "default": "CI/CD"
+                },
+                "Parameters": [
+                    notification_email_param.logical_id,
+                    source_artifact_bucket_name_param.logical_id,
+                    source_artifact_object_key_param.logical_id
+                ]
+            },
+            {
+                "Label": {
+                    "default": "Data Snapshots"
+                },
+                "Parameters": [
+                    db_snapshot_identifier_param.logical_id,
+                    db_instance_class_param.logical_id
+                ]
+            },
+            {
+                "Label": {
+                    "default": "Application Config"
+                },
+                "Parameters": [
+                    secret_arn_param.logical_id,
+                    initialize_default_drupal_param.logical_id
+                ]
+            },
+            {
+                "Label": {
+                    "default": "ElastiCache memcached"
+                },
+                "Parameters": [
+                    elasticache_enable_param.logical_id,
+                    elasticache_cluster_engine_version_param.logical_id,
+                    elasticache_cluster_cache_node_type_param.logical_id,
+                    elasticache_cluster_num_cache_nodes_param.logical_id
+                ]
+            },
+            {
+                "Label": {
+                    "default": "CloudFront"
+                },
+                "Parameters": [
+                    cloudfront_enable_param.logical_id,
+                    cloudfront_certificate_arn_param.logical_id,
+                    cloudfront_aliases_param.logical_id,
+                    cloudfront_price_class_param.logical_id
+                ]
+            }
+        ]
+        parameter_groups += vpc.metadata_parameter_group()
+        parameter_groups += [
+            {
+                "Label": {
+                    "default": "Template Development"
+                },
+                "Parameters": [
+                    pipeline_artifact_bucket_name_param.logical_id
+                ]
+            }
+        ]
+
         # AWS::CloudFormation::Interface
         self.template_options.metadata = {
             "OE::Patterns::TemplateVersion": template_version,
             "AWS::CloudFormation::Interface": {
-                "ParameterGroups": [
-                    {
-                        "Label": {
-                            "default": "CI/CD"
-                        },
-                        "Parameters": [
-                            notification_email_param.logical_id,
-                            source_artifact_bucket_name_param.logical_id,
-                            source_artifact_object_key_param.logical_id
-                        ]
-                    },
-                    {
-                        "Label": {
-                            "default": "Data Snapshots"
-                        },
-                        "Parameters": [
-                            db_snapshot_identifier_param.logical_id,
-                            db_instance_class_param.logical_id
-                        ]
-                    },
-                    {
-                        "Label": {
-                            "default": "Application Config"
-                        },
-                        "Parameters": [
-                            certificate_arn_param.logical_id,
-                            secret_arn_param.logical_id,
-                            initialize_default_drupal_param.logical_id
-                        ]
-                    },
-                    {
-                        "Label": {
-                            "default": "ElastiCache memcached"
-                        },
-                        "Parameters": [
-                            elasticache_enable_param.logical_id,
-                            elasticache_cluster_engine_version_param.logical_id,
-                            elasticache_cluster_cache_node_type_param.logical_id,
-                            elasticache_cluster_num_cache_nodes_param.logical_id
-                        ]
-                    },
-                    {
-                        "Label": {
-                            "default": "CloudFront"
-                        },
-                        "Parameters": [
-                            cloudfront_enable_param.logical_id,
-                            cloudfront_certificate_arn_param.logical_id,
-                            cloudfront_aliases_param.logical_id,
-                            cloudfront_price_class_param.logical_id
-                        ]
-                    },
-                    vpc.metadata_parameter_group(),
-                    {
-                        "Label": {
-                            "default": "Template Development"
-                        },
-                        "Parameters": [
-                            pipeline_artifact_bucket_name_param.logical_id
-                        ]
-                    }
-                ],
+                "ParameterGroups": parameter_groups,
                 "ParameterLabels": {
-                    certificate_arn_param.logical_id: {
-                        "default": "ACM Certificate ARN"
-                    },
                     cloudfront_aliases_param.logical_id: {
                         "default": "CloudFront Aliases"
                     },
