@@ -571,28 +571,6 @@ class DrupalStack(Stack):
             ]
         )
 
-        system_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalSystemLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        system_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-        system_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
-        access_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalAccessLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        access_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-        access_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
-        error_log_group = aws_logs.CfnLogGroup(
-            self,
-            "DrupalErrorLogGroup",
-            retention_in_days=TWO_YEARS_IN_DAYS
-        )
-        error_log_group.cfn_options.update_replace_policy = CfnDeletionPolicy.RETAIN
-        error_log_group.cfn_options.deletion_policy = CfnDeletionPolicy.RETAIN
-
         # elasticache
         elasticache_sg = aws_ec2.CfnSecurityGroup(
             self,
@@ -630,7 +608,16 @@ class DrupalStack(Stack):
             app_launch_config_user_data = f.read()
         asg = Asg(
             self,
-            "App",
+            "Asg",
+            secret_arn = Token.as_string(
+                Fn.condition_if(
+                    secret_arn_exists_condition.logical_id,
+                    secret_arn_param.value_as_string,
+                    secret.ref
+                )
+            ),
+            deployment_rolling_update = True,
+            pipeline_bucket_arn = pipeline_artifact_bucket_arn,
             user_data_contents=app_launch_config_user_data,
             user_data_variables={
                 "DrupalSalt": Fn.base64(Aws.STACK_ID),
@@ -661,7 +648,7 @@ class DrupalStack(Stack):
 
         # alb
         alb = Alb(self, "Alb", asg=asg, vpc=vpc)
-        asg.asg.target_group_arns = [ alb.https_target_group.ref ]
+        asg.asg.target_group_arns = [ alb.target_group.ref ]
         dns = Dns(self, "Dns", alb=alb)
 
         # cloudfront
@@ -832,7 +819,6 @@ class DrupalStack(Stack):
             runtime="python3.7"
         )
         cloudfront_invalidation_lambda_function.cfn_options.condition = cloudfront_enable_condition
-
 
         # efs
         efs = Efs(self, "Efs", app_sg=asg.sg, vpc=vpc)
