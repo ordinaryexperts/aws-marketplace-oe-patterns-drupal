@@ -18,7 +18,7 @@ deploy: build
 	--parameters PipelineArtifactBucketName=github-user-and-bucket-taskcatbucket-2zppaw3wi3sx \
 	--parameters SecretArn=arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J \
 	--parameters SourceArtifactBucketName=github-user-and-bucket-githubartifactbucket-wl52dae3lyub \
-	--parameters SourceArtifactObjectKey=aws-marketplace-oe-patterns-drupal-example-site/refs/heads/develop.zip \
+	--parameters SourceArtifactObjectKey=aws-marketplace-oe-patterns-drupal-example-site/dev/20220822-2121.zip \
 	--parameters VpcId=vpc-00425deda4c835455 \
 	--parameters VpcPrivateSubnet1Id=subnet-030c94b9795c6cb96 \
 	--parameters VpcPrivateSubnet2Id=subnet-079290412ce63c4d5 \

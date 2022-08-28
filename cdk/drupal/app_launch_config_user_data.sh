@@ -177,6 +177,13 @@ fi
 # drupal salt
 echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
+# hostname
+aws ssm get-parameter \
+    --name "${HostnameParameterName}" \
+    --with-decryption \
+    --query Parameter.Value \
+| jq -r . > /opt/oe/patterns/drupal/hostname.txt
+
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
   -keyout /etc/ssl/private/apache-selfsigned.key \
