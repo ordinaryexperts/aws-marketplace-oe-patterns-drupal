@@ -7,7 +7,7 @@ deploy: build
 	docker-compose run -w /code/cdk --rm devenv cdk deploy \
 	--require-approval never \
 	--parameters AlbCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e \
-	--parameters AsgReprovisionString=20220821-1255 \
+	--parameters AsgReprovisionString=20220828-1255 \
 	--parameters CloudFrontCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e \
 	--parameters CloudFrontAliases=cdn-oe-patterns-drupal-${USER}.dev.patterns.ordinaryexperts.com \
 	--parameters CloudFrontEnable=false \

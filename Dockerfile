@@ -1,4 +1,4 @@
-FROM ordinaryexperts/aws-marketplace-patterns-devenv:feature-cdk2
+FROM ordinaryexperts/aws-marketplace-patterns-devenv:2.1.0
 # to use local docker image
 # FROM devenv:latest
 
