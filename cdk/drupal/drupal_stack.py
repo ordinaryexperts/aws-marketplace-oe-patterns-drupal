@@ -20,6 +20,7 @@ from aws_cdk import (
     aws_s3,
     aws_secretsmanager,
     aws_sns,
+    aws_ssm,
     CfnCondition,
     CfnDeletionPolicy,
     CfnMapping,
@@ -630,6 +631,7 @@ class DrupalStack(Stack):
             pipeline_bucket_arn = pipeline_artifact_bucket_arn,
             user_data_contents=app_launch_config_user_data,
             user_data_variables={
+                "CloudFrontHostnameParameterName": Aws.STACK_NAME + "-cloudfront-hostname",
                 "DrupalSalt": Fn.base64(Aws.STACK_ID),
                 "ElastiCacheClusterHost": Token.as_string(
                     Fn.condition_if(
@@ -759,6 +761,26 @@ class DrupalStack(Stack):
             stack=self
         )
         cloudfront_distribution.cfn_options.condition = cloudfront_enable_condition
+
+        cloudfront_hostname_param = aws_ssm.CfnParameter(
+            self,
+            "CloudFrontHostnameParameter",
+            type="String",
+            value=Token.as_string(
+                Fn.condition_if(
+                    cloudfront_enable_condition.logical_id,
+                    Fn.condition_if(
+                        cloudfront_aliases_exist_condition.logical_id,
+                        Fn.select(0, cloudfront_aliases_param.value_as_list),
+                        cloudfront_distribution.attr_domain_name
+                    ),
+                    ""
+                )
+            ),
+            name=Aws.STACK_NAME + "-cloudfront-hostname"
+        )
+        cloudfront_hostname_param.cfn_options.condition = cloudfront_enable_condition
+
         cloudfront_invalidation_lambda_function_role = aws_iam.CfnRole(
             self,
             "CloudFrontInvalidationLambdaFunctionRole",

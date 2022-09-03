@@ -167,6 +167,16 @@ mysql -u $username -P $port -h $host --password=$password
 EOF
 chmod 755 /usr/local/bin/connect-to-db
 
+# CloudFront Hostname
+if [[ "${CloudFrontEnable}" == "true" ]]
+then
+    aws ssm get-parameter \
+        --name "${CloudFrontHostnameParameterName}" \
+        --with-decryption \
+        --query Parameter.Value \
+        | jq -r . > /opt/oe/patterns/drupal/cloudfront.txt
+fi
+
 # elasticache values
 if [[ "${ElastiCacheEnable}" == "true" ]]
 then
