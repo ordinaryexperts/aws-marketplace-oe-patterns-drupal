@@ -22,6 +22,8 @@ The AWS stack uses Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Pub
 
 Automatically configured to support auto-scaling through AWS Autoscaling Groups, this solution leverages an EFS file system to share user generated content between application servers. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
 
+We enable SSL by default by providing an existing ACM certificate to the automation.
+
 The template ensure multi-level security by incorporating AWS IAM for federated access to resources with least privilege and AWS managed keys and Secret Manager to manage secrets for encryption of data at rest and in transit. More information regarding the security features are available in the [deployment guide](DEPLOYMENTGUIDE.md/#security).
 
 We support multiple availability zones using an RDS Aurora MySQL cluster and Amazon's integrated options to distribute infrastructure.
@@ -36,7 +38,6 @@ Optional configurations include the following:
 * Integration of CloudFront as a CDN solution
 * ElastiCache caching layer, ready for easy configuration with the CDN and memcached modules for Drupal.
 * Contain your Drupal infrastructure in a new VPC, or provide this CloudFront stack with an existing VPC id and subnets.
-* Support for SSL by supplying the ARN of an existing certificate from AWS Certificate Manager.
 
 Comprehensive, professional cloud hosting for Drupal at the click of a button.
 

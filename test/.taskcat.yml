@@ -6,61 +6,52 @@ project:
   - us-east-1
   template: ./template.yaml
 tests:
-  withoutSSL:
-    parameters:
-      CertificateArn: ''
-      PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
-      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
-      VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
   withSSL:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   withSecret:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   withSecretAndDBSnapshotIdentifier:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       DBSnapshotIdentifier: arn:aws:rds:us-east-1:992593896645:cluster-snapshot:oe-patterns-drupal-default-20200504
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:/test/drupal/secret-P6y46J
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   withoutVpc:
     parameters:
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: ''
-      VpcPrivateSubnetId1: ''
-      VpcPrivateSubnetId2: ''
-      VpcPublicSubnetId1: ''
-      VpcPublicSubnetId2: ''
+      VpcPrivateSubnet1Id: ''
+      VpcPrivateSubnet2Id: ''
+      VpcPublicSubnet1Id: ''
+      VpcPublicSubnet2Id: ''
   allResources:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
@@ -69,13 +60,13 @@ tests:
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   withBucketAndDefaultDrupal:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontEnable: 'true'
       ElastiCacheEnable: 'true'
@@ -84,10 +75,10 @@ tests:
       SecretArn: arn:aws:secretsmanager:us-east-1:992593896645:secret:dylan-test-secret-9yBQ7O
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   # resources configurations with default values as fillers
   # autoscalingConfiguration:
   #   parameters:
@@ -97,12 +88,13 @@ tests:
   #     AppLaunchConfigInstanceType: m5.xlarge
   #     PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
   #     VpcId: vpc-00425deda4c835455
-  #     VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-  #     VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-  #     VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-  #     VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+  #     VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+  #     VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+  #     VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+  #     VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
   elasticacheConfiguration:
     parameters:
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       ElastiCacheClusterCacheNodeType: cache.t3.micro
       ElastiCacheClusterEngineVersion: 1.5.16
       ElastiCacheClusterNumCacheNodes: 2
@@ -110,13 +102,13 @@ tests:
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
-  cloudfrontConfigWithCertAndAlias:
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
+  cloudfrontConfigWithAlias:
     parameters:
-      CertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontAliases: cdn-cloudfront-config-with-cert-and-alias-test.dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontEnable: 'true'
@@ -124,31 +116,19 @@ tests:
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
-  cloudfrontConfigNoCertOrAlias:
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
+  cloudfrontConfigNoAlias:
     parameters:
+      AlbCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontEnable: 'true'
       CloudFrontPriceClass: PriceClass_All
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
       SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
       VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
-  cloudfrontConfigNoCertWithAlias:
-    parameters:
-      CloudFrontAliases: cdn-cloudfront-config-with-no-cert-with-alias-test.dev.patterns.ordinaryexperts.com
-      CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
-      CloudFrontEnable: 'true'
-      CloudFrontPriceClass: PriceClass_All
-      PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
-      SourceArtifactBucketName: github-user-and-bucket-taskcatartifactbucket-1g05fj153cbtp
-      VpcId: vpc-00425deda4c835455
-      VpcPrivateSubnetId1: subnet-030c94b9795c6cb96
-      VpcPrivateSubnetId2: subnet-079290412ce63c4d5
-      VpcPublicSubnetId1: subnet-0c2f5d4daa1792c8d
-      VpcPublicSubnetId2: subnet-060c39a6ded9e89d7
+      VpcPrivateSubnet1Id: subnet-030c94b9795c6cb96
+      VpcPrivateSubnet2Id: subnet-079290412ce63c4d5
+      VpcPublicSubnet1Id: subnet-0c2f5d4daa1792c8d
+      VpcPublicSubnet2Id: subnet-060c39a6ded9e89d7
