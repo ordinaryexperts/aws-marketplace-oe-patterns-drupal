@@ -14,6 +14,7 @@
 * Switching to common EFS construct from OE CDK repo
 * Upgrading to Ubuntu 20.04
 * Adding db backup retention parameter
+* Using common Makefile tasks
 
 # 1.0.1
 
