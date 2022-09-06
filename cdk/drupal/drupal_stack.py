@@ -42,7 +42,7 @@ from oe_patterns_cdk_common.dns import Dns
 from oe_patterns_cdk_common.efs import Efs
 from oe_patterns_cdk_common.vpc import Vpc
 
-DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/heads/feature/upgrade-drupal.zip"
+DEFAULT_DRUPAL_SOURCE_URL="https://ordinary-experts-aws-marketplace-drupal-pattern-artifacts.s3.amazonaws.com/aws-marketplace-oe-patterns-drupal-example-site/refs/tags/1.2.0.zip"
 
 TWO_YEARS_IN_DAYS=731
 if 'TEMPLATE_VERSION' in os.environ:
@@ -157,6 +157,15 @@ class DrupalStack(Stack):
             ],
             default="PriceClass_All",
             description="Required: Price class to use for CloudFront CDN (only applies when CloudFront enabled)."
+        )
+        db_backup_retention_period_param = CfnParameter(
+            self,
+            "DbBackupRetentionPeriod",
+            type="Number",
+            min_value=1,
+            max_value=35,
+            default="7",
+            description="Required: The number of days to retain automated db backups."
         )
         db_instance_class_param = CfnParameter(
             self,
@@ -493,6 +502,7 @@ class DrupalStack(Stack):
         db_cluster = aws_rds.CfnDBCluster(
             self,
             "DbCluster",
+            backup_retention_period=db_backup_retention_period_param.value_as_number,
             db_cluster_parameter_group_name=db_cluster_parameter_group.ref,
             db_subnet_group_name=db_subnet_group.ref,
             engine="aurora-mysql",
