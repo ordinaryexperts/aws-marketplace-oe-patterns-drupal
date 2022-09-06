@@ -13,6 +13,7 @@
 * Switching to common ASG construct from OE CDK repo
 * Switching to common EFS construct from OE CDK repo
 * Upgrading to Ubuntu 20.04
+* Adding db backup retention parameter
 
 # 1.0.1
 
