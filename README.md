@@ -10,13 +10,13 @@ Want to get started?  Read the [Deployment Guide](DEPLOYMENTGUIDE.md).
 
 ## Current Drupal Environment Configurations
 
-* Apache 2.4.7
-* MySQL 5.7.8
-* PHP 7.3.0
-* Drupal 9.0.0
-* Composer 1.9
-* Memcache 2.1
-* Drush 10.2
+* Apache 2.4
+* MySQL 8.0
+* PHP 7.4
+* Drupal 9.4
+* Composer
+* Memcache
+* Drush
 
 The AWS stack uses Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 

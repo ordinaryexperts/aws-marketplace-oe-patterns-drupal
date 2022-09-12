@@ -1,5 +1,7 @@
 # Unreleased
 
+# 2.0.0
+
 * Beefing up cleanup script
 * Including full guid in append_stack_uuid
 * Switching to common VPC construct from OE CDK repo
