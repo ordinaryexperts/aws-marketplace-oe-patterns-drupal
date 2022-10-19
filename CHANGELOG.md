@@ -1,5 +1,7 @@
 # Unreleased
 
+# 2.0.0
+
 * Beefing up cleanup script
 * Including full guid in append_stack_uuid
 * Switching to common VPC construct from OE CDK repo
@@ -16,6 +18,7 @@
 * Adding db backup retention parameter
 * Using common Makefile tasks
 * Upgrading default Drupal site to 9.4.5
+* Tightening IAM roles
 
 # 1.0.1
 
