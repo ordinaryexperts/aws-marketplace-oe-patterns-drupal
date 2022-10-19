@@ -1,18 +1,20 @@
-# run all tests once at 11pm pst daily
-name: Test Nightly CI
+# run all tests once weekly Monday 9am
+name: All Features and Regions Tests
 
 on:
   schedule:
-    - cron: '0 6 * * *' # run at 11pm pst
+    - cron: '0 16 * * 1' # run Mondays at 9am pacific
 
 jobs:
   taskcat:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: 'develop'
       - name: build
         run: make build
-      - name: test
+      - name: test features
         run: make test-all
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
@@ -20,8 +22,18 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: taskcat_outputs
+          name: taskcat_outputs_features
           path: test/taskcat_outputs/
+      - name: test regions
+        run: make test-regions
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OE_PATTERNS_TASKCAT_DEV_GITHUB_AWS_SECRET_ACCESS_KEY }}
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: taskcat_outputs_regions
+          path: test/regions-test/taskcat_outputs/
       - name: clean snapshots
         if: always()
         run: make clean-snapshots-tcat-all-regions

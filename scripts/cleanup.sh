@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
+# https://stackoverflow.com/a/246128
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 TYPE="${1:-all}"
 PREFIX="${2:-user}"
 TEST_REGIONS="${3:-main}"
 
 if [[ $TEST_REGIONS == "all" ]]; then
-  REGIONS=('us-east-1' 'us-east-2' 'us-west-1' 'us-west-2' 'ca-central-1'
-            'eu-central-1' 'eu-north-1' 'eu-west-1' 'eu-west-2' 'eu-west-3' 'ap-northeast-1'
-            'ap-northeast-2' 'ap-south-1' 'ap-southeast-1' 'ap-southeast-2' 'sa-east-1')
+    readarray -t REGIONS < /code/supported_regions.txt
 else
-  REGIONS=('us-east-1')
+    REGIONS=('us-east-1')
 fi
 
 if [[ $PREFIX == "tcat" ]]; then
@@ -19,15 +20,13 @@ else
 fi
 
 if [[ $TYPE == "all" || $TYPE == "buckets" ]]; then
-    for region in ${REGIONS[@]}; do
-        echo "Removing $PREFIX_TO_DELETE buckets in $region..."
-        BUCKETS=`aws s3 ls --region $region | awk '{print $3}'`
-        for bucket in $BUCKETS; do
-            if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
-                echo $bucket
-                aws s3 rb s3://$bucket --region $region --force
-            fi
-        done
+    echo "Removing $PREFIX_TO_DELETE buckets..."
+    BUCKETS=`aws s3 ls | awk '{print $3}'`
+    for bucket in $BUCKETS; do
+        if [[ $bucket == $PREFIX_TO_DELETE* ]]; then
+            echo $bucket
+            python3 $DIR/empty-and-delete-bucket.py $bucket
+        fi
     done
     echo "done."
 fi
@@ -40,6 +39,27 @@ if [[ $TYPE == "all" || $TYPE == "snapshots" ]]; then
             if [[ $snapshot == $PREFIX_TO_DELETE* ]]; then
                 echo $snapshot
                 aws rds delete-db-cluster-snapshot --region $region --db-cluster-snapshot-identifier $snapshot
+            fi
+        done
+    done
+    echo "done."
+fi
+
+if [[ $TYPE == "all" || $TYPE == "stacks" ]]; then
+    for region in ${REGIONS[@]}; do
+        echo "Removing $PREFIX_TO_DELETE stacks in $region..."
+        STACKS=`aws cloudformation describe-stacks --region $region | jq -r '.Stacks[].StackName'`
+        for stack in $STACKS; do
+            if [[ $PREFIX_TO_DELETE == "tcat" ]]; then
+                if [[ $stack == tCaT* ]]; then
+                    echo $stack
+                    aws cloudformation delete-stack --region $region --stack-name $stack
+                fi
+            else
+                if [[ $stack == $PREFIX_TO_DELETE* ]]; then
+                    echo $stack
+                    aws cloudformation delete-stack --region $region --stack-name $stack
+                fi
             fi
         done
     done

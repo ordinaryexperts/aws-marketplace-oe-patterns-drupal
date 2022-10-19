@@ -1,46 +1,27 @@
 import setuptools
 
-
 with open("README.md") as fp:
     long_description = fp.read()
 
-
-CDK_VERSION="1.42.1"
+CDK_VERSION="2.20.0"
 
 setuptools.setup(
     name="drupal",
-    version="0.0.1",
+    version="1.1.0",
 
-    description="An empty CDK Python app",
+    description="AWS Marketplace Pattern for Drupal by Ordinary Experts.",
     long_description=long_description,
     long_description_content_type="text/markdown",
 
-    author="author",
+    author="Ordinary Experts",
 
     package_dir={"": "drupal"},
     packages=setuptools.find_packages(where="drupal"),
 
     install_requires=[
-        f"aws-cdk.aws-autoscaling=={CDK_VERSION}",
-        f"aws-cdk.aws-cloudformation=={CDK_VERSION}",
-        f"aws-cdk.aws-cloudfront=={CDK_VERSION}",
-        f"aws-cdk.aws-cloudwatch=={CDK_VERSION}",
-        f"aws-cdk.aws-codebuild=={CDK_VERSION}",
-        f"aws-cdk.aws-codedeploy=={CDK_VERSION}",
-        f"aws-cdk.aws-codepipeline-actions=={CDK_VERSION}",
-        f"aws-cdk.aws-codepipeline=={CDK_VERSION}",
-        f"aws-cdk.aws-ec2=={CDK_VERSION}",
-        f"aws-cdk.aws-efs=={CDK_VERSION}",
-        f"aws-cdk.aws-elasticache=={CDK_VERSION}",
-        f"aws-cdk.aws-elasticloadbalancingv2=={CDK_VERSION}",
-        f"aws-cdk.aws-iam=={CDK_VERSION}",
-        f"aws-cdk.aws-lambda=={CDK_VERSION}",
-        f"aws-cdk.aws-rds=={CDK_VERSION}",
-        f"aws-cdk.aws-s3=={CDK_VERSION}",
-        f"aws-cdk.aws-secretsmanager=={CDK_VERSION}",
-        f"aws-cdk.aws-sns=={CDK_VERSION}",
-        f"aws-cdk.aws-ssm=={CDK_VERSION}",
-        f"aws-cdk.core=={CDK_VERSION}"
+        f"aws-cdk-lib=={CDK_VERSION}",
+        f"constructs>=10.0.0,<11.0.0",
+        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@3.1.0"
     ],
 
     python_requires=">=3.6",

@@ -10,17 +10,19 @@ Want to get started?  Read the [Deployment Guide](DEPLOYMENTGUIDE.md).
 
 ## Current Drupal Environment Configurations
 
-* Apache 2.4.7
-* MySQL 5.7.8
-* PHP 7.3.0
-* Drupal 9.0.0
-* Composer 1.9
-* Memcache 2.1
-* Drush 10.2
+* Apache 2.4
+* MySQL 8.0
+* PHP 7.4
+* Drupal 9.4
+* Composer
+* Memcache
+* Drush
 
 The AWS stack uses Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
 
 Automatically configured to support auto-scaling through AWS Autoscaling Groups, this solution leverages an EFS file system to share user generated content between application servers. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
+
+We enable SSL by default by providing an existing ACM certificate to the automation.
 
 The template ensure multi-level security by incorporating AWS IAM for federated access to resources with least privilege and AWS managed keys and Secret Manager to manage secrets for encryption of data at rest and in transit. More information regarding the security features are available in the [deployment guide](DEPLOYMENTGUIDE.md/#security).
 
@@ -36,7 +38,6 @@ Optional configurations include the following:
 * Integration of CloudFront as a CDN solution
 * ElastiCache caching layer, ready for easy configuration with the CDN and memcached modules for Drupal.
 * Contain your Drupal infrastructure in a new VPC, or provide this CloudFront stack with an existing VPC id and subnets.
-* Support for SSL by supplying the ARN of an existing certificate from AWS Certificate Manager.
 
 Comprehensive, professional cloud hosting for Drupal at the click of a button.
 

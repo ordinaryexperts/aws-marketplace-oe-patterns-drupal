@@ -1,5 +1,25 @@
 # Unreleased
 
+# 2.0.0
+
+* Beefing up cleanup script
+* Including full guid in append_stack_uuid
+* Switching to common VPC construct from OE CDK repo
+* Upgrade CDK to 2.20.0
+* Reorganizing DrupalStack class code
+* Adding output for SourceArtifactBucketName
+* Adding uuid to notification topic name
+* Upgrading common VPC construct and fixing ALB subnet/healthcheck
+* Tweaking AWS Vault references in DEVELOPMENT.md documentation
+* Fixing taskcat / docker failure
+* Switching to common ASG construct from OE CDK repo
+* Switching to common EFS construct from OE CDK repo
+* Upgrading to Ubuntu 20.04
+* Adding db backup retention parameter
+* Using common Makefile tasks
+* Upgrading default Drupal site to 9.4.5
+* Tightening IAM roles
+
 # 1.0.1
 
 * Updating packages to address CVE-2021-3177
