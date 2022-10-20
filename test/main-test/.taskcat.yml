@@ -13,7 +13,7 @@ tests:
       CloudFrontAliases: cdn-all-resources-test-$[taskcat_random-string].dev.patterns.ordinaryexperts.com
       CloudFrontCertificateArn: arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e
       CloudFrontEnable: 'true'
-      DnsHostname: drupal-test.dev.patterns.ordinaryexperts.com
+      DnsHostname: drupal-test-$[taskcat_random-string].dev.patterns.ordinaryexperts.com
       DnsRoute53HostedZoneName: dev.patterns.ordinaryexperts.com
       ElastiCacheEnable: 'true'
       PipelineArtifactBucketName: github-user-and-bucket-taskcatbucket-2zppaw3wi3sx
