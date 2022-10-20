@@ -1,5 +1,7 @@
 # Unreleased
 
+* Fixing taskcat tests
+
 # 2.0.0
 
 * Beefing up cleanup script

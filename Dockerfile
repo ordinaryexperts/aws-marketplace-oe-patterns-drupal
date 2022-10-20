@@ -1,4 +1,4 @@
-FROM ordinaryexperts/aws-marketplace-patterns-devenv:2.1.1
+FROM ordinaryexperts/aws-marketplace-patterns-devenv:2.1.3
 # to use local docker image
 # FROM devenv:latest
 
