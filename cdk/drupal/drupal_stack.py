@@ -716,7 +716,7 @@ class DrupalStack(Stack):
                     forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
                         cookies=aws_cloudfront.CfnDistribution.CookiesProperty(
                             forward="whitelist",
-                            whitelisted_names=[ "SESS*" ]
+                            whitelisted_names=[ "SESS*", "SSESS*" ]
                         ),
                         headers=[
                             "CloudFront-Forwarded-Proto",
