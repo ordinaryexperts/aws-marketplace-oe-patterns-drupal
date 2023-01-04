@@ -490,7 +490,8 @@ class DrupalStack(Stack):
                 "log_output": "FILE",
                 "log_queries_not_using_indexes": "1",
                 "long_query_time": "10",
-                "slow_query_log": "1"
+                "slow_query_log": "1",
+                "max_allowed_packet": "1073741824"
             }
         )
         secret = aws_secretsmanager.CfnSecret(
@@ -716,7 +717,7 @@ class DrupalStack(Stack):
                     forwarded_values=aws_cloudfront.CfnDistribution.ForwardedValuesProperty(
                         cookies=aws_cloudfront.CfnDistribution.CookiesProperty(
                             forward="whitelist",
-                            whitelisted_names=[ "SESS*" ]
+                            whitelisted_names=[ "SESS*", "SSESS*" ]
                         ),
                         headers=[
                             "CloudFront-Forwarded-Proto",

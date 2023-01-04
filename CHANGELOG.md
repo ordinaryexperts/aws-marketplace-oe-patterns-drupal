@@ -1,6 +1,8 @@
 # Unreleased
 
 * Fixing taskcat tests
+* CloudFront: forward Drupal https session cookie to origin
+* Increase RDS max_allowed_packet parameter to prevent error during MySQL dump imports
 
 # 2.0.0
 
