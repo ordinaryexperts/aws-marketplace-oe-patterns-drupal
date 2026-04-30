@@ -138,7 +138,7 @@ chown www-data /mnt/efs/drupal/files
 mkdir -p /opt/oe/patterns/drupal
 
 # secretsmanager
-SECRET_ARN="${SecretArn}"
+SECRET_ARN="${DbSecretArn}"
 echo $SECRET_ARN > /opt/oe/patterns/drupal/secret-arn.txt
 
 SECRET_NAME=$(aws secretsmanager list-secrets --query "SecretList[?ARN=='$SECRET_ARN'].Name" --output text)
@@ -177,22 +177,15 @@ then
         | jq -r . > /opt/oe/patterns/drupal/cloudfront.txt
 fi
 
-# elasticache values
-if [[ "${ElastiCacheEnable}" == "true" ]]
-then
-    jq -n --arg host "${ElastiCacheClusterHost}" --arg port "${ElastiCacheClusterPort}" \
-       '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
-fi
+# elasticache values (memcached is always provisioned)
+jq -n --arg host "${ElastiCacheCluster.ConfigurationEndpoint.Address}" --arg port "${ElastiCacheCluster.ConfigurationEndpoint.Port}" \
+   '{host: $host, port: $port}' > /opt/oe/patterns/drupal/elasticache.json
 
 # drupal salt
 echo "${DrupalSalt}" > /opt/oe/patterns/drupal/salt.txt
 
-# hostname
-aws ssm get-parameter \
-    --name "${HostnameParameterName}" \
-    --with-decryption \
-    --query Parameter.Value \
-| jq -r . > /opt/oe/patterns/drupal/hostname.txt
+# hostname (resolved at synth time, written directly)
+echo "${Hostname}" > /opt/oe/patterns/drupal/hostname.txt
 
 # apache
 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \

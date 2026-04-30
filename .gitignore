@@ -30,3 +30,7 @@ scripts/common/*
 
 # product load spreadsheets
 plf*.xlsx
+
+# packer / marketplace runtime artifacts
+logs/
+.marketplace_changeset

@@ -1,0 +1,63 @@
+# AWS Marketplace submission configuration
+# Used by `make marketplace-validate` / `make marketplace-submit` / `make marketplace-status`
+# (via scripts/marketplace.py in the devenv image).
+
+product_id: "51c53b7e-fe92-4899-bdcd-b80ccf03de7c"
+
+# IAM role that allows AWS Marketplace to read the AMI
+ami_access_role_arn: "arn:aws:iam::879777583535:role/AWSMarketplaceAMIScanning"
+
+# Pattern for the CloudFormation parameter that receives the AMI ID.
+# {version} is the pattern version with dots stripped (e.g. "3.0.0" -> "300").
+ami_parameter_pattern: "AsgAmiIdv{version}"
+
+# S3 bucket and path prefix where CloudFormation templates are published
+template_bucket: "ordinary-experts-aws-marketplace-pattern-artifacts"
+template_pattern: "drupal"
+
+# Whether to include a standalone AMI delivery option in addition to the
+# CloudFormation delivery option. This product ships as a CloudFormation
+# template only.
+include_standalone_ami: false
+
+# AMI / OS metadata
+operating_system: "UBUNTU"
+operating_system_version: "24.04"
+username: "ubuntu"
+recommended_instance_type: "m5.xlarge"
+
+usage_instructions: >-
+  Run the stack, providing valid parameters. When the stack creation completes,
+  go to the outputs of the stack and open the URL in your browser. To access
+  the application servers, find the EC2 instance in the AWS console and
+  Connect using the Session Manager option. For more detailed instructions,
+  see the GitHub project.
+
+# CloudFormation delivery option details
+delivery_option:
+  short_description: |
+    Deploy a production-ready Drupal site on AWS with this CloudFormation template and custom AMI. Provisions VPC, Auto Scaling Group, Aurora MySQL, ElastiCache Memcached, EFS, S3, CodePipeline, and Route53.
+  long_description: |
+    Drupal on AWS by FOSSonCloud deploys a production-ready Drupal 11 site using AWS best practices.
+
+    WHAT'S DEPLOYED
+
+    - VPC with public and private subnets (or use your existing VPC)
+    - Application Load Balancer with ACM certificate for HTTPS
+    - Auto Scaling Group with EC2 instances running Apache + PHP 8.3 + Drupal 11
+    - Aurora MySQL 8.0 cluster (multi-AZ)
+    - ElastiCache Memcached cluster for caching
+    - EFS for shared user-uploaded media (sites/default/files)
+    - S3 buckets for build artifacts and CodePipeline state
+    - CodePipeline + CodeBuild + CodeDeploy for application deployments from S3
+    - Optional CloudFront CDN with cache invalidation Lambda
+    - Route53 DNS record
+    - CloudWatch Logs integration
+    - AWS Secrets Manager for credential storage
+    - IAM roles with least-privilege permissions
+
+    REQUIREMENTS
+
+    - Route 53 hosted zone for DNS
+    - ACM certificate for HTTPS (in us-east-1 if CloudFront is enabled)
+  architecture_diagram_url: "https://ordinary-experts-aws-marketplace-pattern-artifacts.s3.amazonaws.com/drupal/3.0.0/diagram.png"
