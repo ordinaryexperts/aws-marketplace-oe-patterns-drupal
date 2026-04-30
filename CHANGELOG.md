@@ -1,3 +1,5 @@
+# Unreleased
+
 # 3.0.0
 
 Major rewrite to bring the pattern current after a 3.5-year hiatus.
