@@ -1,4 +1,9 @@
 #!/bin/bash -eux
+# Packer's execute_command invokes this as `bash <path>`, which makes the
+# shebang's flags a no-op. Re-enable errexit/nounset/xtrace explicitly so
+# provisioning failures abort the build instead of silently shipping a
+# broken AMI.
+set -eux
 
 SCRIPT_VERSION=1.6.0
 SCRIPT_PREINSTALL=ubuntu_2204_2404_preinstall.sh
