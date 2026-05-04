@@ -1,19 +1,17 @@
 -include common.mk
 
 update-common:
-	wget -O common.mk https://raw.githubusercontent.com/ordinaryexperts/aws-marketplace-utilities/1.8.0/common.mk
+	wget -O common.mk https://raw.githubusercontent.com/ordinaryexperts/aws-marketplace-utilities/1.10.3/common.mk
 
 deploy: build
 	docker compose run -w /code/cdk --rm devenv cdk deploy \
 	--require-approval never \
 	--parameters AlbCertificateArn=arn:aws:acm:us-east-1:992593896645:certificate/943928d7-bfce-469c-b1bf-11561024580e \
 	--parameters AlbIngressCidr=0.0.0.0/0 \
-	--parameters AsgAmiIdv300=ami-03e7ffa59e6af18f4 \
+	--parameters AsgAmiIdv300=$(AMI_ID) \
 	--parameters AsgReprovisionString=$(shell date +%Y%m%d.%H%M%S) \
-	--parameters CloudFrontEnable=false \
 	--parameters DnsHostname=drupal-${USER}.dev.patterns.ordinaryexperts.com \
-	--parameters DnsRoute53HostedZoneName=dev.patterns.ordinaryexperts.com \
-	--parameters InitializeDefaultDrupal=true
+	--parameters DnsRoute53HostedZoneName=dev.patterns.ordinaryexperts.com
 
 # Integration testing targets
 test-integration: build

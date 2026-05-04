@@ -1,29 +1,33 @@
 #!/bin/bash -eux
+# Packer's execute_command invokes this as `bash <path>`, which makes the
+# shebang's flags a no-op. Re-enable errexit/nounset/xtrace explicitly so
+# provisioning failures abort the build instead of silently shipping a
+# broken AMI.
+set -eux
 
-SCRIPT_VERSION=1.6.0
+SCRIPT_VERSION=1.10.3
 SCRIPT_PREINSTALL=ubuntu_2204_2404_preinstall.sh
 SCRIPT_POSTINSTALL=ubuntu_2204_2404_postinstall.sh
 
-# preinstall steps
+# preinstall steps (no CodeDeploy agent — Drupal 3.0.0 baked-into-AMI doesn't use CodePipeline)
 curl -O "https://raw.githubusercontent.com/ordinaryexperts/aws-marketplace-utilities/$SCRIPT_VERSION/packer_provisioning_scripts/$SCRIPT_PREINSTALL"
 chmod +x $SCRIPT_PREINSTALL
-./$SCRIPT_PREINSTALL --install-code-deploy-agent --install-efs-utils
+./$SCRIPT_PREINSTALL --install-efs-utils
 rm $SCRIPT_PREINSTALL
 
 #
 # Drupal configuration
 #  * https://www.drupal.org/docs/getting-started/system-requirements
+#  * Codebase baked into /root/drupal; user_data copies to EFS on first boot.
 #
 
 DRUPAL_VERSION=11.3.8
 PHP_VERSION=8.3
 
 export DEBIAN_FRONTEND=noninteractive
+export COMPOSER_ALLOW_SUPERUSER=1
 
 # install Apache + PHP 8.3 + extensions Drupal needs
-# Drupal core requires: date, dom, filter, gd, hash, json, pcre, PDO, session,
-# SimpleXML, SPL, tokenizer, xml, zlib (json/hash/pcre/session/SPL/tokenizer
-# are bundled in PHP 8.3 itself; the rest come from the listed extensions).
 apt-get update
 apt-get install -y \
     apache2 \
@@ -46,6 +50,7 @@ apt-get install -y \
     php${PHP_VERSION}-xml \
     php${PHP_VERSION}-zip \
     php-pear \
+    unzip \
     zlib1g-dev
 
 # uploadprogress PECL extension
@@ -53,14 +58,101 @@ printf "\n" | pecl install uploadprogress
 echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/apache2/conf.d/20-uploadprogress.ini
 echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/cli/conf.d/20-uploadprogress.ini
 
+# install composer
+EXPECTED_CHECKSUM=$(curl -sS https://composer.github.io/installer.sig)
+curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
+ACTUAL_CHECKSUM=$(php -r "echo hash_file('sha384', '/tmp/composer-setup.php');")
+if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+    echo "ERROR: composer installer checksum mismatch"
+    exit 1
+fi
+php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm /tmp/composer-setup.php
+
+# install Drupal $DRUPAL_VERSION via composer (drupal/legacy-project layout — files at root)
+mkdir -p /root/drupal
+cd /root/drupal
+
+cat <<COMPOSERJSON > composer.json
+{
+    "name": "fossoncloud/drupal",
+    "description": "Drupal $DRUPAL_VERSION codebase baked into the FOSSonCloud AMI.",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        }
+    ],
+    "require": {
+        "composer/installers": "^2.3",
+        "drupal/core-composer-scaffold": "^11.0",
+        "drupal/core-project-message": "^11.0",
+        "drupal/core-recommended": "$DRUPAL_VERSION",
+        "drupal/core-vendor-hardening": "^11.0",
+        "drupal/memcache": "^2.7",
+        "drush/drush": "^13.5"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/installers": true,
+            "drupal/core-composer-scaffold": true,
+            "drupal/core-project-message": true,
+            "drupal/core-vendor-hardening": true,
+            "drupal/core-recipe-unpack": true,
+            "php-http/discovery": true,
+            "tbachert/spi": true
+        }
+    },
+    "extra": {
+        "drupal-scaffold": {
+            "locations": {
+                "web-root": "./"
+            }
+        },
+        "installer-paths": {
+            "core": ["type:drupal-core"],
+            "libraries/{\$name}": ["type:drupal-library"],
+            "modules/contrib/{\$name}": ["type:drupal-module"],
+            "profiles/contrib/{\$name}": ["type:drupal-profile"],
+            "themes/contrib/{\$name}": ["type:drupal-theme"],
+            "drush/Commands/contrib/{\$name}": ["type:drupal-drush"],
+            "modules/custom/{\$name}": ["type:drupal-custom-module"],
+            "themes/custom/{\$name}": ["type:drupal-custom-theme"]
+        }
+    }
+}
+COMPOSERJSON
+
+composer install --no-interaction --no-progress --prefer-dist
+
+# settings.php is the vanilla scaffolded default + an explicit include of
+# sites/default/settings.local.php (the default ships that include commented
+# out). We write settings.local.php from user_data on each instance boot.
+# Pre-populating $databases in settings.php here would break Drupal's
+# SettingsEditor::rewrite during site install.
+cp sites/default/default.settings.php sites/default/settings.php
+cat <<'INCLUDE_EOF' >> sites/default/settings.php
+
+if (file_exists($app_root . '/' . $site_path . '/settings.local.php')) {
+  include $app_root . '/' . $site_path . '/settings.local.php';
+}
+INCLUDE_EOF
+
+chown -R www-data:www-data /root/drupal
+
 # configure apache
 a2enmod php${PHP_VERSION}
 a2enmod rewrite
 a2enmod ssl
-
 a2dissite 000-default
-mkdir -p /var/www/app/drupal
-cat <<EOF > /etc/apache2/sites-available/drupal.conf
+mkdir -p /var/www/app
+
+cat <<'APACHE_EOF' > /etc/apache2/sites-available/drupal.conf
 LogFormat "{\"time\":\"%{%Y-%m-%d}tT%{%T}t.%{msec_frac}tZ\", \"process\":\"%D\", \"filename\":\"%f\", \"remoteIP\":\"%a\", \"host\":\"%V\", \"request\":\"%U\", \"query\":\"%q\", \"method\":\"%m\", \"status\":\"%>s\", \"userAgent\":\"%{User-agent}i\", \"referer\":\"%{Referer}i\"}" cloudwatch
 ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"process\":\"[pid%P]\", \"message\":\"%M\"}"
 
@@ -108,7 +200,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         AddType application/x-httpd-php .php
         AddType application/x-httpd-php phtml pht php
 
-        # self-signed cert; real cert is managed by the ELB
+        # self-signed cert; real cert is managed by the ALB
         SSLEngine on
         SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt
         SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
@@ -117,7 +209,7 @@ ErrorLogFormat "{\"time\":\"%{%usec_frac}t\", \"function\":\"[%-m:%l]\", \"proce
         php_value post_max_size 100M
         php_value upload_max_filesize 100M
 </VirtualHost>
-EOF
+APACHE_EOF
 a2ensite drupal
 
 # apache2 will be enabled / started on boot via user_data

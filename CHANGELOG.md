@@ -2,45 +2,61 @@
 
 # 3.0.0
 
-Major rewrite to bring the pattern current after a 3.5-year hiatus.
+Major rewrite. Shipped as a new AWS Marketplace product (the legacy `51c53b7e-fe92-4899-bdcd-b80ccf03de7c` product was Restricted >90 days and AWS Marketplace doesn't accept new versions on those -- see UPGRADE.md).
+
+**Architecture change: bake-into-AMI, drop the CodePipeline**
+
+The 2.x release shipped a CodePipeline + S3 source bucket + CodeBuild + CodeDeploy chain that pulled a Drupal codebase ZIP from S3 and rolled it out to ASG instances. 3.0.0 ships the Drupal codebase pre-baked into the AMI at `/root/drupal` (composer-installed during packer). On first instance boot, user_data copies it into EFS and Apache symlinks `/var/www/app/drupal -> /mnt/efs/drupal`. Same approach the WordPress pattern has used since the start.
+
+What this drops:
+
+* `SourceArtifactBucket`, `PipelineArtifactBucket`, and the BYO-bucket parameters
+* `InitializeDefaultDrupal` + `DefaultDrupalSourceUrl` parameters
+* CodePipeline + CodeBuild transform project + CodeDeploy application/group + their IAM roles
+* CloudFront distribution + cache-invalidation Lambda (was tied to a CodePipeline finalize stage)
+* Initialize-default-drupal Lambda + custom resource
+
+What customers get instead:
+
+* Stack creates -> instance boots -> Drupal install wizard appears at the site URL. No pipeline run required.
+* Drupal core / contrib / custom code lives in EFS and survives ASG instance replacement.
+* Code edits via the Drupal admin UI, or via SSM Session Manager + drush/composer on an instance.
+* AMI rebuilds for security patching swap out the kernel + PHP + Apache; the EFS-resident Drupal codebase is preserved.
 
 **Stack components**
 
-* Drupal 11.3.8 (was 9.4.5)
+* Drupal 11.3.8 (was 9.4.5) -- composer-installed, baked into the AMI
+* Drush 13 -- bundled
 * PHP 8.3 (was 7.4)
 * Ubuntu 24.04 (was 20.04)
-* Aurora MySQL 8.0 (was 5.7)
-* ElastiCache Memcached 1.6 (was 1.5.16)
+* Aurora MySQL 8.0 with `database_name="drupal"` pre-created (was 5.7, no DB pre-created)
+* ElastiCache Memcached 1.6 multi-node (was optional, single-node)
 * Apache 2.4 with apcu, uploadprogress, intl, opcache, mbstring, gd, mysql, curl, xml, zip
 * `oe-patterns-cdk-common` 4.5.1 (was 3.1.0); now uses `AuroraMysql`, `ElasticacheMemcached`, `DbSecret` constructs
 * `aws-cdk-lib` 2.225.0 (was 2.20.0)
-* devenv image 2.8.3 (was 2.1.3); requires `--break-system-packages` for pip
-* Packer pulls preinstall + postinstall scripts from `aws-marketplace-utilities` `1.6.0`
+* devenv image 2.8.3 (was 2.1.3); pip needs `--break-system-packages`
+* Packer uses preinstall + postinstall scripts from `aws-marketplace-utilities` 1.6.0
 
 **Breaking changes for existing 2.x deployments**
 
-The 3.0.0 stack has a different parameter surface and a different Aurora major version. **An existing 2.x stack cannot be updated in place to 3.0.0.** Treat 3.0.0 as a new product and follow [UPGRADE.md](UPGRADE.md) to migrate.
-
-* Pattern version triggers a versioned AMI parameter rename: `AsgAmiId` → `AsgAmiIdv300`.
+* New AWS Marketplace product ID. Existing 2.x subscriptions on the legacy product cannot transition automatically. See [UPGRADE.md](UPGRADE.md).
+* No more S3-based deploy pipeline. Customers who used `aws s3 cp my-drupal.zip s3://<source-bucket>/drupal.zip` need a different workflow (drush, SSM session).
+* No more CloudFront option in the stack.
+* `AsgAmiId` -> `AsgAmiIdv300`.
 * `SecretArn` parameter renamed to `DbSecretArn` (now provided by `DbSecret` common construct).
-* `ElastiCacheEnable` / `ElastiCacheClusterEngineVersion` parameters removed — Memcached is now always provisioned (default `cache.t4g.micro` × 2 nodes; Memcached requires ≥2 nodes for `cross-az` mode in the common construct).
-* `AuroraMysql` common construct replaces hand-rolled Aurora resources. New CFN logical IDs across the database stack.
-* The default Drupal codebase is now Drupal 11. Existing customers who installed via Drupal install wizard on 2.0.0 will need to dump their D9 database, restore into the new D9-snapshot-based 2.x stack, run Drupal core update path 9 → 10 → 11, and re-deploy.
+* `ElastiCacheEnable` / `ElastiCacheClusterEngineVersion` parameters removed -- Memcached is now always provisioned (default `cache.t4g.micro` x 2 nodes; Memcached requires >=2 nodes for `cross-az` mode in the common construct).
 
 **New behavior**
 
-* `marketplace_config.yaml` replaces the deprecated `plf_config.yaml`. AWS Marketplace submission is now via the Catalog API (`make marketplace-submit` / `make marketplace-status`) rather than the old PLF/spreadsheet flow.
-* New `DefaultDrupalSourceUrl` parameter — customers can supply their own Drupal codebase ZIP at stack creation time.
-* `InitializeDefaultDrupal=true` now seeds an out-of-box Drupal 11 codebase from `aws-marketplace-oe-patterns-drupal-example-site` 2.0.0.
+* `marketplace_config.yaml` replaces the deprecated `plf_config.yaml`. AWS Marketplace submission is via the Catalog API (`make marketplace-submit` / `make marketplace-status`).
 * `database_name="drupal"` is created automatically at Aurora cluster creation; install wizard skips the DB-config step.
-* `test/integration/` scaffold added (pytest + boto3 + playwright); `make test-integration` runs basic health/HTTPS/`X-Generator` checks against the deployed stack.
+* `test/integration/` scaffold added (pytest + boto3 + playwright); `make test-integration` runs basic HTTPS / X-Generator checks.
 * `oe-patterns-prod` Marketplace ingestion role is `AWSMarketplaceAMIScanning` (the role with the AWS-managed policy attached).
 * Branding aligned to "Drupal on AWS by FOSSonCloud".
 
 **Known limitations**
 
-* Memcached is enabled at the AWS level by default but the Drupal `memcache` module is not pre-enabled (would otherwise break the install bootstrap). Customers run `drush en memcache -y`, then add `$settings['cache']['default'] = 'cache.backend.memcache';` to `sites/default/settings.local.php` to wire it up.
-* `drupal/cdn` contrib module dropped from the example-site (had a constraint conflict against D11.3.8); CloudFront integration is partial. Customers who want explicit CDN URL substitution can re-add the module via composer.
+* Memcached is provisioned at the AWS level but the Drupal `memcache` module is not pre-enabled (would break the install bootstrap). After install, run `drush en memcache -y`, then add `$settings['cache']['default'] = 'cache.backend.memcache';` to `sites/default/settings.local.php`.
 * No companion `terraform-aws-marketplace-oe-patterns-drupal` module exists; Terraform users would need a wrapper.
 
 # Unreleased (pre-3.0.0; never released)
