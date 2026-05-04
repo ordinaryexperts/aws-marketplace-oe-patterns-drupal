@@ -21,7 +21,7 @@ There is **no in-place upgrade path** between the two products. You'll deploy th
 3. **Deploy 3.0.0 with `DbSnapshotIdentifier` set.** In the CloudFormation console (or via `aws cloudformation create-stack`) deploy the new template, supplying:
    - `DbSnapshotIdentifier=arn:aws:rds:<region>:<account>:cluster-snapshot:my-2x-final-snapshot`
    - `DbSecretArn=<your existing secret ARN>` -- required when restoring from snapshot, since the snapshot's master password is whatever you set in 2.x. Pre-populate the secret with `username` and `password` keys matching the snapshot.
-   - `DnsHostname` and `DnsRoute53HostedZoneName` for a *new* hostname (e.g. `drupal-new.example.com`) — you'll cut over DNS at the end.
+   - `DnsHostname` and `DnsRoute53HostedZoneName` for a *new* hostname (e.g. `drupal-new.example.com`) -- you'll cut over DNS at the end.
 
 4. **Wait for `CREATE_COMPLETE`.** Aurora MySQL upgrades the snapshot from 5.7 to 8.0 in place during the restore. ~15-20 min. The 3.0.0 stack's first instance will boot, copy the AMI's `/root/drupal` (Drupal 11.3.8 codebase) into a fresh EFS filesystem, and start Apache. Visiting the new hostname will show the **Drupal install wizard** with the database fields pre-populated to point at the restored DB.
 
@@ -36,7 +36,7 @@ There is **no in-place upgrade path** between the two products. You'll deploy th
 
 7. **Replace the new stack's Drupal codebase with your D11-upgraded codebase.** Two paths:
 
-   **Path A — upgrade in place using your existing customizations:**
+   **Path A -- upgrade in place using your existing customizations:**
    - SSM-session into a 3.0.0 instance.
    - Backup the AMI-baked codebase: `sudo mv /mnt/efs/drupal /mnt/efs/drupal-amibase`
    - Copy your 2.x Drupal 9 codebase from your old EFS (or git clone your existing project) into `/mnt/efs/drupal/`
@@ -44,7 +44,7 @@ There is **no in-place upgrade path** between the two products. You'll deploy th
    - Resolve any contrib-module incompatibilities locally first (modules with no D11 release will need replacement or removal).
    - Copy the pattern-integration block from `/mnt/efs/drupal-amibase/sites/default/settings.php` (the bottom block that reads `/opt/oe/patterns/drupal/*.json`) into your codebase's settings.php.
 
-   **Path B — start with the AMI-baked Drupal 11 and import only your data:**
+   **Path B -- start with the AMI-baked Drupal 11 and import only your data:**
    - Leave `/mnt/efs/drupal` as the AMI default.
    - Don't run the Drupal install wizard.
    - SSM-session in, then: `cd /var/www/app/drupal && sudo -u www-data ./vendor/bin/drush updatedb -y`
@@ -103,18 +103,18 @@ aws s3 cp my-drupal.zip s3://<source-bucket>/drupal.zip
 
 In 3.0.0, code lives in EFS. Options:
 
-- **Drupal admin UI** — install/update modules and themes via the Extend page (writes to EFS).
-- **SSM Session Manager + drush** — SSH-equivalent into an instance, then `cd /var/www/app/drupal && sudo -u www-data ./vendor/bin/drush ...`
-- **SSM Session Manager + composer** — `sudo -u www-data composer require drupal/<module>` writes to EFS.
-- **Custom downstream automation** — wire your own Lambda or CodeBuild that does `git pull` + `composer install` over an EFS mount.
+- **Drupal admin UI** -- install/update modules and themes via the Extend page (writes to EFS).
+- **SSM Session Manager + drush** -- SSH-equivalent into an instance, then `cd /var/www/app/drupal && sudo -u www-data ./vendor/bin/drush ...`
+- **SSM Session Manager + composer** -- `sudo -u www-data composer require drupal/<module>` writes to EFS.
+- **Custom downstream automation** -- wire your own Lambda or CodeBuild that does `git pull` + `composer install` over an EFS mount.
 
 ## Why the architecture changed
 
 - **Eliminates 4 distinct failure modes** we saw under the pipeline approach: source-bucket seed lambda blank URL, drush wrapper permission, PHP 8 strict-constant in settings.php, memcache module chicken-and-egg with cache backend setting.
-- **Self-contained AMI** for first deploy — no external repo dependency.
-- **Faster first-boot** — no pipeline wait time. Stack creates → Apache serves Drupal in one step.
+- **Self-contained AMI** for first deploy -- no external repo dependency.
+- **Faster first-boot** -- no pipeline wait time. Stack creates → Apache serves Drupal in one step.
 - **Matches the WordPress pattern's architecture**, which has shipped this way successfully since launch.
-- **AMI rebuilds for security patching are decoupled** from customer code — the EFS-resident codebase survives ASG instance replacement.
+- **AMI rebuilds for security patching are decoupled** from customer code -- the EFS-resident codebase survives ASG instance replacement.
 
 ## Known limitations
 

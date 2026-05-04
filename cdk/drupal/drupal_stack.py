@@ -32,7 +32,7 @@ else:
         template_version = "CICD"
 
 # Updated each release in Phase 3 (dev AMI) and Phase 6 prereqs (prod AMI).
-AMI_ID = "ami-0e054472e2f555ce8"  # ordinary-experts-patterns-drupal-3.0.0-20260502 (dev AMI; bake-into-AMI + settings.local.php fix)
+AMI_ID = "ami-0698f76fc00a31671"  # ordinary-experts-patterns-drupal-3.0.0-20260502 (prod AMI for Marketplace submission)
 NEXT_RELEASE_PREFIX = "v300"
 
 

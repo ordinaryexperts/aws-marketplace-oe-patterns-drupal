@@ -2,7 +2,7 @@
 # Used by `make marketplace-validate` / `make marketplace-submit` / `make marketplace-status`
 # (via scripts/marketplace.py in the devenv image).
 
-product_id: "51c53b7e-fe92-4899-bdcd-b80ccf03de7c"
+product_id: "prod-72jmxvqxtvs3a"
 
 # IAM role that allows AWS Marketplace to read the AMI
 ami_access_role_arn: "arn:aws:iam::879777583535:role/AWSMarketplaceAMIScanning"

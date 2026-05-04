@@ -2,7 +2,7 @@
 
 # 3.0.0
 
-Major rewrite. Shipped as a new AWS Marketplace product (the legacy `51c53b7e-fe92-4899-bdcd-b80ccf03de7c` product was Restricted >90 days and AWS Marketplace doesn't accept new versions on those — see UPGRADE.md).
+Major rewrite. Shipped as a new AWS Marketplace product (the legacy `51c53b7e-fe92-4899-bdcd-b80ccf03de7c` product was Restricted >90 days and AWS Marketplace doesn't accept new versions on those -- see UPGRADE.md).
 
 **Architecture change: bake-into-AMI, drop the CodePipeline**
 

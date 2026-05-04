@@ -5,7 +5,7 @@
 # broken AMI.
 set -eux
 
-SCRIPT_VERSION=1.6.0
+SCRIPT_VERSION=1.10.3
 SCRIPT_PREINSTALL=ubuntu_2204_2404_preinstall.sh
 SCRIPT_POSTINSTALL=ubuntu_2204_2404_postinstall.sh
 
