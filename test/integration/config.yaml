@@ -1,0 +1,18 @@
+# Integration Test Configuration
+# Override values via environment variables: TEST_BASE_URL, TEST_STACK_NAME, etc.
+
+application:
+  name: "Drupal"
+  expected_version_major: "11"
+
+aws:
+  region: "us-east-1"
+  stack_name: "drupal-dylan"
+
+test:
+  timeout: 30
+  retry_attempts: 3
+  retry_delay: 2
+
+urls:
+  base_url: "https://drupal-dylan.dev.patterns.ordinaryexperts.com"

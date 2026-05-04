@@ -3,13 +3,14 @@ import setuptools
 with open("README.md") as fp:
     long_description = fp.read()
 
-CDK_VERSION="2.20.0"
+CDK_VERSION="2.225.0"
+OE_PATTERNS_CDK_COMMON_VERSION="4.5.1"
 
 setuptools.setup(
     name="drupal",
-    version="1.1.0",
+    version="3.0.0",
 
-    description="AWS Marketplace Pattern for Drupal by Ordinary Experts.",
+    description="AWS Marketplace Pattern for Drupal on AWS by FOSSonCloud.",
     long_description=long_description,
     long_description_content_type="text/markdown",
 
@@ -21,7 +22,7 @@ setuptools.setup(
     install_requires=[
         f"aws-cdk-lib=={CDK_VERSION}",
         f"constructs>=10.0.0,<11.0.0",
-        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@3.1.0"
+        f"oe-patterns-cdk-common@git+https://github.com/ordinaryexperts/aws-marketplace-oe-patterns-cdk-common@{OE_PATTERNS_CDK_COMMON_VERSION}"
     ],
 
     python_requires=">=3.6",

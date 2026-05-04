@@ -1,72 +1,54 @@
-![Ordinary Experts Logo](https://ordinaryexperts.com/img/logo.png)
+# Drupal on AWS by FOSSonCloud
 
-# Drupal on AWS Pattern
+A FOSSonCloud AWS Marketplace Product
 
-The Ordinary Experts Drupal Pattern is an open-source AWS CloudFormation template that offers an easy-to-install AWS infrastructure solution for quickly deploying a Drupal project, using both AWS and Drupal best practices. The template makes it easy to spin up a production-ready, full-feature infrastructure ready to host scalable Drupal app in the AWS cloud.
+Drupal on AWS by FOSSonCloud is an open-source AWS CloudFormation template + custom AMI that deploys a production-ready Drupal 11 site on AWS, using AWS and Drupal best practices.
 
-Drupal is a free and open-source web content management framework written in PHP, providing powerful tools to meet a broad range of web application needs. This template provides a base Drupal application or can be provided with an existing Drupal project. Based on the environment set-up, our stack can run Drupal versions 8.8 and above, with Drupal 9 as the default Drupal installation.
+## Stack components
 
-Want to get started?  Read the [Deployment Guide](DEPLOYMENTGUIDE.md).
+* Apache 2.4 + PHP 8.3 (Ubuntu 24.04)
+* Drupal 11.3.8 (composer-installed, baked into the AMI)
+* Drush 13 (bundled in the AMI for admin work)
+* Aurora MySQL 8.0 (multi-AZ)
+* ElastiCache Memcached
+* EFS for the Drupal codebase + sites/default/files (shared between instances)
 
-## Current Drupal Environment Configurations
+The template provisions Amazon EC2, Amazon VPC, Amazon Aurora, Amazon EFS, Amazon ElastiCache, AWS Secrets Manager, and AWS Route53.
 
-* Apache 2.4
-* MySQL 8.0
-* PHP 7.4
-* Drupal 9.4
-* Composer
-* Memcache
-* Drush
+The Drupal codebase ships baked into `/root/drupal` in the AMI. On first instance boot, user_data copies it into EFS (`/mnt/efs/drupal`) and symlinks Apache's docroot at `/var/www/app/drupal`. Subsequent instances see the existing EFS-resident codebase and skip the copy. Customer code edits happen via the Drupal admin UI or by SSM Session Manager onto an instance.
 
-The AWS stack uses Amazon Elastic Compute Cloud (Amazon EC2), Amazon Virtual Public Cloud (Amazon VPC), Amazon Aurora, Amazon Elastic File System (Amazon EFS), Amazon Simple Storage System (Amazon S3), AWS CodePipeline, AWS CodeBuild, AWS CodeDeploy, Amazon Secrets Manager, Amazon ElastiCache, and Amazon CloudFront.
+SSL is on by default via an existing ACM certificate on the ALB. Multi-AZ Aurora MySQL provides database high availability. AWS Secrets Manager holds the database credentials.
 
-Automatically configured to support auto-scaling through AWS Autoscaling Groups, this solution leverages an EFS file system to share user generated content between application servers. Additionally, our solution includes a CodePipeline which actively monitors a deployment location on AWS S3 making continuous integration and deployment throughout your infrastructure easy.
+## Stack diagram
 
-We enable SSL by default by providing an existing ACM certificate to the automation.
+![Drupal on AWS by FOSSonCloud — Architecture](diagram.png)
 
-The template ensure multi-level security by incorporating AWS IAM for federated access to resources with least privilege and AWS managed keys and Secret Manager to manage secrets for encryption of data at rest and in transit. More information regarding the security features are available in the [deployment guide](DEPLOYMENTGUIDE.md/#security).
+## Bring-your-own options
 
-We support multiple availability zones using an RDS Aurora MySQL cluster and Amazon's integrated options to distribute infrastructure.
+* Existing VPC + subnets, or let the stack create a new one
+* Existing Secrets Manager secret for the Aurora cluster credentials
 
-Regions supported by Ordinary Experts' stack:
+## Deployment
 
-| Fully Supported | Unsupported |
-| -------------- | ----------- |
-| <ul><li>us-east-1 (N. Virginia)</li><li>us-east-2 (Ohio)</li><li>us-west-1 (N. California)</li><li>us-west-2 (Oregon)</li><li>ca-central-1 (Central)</li><li>eu-central-1 (Frankfurt)</li><li>eu-north-1 (Stockholm)</li><li>eu-west-1 (Ireland)</li><li>eu-west-2 (London)</li><li>eu-west-3 (Paris)</li><li>ap-northeast-1 (Tokyo)</li><li>ap-northeast-2 (Seoul)</li><li>ap-south-1 (Mumbai)</li><li>ap-southeast-1 (Singapore)</li><li>ap-southeast-2 (Sydney)</li><li>sa-east-1 (Sao Paolo)</li></ul> | <ul><li>eu-south-1 (Milan)</li><li>ap-east-1 (Hong Kong)</li><li>me-south-1 (Bahrain)</li><li>af-south-1 (Cape Town)</li></ul> |
+Subscribe via the AWS Marketplace product listing, accept the terms, then launch the CloudFormation template. Required parameters:
 
-Optional configurations include the following:
-* Integration of CloudFront as a CDN solution
-* ElastiCache caching layer, ready for easy configuration with the CDN and memcached modules for Drupal.
-* Contain your Drupal infrastructure in a new VPC, or provide this CloudFront stack with an existing VPC id and subnets.
+| Parameter | Description |
+|---|---|
+| `AlbCertificateArn` | ACM certificate ARN for HTTPS on the ALB (in the deployment region) |
+| `DnsHostname` | Hostname the site will be served at (e.g. `drupal.example.com`) |
+| `DnsRoute53HostedZoneName` | Route53 hosted zone that owns the `DnsHostname` (e.g. `example.com.`) |
 
-Comprehensive, professional cloud hosting for Drupal at the click of a button.
+Optional: `NotificationEmail` for SNS deploy notifications, `DbBackupRetentionPeriod`, instance types for ASG/Aurora/Memcached, BYO VPC/secret. Defaults are sensible for a production-grade single-region deploy.
 
-## Drupal Stack Infrastructure
-
-![Ordinary Experts Drupal Pattern Topology Diagram](oe_drupal_patterns_topology_diagram.png)
-
-## Infrastructure Cost Estimates
-
-We have prepared the following AWS Simple Monthly Calculator links to help estimate the cost of running different configurations of this infrastructure:
-
-* [Basic with minimum options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-086962bc481edc37a0b1d159f74375dd23c92ca8&v=ver20200610dP): $121.75 USD / mo
-* [Basic with default options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-53dc2f9056a2c23c6ca5e46bbf2a17f57b258080&v=ver20200610dP): $429.33 USD / mo
-* [Basic with default options and VPC](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-9110ebb90e8a5ce555d796d756e8512483deb533&v=ver20200610dP): $501.97 USD / mo
-* [Basic with default options and ElastiCache](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-8d532112abf9ad1f25b13070f10495a6f1186a51&v=ver20200610dP): $454.23 USD / mo
-* [Basic with default options and CloudFront](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-f0df89ffe75796bf1dea267462ff91a82531e0cc&v=ver20200610dP): $439.07 USD / mo
-* [Fully loaded with default options](https://calculator.s3.amazonaws.com/index.html#r=IAD&key=files/calc-f03799f13f8e4fbd2b6566367b330dcc328c9d1a&v=ver20200610dP): $532.11 USD / mo
-
-## Setup
-
-We are following the [3 Musketeers](https://3musketeers.io/) pattern for project layout / setup.
-
-First, install [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/), and [Make](https://www.gnu.org/software/make/).
-
-Detailed information about the architecture and step-by-step instructions are available on our [deployment guide](DEPLOYMENTGUIDE.md).
+When the stack reaches `CREATE_COMPLETE`, browse to your `DnsHostname` URL and walk through the Drupal install wizard. Database connection is pre-populated; you only enter site name and admin credentials.
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md).
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the local build / test / publish workflow.
+
+## Upgrading from 2.x
+
+The 3.0.0 release is a major rewrite. See [UPGRADE.md](UPGRADE.md) for the migration path from 2.x deployments.
 
 ## Feedback
 
