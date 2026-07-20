@@ -101,6 +101,7 @@ cat <<COMPOSERJSON > composer.json
             "drupal/core-vendor-hardening": true,
             "drupal/core-recipe-unpack": true,
             "php-http/discovery": true,
+            "symfony/runtime": true,
             "tbachert/spi": true
         }
     },
