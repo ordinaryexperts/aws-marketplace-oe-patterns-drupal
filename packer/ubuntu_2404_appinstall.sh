@@ -47,30 +47,12 @@ apt-get install -y \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-mysql \
     php${PHP_VERSION}-opcache \
+    php${PHP_VERSION}-uploadprogress \
     php${PHP_VERSION}-xml \
     php${PHP_VERSION}-zip \
     php-pear \
     unzip \
     zlib1g-dev
-
-# uploadprogress PECL extension
-# pecl.php.net has been intermittently returning transient 504s (CDN edge
-# issue, not a real outage) -- retry a few times before failing the build.
-PECL_UPLOADPROGRESS_INSTALLED=0
-for attempt in 1 2 3 4 5; do
-    if printf "\n" | pecl install uploadprogress; then
-        PECL_UPLOADPROGRESS_INSTALLED=1
-        break
-    fi
-    echo "pecl install uploadprogress failed (attempt $attempt/5); retrying in 15s..."
-    sleep 15
-done
-if [ "$PECL_UPLOADPROGRESS_INSTALLED" -ne 1 ]; then
-    echo "ERROR: pecl install uploadprogress failed after 5 attempts"
-    exit 1
-fi
-echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/apache2/conf.d/20-uploadprogress.ini
-echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/cli/conf.d/20-uploadprogress.ini
 
 # install composer
 EXPECTED_CHECKSUM=$(curl -sS https://composer.github.io/installer.sig)
