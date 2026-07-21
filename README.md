@@ -7,7 +7,7 @@ Drupal on AWS by FOSSonCloud is an open-source AWS CloudFormation template + cus
 ## Stack components
 
 * Apache 2.4 + PHP 8.3 (Ubuntu 24.04)
-* Drupal 11.3.8 (composer-installed, baked into the AMI)
+* Drupal 11.4.4 (composer-installed, baked into the AMI)
 * Drush 13 (bundled in the AMI for admin work)
 * Aurora MySQL 8.0 (multi-AZ)
 * ElastiCache Memcached

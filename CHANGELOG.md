@@ -1,5 +1,9 @@
 # Unreleased
 
+- Drupal 11.3.8 -> 11.4.4 (11.4.4 is a security-only release fixing SA-CORE-2026-010/011/012 -- moderately critical XSS and access-check issues; 11.4.2 was initially targeted but Composer's advisory check correctly refused to install it once the advisories were published, so the target was bumped to the patched release. No PHP/MySQL requirement changes -- still PHP 8.3, Aurora MySQL 8.0).
+- Versioned AMI parameter bumped `AsgAmiIdv300` -> `AsgAmiIdv310`.
+- `uploadprogress` PHP extension now installed via the `php8.3-uploadprogress` apt package instead of PECL -- `pecl.php.net` has a long history of intermittent DNS/SSL/504 instability that was causing AMI build failures.
+
 # 3.0.0
 
 Major rewrite. Shipped as a new AWS Marketplace product (the legacy `51c53b7e-fe92-4899-bdcd-b80ccf03de7c` product was Restricted >90 days and AWS Marketplace doesn't accept new versions on those -- see UPGRADE.md).

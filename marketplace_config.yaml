@@ -46,7 +46,7 @@ delivery_option:
 
     - VPC with public and private subnets (or bring your own VPC)
     - Application Load Balancer with ACM certificate for HTTPS
-    - Auto Scaling Group running Apache 2.4 + PHP 8.3 + Drupal 11.3.8 (Ubuntu 24.04)
+    - Auto Scaling Group running Apache 2.4 + PHP 8.3 + Drupal 11.4.4 (Ubuntu 24.04)
     - Aurora MySQL 8.0 cluster (multi-AZ)
     - ElastiCache Memcached cluster
     - EFS for the Drupal codebase + sites/default/files (shared across instances)
@@ -59,4 +59,4 @@ delivery_option:
 
     - Route 53 hosted zone for DNS
     - ACM certificate for HTTPS
-  architecture_diagram_url: "https://ordinary-experts-aws-marketplace-pattern-artifacts.s3.amazonaws.com/drupal/3.0.0/diagram.png"
+  architecture_diagram_url: "https://ordinary-experts-aws-marketplace-pattern-artifacts.s3.amazonaws.com/drupal/3.1.0/diagram.png"

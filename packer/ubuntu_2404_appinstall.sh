@@ -21,7 +21,7 @@ rm $SCRIPT_PREINSTALL
 #  * Codebase baked into /root/drupal; user_data copies to EFS on first boot.
 #
 
-DRUPAL_VERSION=11.3.8
+DRUPAL_VERSION=11.4.4
 PHP_VERSION=8.3
 
 export DEBIAN_FRONTEND=noninteractive
