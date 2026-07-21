@@ -130,18 +130,6 @@ composer install --no-interaction --no-progress --prefer-dist
 # settings.php is the vanilla scaffolded default + an explicit include of
 # sites/default/settings.local.php (the default ships that include commented
 # out). We write settings.local.php from user_data on each instance boot.
-#
-# settings.php is chmod'd read-only below. Drupal's own install wizard
-# writes a literal $databases[...] array into settings.php via
-# SettingsEditor::rewrite() as soon as the "Set up database" form is
-# submitted -- even on a failed attempt, and even though it appends after
-# our include block, so it silently overwrites the working credentials
-# settings.local.php just set on every subsequent request. Since this
-# pattern always ships working DB credentials via settings.local.php,
-# settings.php never legitimately needs to be writable, so making it
-# read-only up front prevents that whole failure class instead of
-# tolerating "don't pre-populate $databases in settings.php" as a rule
-# someone has to remember.
 cp sites/default/default.settings.php sites/default/settings.php
 cat <<'INCLUDE_EOF' >> sites/default/settings.php
 
@@ -149,9 +137,26 @@ if (file_exists($app_root . '/' . $site_path . '/settings.local.php')) {
   include $app_root . '/' . $site_path . '/settings.local.php';
 }
 INCLUDE_EOF
-chmod 444 sites/default/settings.php
 
 chown -R www-data:www-data /root/drupal
+
+# settings.php is locked down below: owned by root, group-readable only by
+# www-data. Drupal's own install wizard writes a literal $databases[...]
+# array into settings.php via SettingsEditor::rewrite() as soon as the "Set
+# up database" form is submitted -- even on a failed attempt, and even
+# though it appends after our include block, so it silently overwrites the
+# working credentials settings.local.php just set on every subsequent
+# request. `chmod 444` alone does NOT stop this: if www-data still owns the
+# file, Drupal (running as www-data) can simply chmod its own file back to
+# writable before rewriting it -- permission bits don't restrict the owning
+# user, only other users. Root ownership does, since www-data can then
+# neither write nor chmod a file it doesn't own. Since this pattern always
+# ships working DB credentials via settings.local.php, settings.php never
+# legitimately needs to be writable by the web server process at all.
+# Must run *after* the chown -R above, or that would re-own this back to
+# www-data and undo it.
+chown root:www-data sites/default/settings.php
+chmod 440 sites/default/settings.php
 
 # configure apache
 a2enmod php${PHP_VERSION}
