@@ -8,7 +8,7 @@ OE_PATTERNS_CDK_COMMON_VERSION="4.5.1"
 
 setuptools.setup(
     name="drupal",
-    version="3.0.0",
+    version="3.1.0",
 
     description="AWS Marketplace Pattern for Drupal on AWS by FOSSonCloud.",
     long_description=long_description,
