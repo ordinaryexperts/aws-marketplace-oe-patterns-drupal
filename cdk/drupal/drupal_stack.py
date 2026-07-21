@@ -32,8 +32,8 @@ else:
         template_version = "CICD"
 
 # Updated each release in Phase 3 (dev AMI) and Phase 6 prereqs (prod AMI).
-AMI_ID = "ami-0698f76fc00a31671"  # ordinary-experts-patterns-drupal-3.0.0-20260502 (prod AMI for Marketplace submission)
-NEXT_RELEASE_PREFIX = "v300"
+AMI_ID = "ami-0039b783328fe0c1c"  # ordinary-experts-patterns-drupal-3.1.0-20260721-0906 (prod AMI for Marketplace submission)
+NEXT_RELEASE_PREFIX = "v310"
 
 
 class DrupalStack(Stack):
@@ -101,6 +101,12 @@ class DrupalStack(Stack):
             "Asg",
             ami_id=AMI_ID,
             ami_id_param_name_suffix=NEXT_RELEASE_PREFIX,
+            # Default is 15 min; first-boot user_data copies ~26.5k files
+            # (the composer-installed Drupal codebase) from the AMI to EFS,
+            # which alone takes ~12-13 min over NFS, leaving too little
+            # margin for the rest of user_data (secrets fetch, cert gen,
+            # apache start, cfn-signal) to finish before the ASG times out.
+            create_and_update_timeout_minutes=25,
             secret_arns=[db_secret.secret_arn()],
             use_graviton=False,
             user_data_contents=app_launch_config_user_data,

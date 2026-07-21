@@ -60,7 +60,17 @@ mkdir -p /mnt/efs
 echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 mount -a
 
-# First-boot Drupal copy: AMI ships /root/drupal; copy into EFS only on first boot
+# First-boot Drupal copy: AMI ships /root/drupal; copy into EFS only on first boot.
+#
+# A tar-pipe (tar -cf - -C /root/drupal . | tar -xf -) was tried here to
+# speed this up -- it doesn't help. The codebase is ~26k small files, and
+# both cp -a and tar -xf still issue one open/write/close per file against
+# the NFS-mounted EFS destination; the bottleneck is write-side per-file
+# metadata ops on EFS, not read-side traversal on the source AMI disk, so
+# batching the read side changes nothing. Measured ~14.5 min either way.
+# Don't re-try this optimization without addressing the write-side cost
+# instead (e.g. EFS Provisioned Throughput, fewer/larger files in the
+# codebase, or a longer CreationPolicy timeout -- see below).
 if [ ! -f /mnt/efs/drupal/index.php ]; then
   cp -a /root/drupal /mnt/efs/
   mkdir -p /mnt/efs/drupal/sites/default/files

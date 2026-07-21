@@ -21,7 +21,7 @@ rm $SCRIPT_PREINSTALL
 #  * Codebase baked into /root/drupal; user_data copies to EFS on first boot.
 #
 
-DRUPAL_VERSION=11.3.8
+DRUPAL_VERSION=11.4.4
 PHP_VERSION=8.3
 
 export DEBIAN_FRONTEND=noninteractive
@@ -47,16 +47,12 @@ apt-get install -y \
     php${PHP_VERSION}-memcached \
     php${PHP_VERSION}-mysql \
     php${PHP_VERSION}-opcache \
+    php${PHP_VERSION}-uploadprogress \
     php${PHP_VERSION}-xml \
     php${PHP_VERSION}-zip \
     php-pear \
     unzip \
     zlib1g-dev
-
-# uploadprogress PECL extension
-printf "\n" | pecl install uploadprogress
-echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/apache2/conf.d/20-uploadprogress.ini
-echo "extension=uploadprogress.so" > /etc/php/${PHP_VERSION}/cli/conf.d/20-uploadprogress.ini
 
 # install composer
 EXPECTED_CHECKSUM=$(curl -sS https://composer.github.io/installer.sig)
@@ -105,6 +101,7 @@ cat <<COMPOSERJSON > composer.json
             "drupal/core-vendor-hardening": true,
             "drupal/core-recipe-unpack": true,
             "php-http/discovery": true,
+            "symfony/runtime": true,
             "tbachert/spi": true
         }
     },
@@ -133,8 +130,6 @@ composer install --no-interaction --no-progress --prefer-dist
 # settings.php is the vanilla scaffolded default + an explicit include of
 # sites/default/settings.local.php (the default ships that include commented
 # out). We write settings.local.php from user_data on each instance boot.
-# Pre-populating $databases in settings.php here would break Drupal's
-# SettingsEditor::rewrite during site install.
 cp sites/default/default.settings.php sites/default/settings.php
 cat <<'INCLUDE_EOF' >> sites/default/settings.php
 
@@ -144,6 +139,24 @@ if (file_exists($app_root . '/' . $site_path . '/settings.local.php')) {
 INCLUDE_EOF
 
 chown -R www-data:www-data /root/drupal
+
+# settings.php is locked down below: owned by root, group-readable only by
+# www-data. Drupal's own install wizard writes a literal $databases[...]
+# array into settings.php via SettingsEditor::rewrite() as soon as the "Set
+# up database" form is submitted -- even on a failed attempt, and even
+# though it appends after our include block, so it silently overwrites the
+# working credentials settings.local.php just set on every subsequent
+# request. `chmod 444` alone does NOT stop this: if www-data still owns the
+# file, Drupal (running as www-data) can simply chmod its own file back to
+# writable before rewriting it -- permission bits don't restrict the owning
+# user, only other users. Root ownership does, since www-data can then
+# neither write nor chmod a file it doesn't own. Since this pattern always
+# ships working DB credentials via settings.local.php, settings.php never
+# legitimately needs to be writable by the web server process at all.
+# Must run *after* the chown -R above, or that would re-own this back to
+# www-data and undo it.
+chown root:www-data sites/default/settings.php
+chmod 440 sites/default/settings.php
 
 # configure apache
 a2enmod php${PHP_VERSION}
