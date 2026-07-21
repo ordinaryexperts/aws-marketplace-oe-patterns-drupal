@@ -60,9 +60,14 @@ mkdir -p /mnt/efs
 echo "${AppEfs}:/ /mnt/efs efs _netdev 0 0" >> /etc/fstab
 mount -a
 
-# First-boot Drupal copy: AMI ships /root/drupal; copy into EFS only on first boot
+# First-boot Drupal copy: AMI ships /root/drupal; copy into EFS only on first boot.
+# Uses tar over a pipe rather than `cp -a` -- the codebase is ~26k small
+# files, and cp's one NFS round-trip (open/setattr/close) per file made the
+# copy take 12-13 min, eating almost all of the ASG's CreationPolicy budget.
+# Piping through tar batches reads/writes and cuts the per-file NFS op count.
 if [ ! -f /mnt/efs/drupal/index.php ]; then
-  cp -a /root/drupal /mnt/efs/
+  mkdir -p /mnt/efs/drupal
+  tar -cf - -C /root/drupal . | (cd /mnt/efs/drupal && tar -xf -)
   mkdir -p /mnt/efs/drupal/sites/default/files
   chown -R www-data:www-data /mnt/efs/drupal
   echo "Initial Drupal codebase copied to EFS."

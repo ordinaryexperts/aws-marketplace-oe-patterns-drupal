@@ -101,6 +101,12 @@ class DrupalStack(Stack):
             "Asg",
             ami_id=AMI_ID,
             ami_id_param_name_suffix=NEXT_RELEASE_PREFIX,
+            # Default is 15 min; first-boot user_data copies ~26.5k files
+            # (the composer-installed Drupal codebase) from the AMI to EFS,
+            # which alone takes ~12-13 min over NFS, leaving too little
+            # margin for the rest of user_data (secrets fetch, cert gen,
+            # apache start, cfn-signal) to finish before the ASG times out.
+            create_and_update_timeout_minutes=25,
             secret_arns=[db_secret.secret_arn()],
             use_graviton=False,
             user_data_contents=app_launch_config_user_data,
