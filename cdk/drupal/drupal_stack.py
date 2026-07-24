@@ -119,7 +119,12 @@ class DrupalStack(Stack):
         )
 
         # ALB + DNS wiring
-        alb = Alb(self, "Alb", asg=asg, vpc=vpc)
+        #
+        # health_check_path is /robots.txt, not /: ALB health checks send the
+        # target's own IP as the Host header, which Drupal's trusted_host_patterns
+        # rejects with a 400. /robots.txt is a static file Apache serves directly,
+        # bypassing Drupal's bootstrap (and the host check) entirely.
+        alb = Alb(self, "Alb", asg=asg, vpc=vpc, health_check_path="/robots.txt")
         asg.asg.target_group_arns = [alb.target_group.ref]
         dns.add_alb(alb)
 
