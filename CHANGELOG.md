@@ -4,6 +4,7 @@
 
 - Fixed `settings.php` root-ownership protection (added in 3.1.0) actually taking effect: `app_launch_config_user_data.sh`'s first-boot `chown -R www-data:www-data /mnt/efs/drupal` was re-owning `settings.php` back to `www-data` right after the AMI-baked `root:www-data 440` copy landed on EFS, silently undoing the 3.1.0 fix on every fresh deployment. Drupal's install wizard could then (and did) overwrite working DB credentials with a blank password mid-install. Ownership is now restored to `root:www-data` immediately after the EFS copy.
 - ALB target group health check changed from `/` to `/robots.txt`. ALB health checks send the target's own IP as the Host header, which Drupal's `trusted_host_patterns` rejects with a 400 once a real hostname is configured -- permanently marking the (often only) instance unhealthy. `/robots.txt` is a static file Apache serves directly, bypassing Drupal's bootstrap and the host check.
+- Versioned AMI parameter bumped `AsgAmiIdv310` -> `AsgAmiIdv311` (required by Marketplace Catalog API submission for a new template version; the AMI itself is unchanged from 3.1.0 -- this release is template/user_data only).
 
 # 3.1.0
 
