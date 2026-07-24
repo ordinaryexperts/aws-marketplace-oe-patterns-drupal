@@ -75,6 +75,11 @@ if [ ! -f /mnt/efs/drupal/index.php ]; then
   cp -a /root/drupal /mnt/efs/
   mkdir -p /mnt/efs/drupal/sites/default/files
   chown -R www-data:www-data /mnt/efs/drupal
+  # The AMI bakes settings.php as root:www-data 440 (see packer script) so
+  # Drupal's install wizard can't rewrite it out from under settings.local.php.
+  # The chown -R above undoes that -- restore it here.
+  chown root:www-data /mnt/efs/drupal/sites/default/settings.php
+  chmod 440 /mnt/efs/drupal/sites/default/settings.php
   echo "Initial Drupal codebase copied to EFS."
 fi
 

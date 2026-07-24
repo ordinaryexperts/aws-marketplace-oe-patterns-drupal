@@ -32,8 +32,8 @@ else:
         template_version = "CICD"
 
 # Updated each release in Phase 3 (dev AMI) and Phase 6 prereqs (prod AMI).
-AMI_ID = "ami-0039b783328fe0c1c"  # ordinary-experts-patterns-drupal-3.1.0-20260721-0906 (prod AMI for Marketplace submission)
-NEXT_RELEASE_PREFIX = "v310"
+AMI_ID = "ami-05ac0b3e2026d70c3"  # ordinary-experts-patterns-drupal-3.1.1-20260724-0418 (prod AMI for Marketplace submission -- content identical to the dev AMI, rebuilt only because Marketplace rejects reusing an AMI ID across versions)
+NEXT_RELEASE_PREFIX = "v311"
 
 
 class DrupalStack(Stack):
@@ -119,7 +119,12 @@ class DrupalStack(Stack):
         )
 
         # ALB + DNS wiring
-        alb = Alb(self, "Alb", asg=asg, vpc=vpc)
+        #
+        # health_check_path is /robots.txt, not /: ALB health checks send the
+        # target's own IP as the Host header, which Drupal's trusted_host_patterns
+        # rejects with a 400. /robots.txt is a static file Apache serves directly,
+        # bypassing Drupal's bootstrap (and the host check) entirely.
+        alb = Alb(self, "Alb", asg=asg, vpc=vpc, health_check_path="/robots.txt")
         asg.asg.target_group_arns = [alb.target_group.ref]
         dns.add_alb(alb)
 
