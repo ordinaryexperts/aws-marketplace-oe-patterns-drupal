@@ -1,5 +1,10 @@
 # Unreleased
 
+# 3.1.1
+
+- Fixed `settings.php` root-ownership protection (added in 3.1.0) actually taking effect: `app_launch_config_user_data.sh`'s first-boot `chown -R www-data:www-data /mnt/efs/drupal` was re-owning `settings.php` back to `www-data` right after the AMI-baked `root:www-data 440` copy landed on EFS, silently undoing the 3.1.0 fix on every fresh deployment. Drupal's install wizard could then (and did) overwrite working DB credentials with a blank password mid-install. Ownership is now restored to `root:www-data` immediately after the EFS copy.
+- ALB target group health check changed from `/` to `/robots.txt`. ALB health checks send the target's own IP as the Host header, which Drupal's `trusted_host_patterns` rejects with a 400 once a real hostname is configured -- permanently marking the (often only) instance unhealthy. `/robots.txt` is a static file Apache serves directly, bypassing Drupal's bootstrap and the host check.
+
 # 3.1.0
 
 - Drupal 11.3.8 -> 11.4.4 (11.4.4 is a security-only release fixing SA-CORE-2026-010/011/012 -- moderately critical XSS and access-check issues; 11.4.2 was initially targeted but Composer's advisory check correctly refused to install it once the advisories were published, so the target was bumped to the patched release. No PHP/MySQL requirement changes -- still PHP 8.3, Aurora MySQL 8.0).
