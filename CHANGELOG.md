@@ -1,5 +1,7 @@
 # Unreleased
 
+- Fixed fresh installs always failing Drupal's installer with "The Settings file is not writable", even though `settings.local.php` already provides working DB credentials. Drupal's installer only skips its own `settings.php`-writable check once `$install_state['settings_verified']` is true, which requires (among other things) `$settings['config_sync_directory']` to point at a directory that exists on disk -- this pattern never set or created one, so that condition could never be satisfied. Combined with the 3.1.0 `settings.php` `root:www-data 440` lock, the installer's writability check always failed and blocked every fresh install. `app_launch_config_user_data.sh` now creates `/mnt/efs/config/sync` (outside the docroot, persisted on EFS) on every boot, and `settings.local.php` sets `$settings['config_sync_directory']` to it.
+
 # 3.1.1
 
 - Fixed `settings.php` root-ownership protection (added in 3.1.0) actually taking effect: `app_launch_config_user_data.sh`'s first-boot `chown -R www-data:www-data /mnt/efs/drupal` was re-owning `settings.php` back to `www-data` right after the AMI-baked `root:www-data 440` copy landed on EFS, silently undoing the 3.1.0 fix on every fresh deployment. Drupal's install wizard could then (and did) overwrite working DB credentials with a blank password mid-install. Ownership is now restored to `root:www-data` immediately after the EFS copy.
