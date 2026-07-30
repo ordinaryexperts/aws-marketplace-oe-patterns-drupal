@@ -32,8 +32,8 @@ else:
         template_version = "CICD"
 
 # Updated each release in Phase 3 (dev AMI) and Phase 6 prereqs (prod AMI).
-AMI_ID = "ami-05ac0b3e2026d70c3"  # ordinary-experts-patterns-drupal-3.1.1-20260724-0418 (prod AMI for Marketplace submission -- content identical to the dev AMI, rebuilt only because Marketplace rejects reusing an AMI ID across versions)
-NEXT_RELEASE_PREFIX = "v311"
+AMI_ID = "ami-06639fe0e662bfa34"  # ordinary-experts-patterns-drupal-3.1.2-20260730-0814 (prod AMI for Marketplace submission -- content identical to the dev AMI, rebuilt only because Marketplace rejects reusing an AMI ID across versions)
+NEXT_RELEASE_PREFIX = "v312"
 
 
 class DrupalStack(Stack):

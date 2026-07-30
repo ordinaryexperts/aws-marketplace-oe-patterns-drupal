@@ -88,6 +88,15 @@ mkdir -p /var/www/app
 rm -rf /var/www/app/drupal
 ln -s /mnt/efs/drupal /var/www/app/drupal
 
+# Config sync directory, outside the docroot. Drupal's installer only treats
+# settings.php as "verified" (and skips its own settings.php-writable check) once
+# $settings['config_sync_directory'] exists on disk -- without it, the installer
+# always reports settings.php as not writable, since 3.1.0 that file is
+# deliberately locked read-only (see comment above). Idempotent, so this runs on
+# every boot rather than only the first-boot block above.
+mkdir -p /mnt/efs/config/sync
+chown www-data:www-data /mnt/efs/config/sync
+
 # Write the OE Patterns Drupal pattern integration into sites/default/settings.local.php.
 # Drupal's default settings.php (modified by packer) includes settings.local.php
 # if it exists, which lets us populate $databases / $settings via separate
@@ -122,6 +131,8 @@ if (file_exists('/opt/oe/patterns/drupal/db.json')) {
 }
 
 $settings['hash_salt'] = file_get_contents('/opt/oe/patterns/drupal/salt.txt');
+
+$settings['config_sync_directory'] = '/mnt/efs/config/sync';
 
 // Memcached server registration. To use as the cache backend, run
 // `drush en memcache -y` after the site is installed and add
