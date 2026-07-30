@@ -33,7 +33,7 @@ else:
 
 # Updated each release in Phase 3 (dev AMI) and Phase 6 prereqs (prod AMI).
 AMI_ID = "ami-0dc73960d057a24c1"  # ordinary-experts-patterns-drupal-3.1.1-20260724-0317 (dev AMI for testing)
-NEXT_RELEASE_PREFIX = "v311"
+NEXT_RELEASE_PREFIX = "v312"
 
 
 class DrupalStack(Stack):
